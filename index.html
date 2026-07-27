@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | IT Asset Management & Request Job System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="app.css">
+</head>
+<body class="login-body">
+    <div class="login-layout">
+        <section class="login-panel login-panel--intro">
+            <p class="login-panel__eyebrow">Enterprise Clean Profile</p>
+            <h1>IT Asset Management & Request Job System</h1>
+            <p class="login-panel__lead">
+                Centralized asset, ticket, access, stock, license, infrastructure and document operations
+                for internal factory teams.
+            </p>
+            <div class="feature-grid">
+                <article class="feature-card">
+                    <i class="fa-solid fa-laptop-file"></i>
+                    <h2>Asset Lifecycle</h2>
+                    <p>Register, assign, transfer, return and audit IT assets from one place.</p>
+                </article>
+                <article class="feature-card">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                    <h2>Service Desk</h2>
+                    <p>Track incidents, requests, approvals and delivery performance with clear ownership.</p>
+                </article>
+                <article class="feature-card">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <h2>Audit Ready</h2>
+                    <p>Every login and data change can be captured in audit logs for traceability.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="login-panel login-panel--form">
+            <div class="login-card">
+                <div class="login-card__header">
+                    <div class="login-card__logo">IT</div>
+                    <div>
+                        <p class="login-card__eyebrow">Factory Internal Use</p>
+                        <h2>Sign In</h2>
+                    </div>
+                </div>
+
+                <form id="loginForm" class="login-form" novalidate>
+                    <label class="form-field">
+                        <span>Username</span>
+                        <input type="text" id="username" name="username" autocomplete="username" required placeholder="Enter username">
+                    </label>
+
+                    <label class="form-field">
+                        <span>Password</span>
+                        <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="Enter password">
+                    </label>
+
+                    <label class="checkbox-field">
+                        <input type="checkbox" id="rememberMe">
+                        <span>Remember username on this device</span>
+                    </label>
+
+                    <button type="submit" class="primary-btn primary-btn--full">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Login</span>
+                    </button>
+                </form>
+
+                <div class="auth-switch">
+                    <span>Need a user account?</span>
+                    <a href="register.html">Register</a>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="ui.js"></script>
+    <script src="login.js"></script>
+</body>
+</html>

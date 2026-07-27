@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | IT Asset Management & Request Job System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="app.css">
+</head>
+<body class="login-body">
+    <div class="login-layout">
+        <section class="login-panel login-panel--intro">
+            <p class="login-panel__eyebrow">Internal Onboarding</p>
+            <h1>Create Your IT System Account</h1>
+            <p class="login-panel__lead">
+                Register an internal user account for IT service requests, access requests and tracking your own tickets.
+            </p>
+            <div class="feature-grid">
+                <article class="feature-card">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <h2>Self Registration</h2>
+                    <p>New employees can create a standard user account without waiting for manual data entry.</p>
+                </article>
+                <article class="feature-card">
+                    <i class="fa-solid fa-ticket"></i>
+                    <h2>Request Ready</h2>
+                    <p>After registration, the account can be used to submit tickets and access requests.</p>
+                </article>
+                <article class="feature-card">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <h2>Protected Flow</h2>
+                    <p>Username uniqueness and password confirmation are validated before account creation.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="login-panel login-panel--form">
+            <div class="login-card login-card--wide">
+                <div class="login-card__header">
+                    <div class="login-card__logo">IT</div>
+                    <div>
+                        <p class="login-card__eyebrow">Factory Internal Use</p>
+                        <h2>Register</h2>
+                    </div>
+                </div>
+
+                <form id="registerForm" class="login-form" novalidate>
+                    <div class="inline-fields">
+                        <label class="form-field">
+                            <span>Full Name</span>
+                            <input type="text" id="fullName" autocomplete="name" required placeholder="Enter full name">
+                        </label>
+
+                        <label class="form-field">
+                            <span>Department</span>
+                            <select id="department" required>
+                                <option value="">Select department</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="inline-fields">
+                        <label class="form-field">
+                            <span>Username</span>
+                            <input type="text" id="registerUsername" autocomplete="username" required placeholder="Create username">
+                        </label>
+
+                        <label class="form-field">
+                            <span>Email</span>
+                            <input type="email" id="email" autocomplete="email" placeholder="name@company.com">
+                        </label>
+                    </div>
+
+                    <div class="inline-fields">
+                        <label class="form-field">
+                            <span>Password</span>
+                            <input type="password" id="registerPassword" autocomplete="new-password" required placeholder="Create password">
+                        </label>
+
+                        <label class="form-field">
+                            <span>Confirm Password</span>
+                            <input type="password" id="confirmPassword" autocomplete="new-password" required placeholder="Confirm password">
+                        </label>
+                    </div>
+
+                    <label class="checkbox-field">
+                        <input type="checkbox" id="acceptPolicy">
+                        <span>I confirm this account is for internal factory use and the information is correct.</span>
+                    </label>
+
+                    <button type="submit" class="primary-btn primary-btn--full">
+                        <i class="fa-solid fa-user-check"></i>
+                        <span>Create Account</span>
+                    </button>
+                </form>
+
+                <div class="auth-switch">
+                    <span>Already have an account?</span>
+                    <a href="index.html">Back to login</a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="ui.js"></script>
+    <script src="register.js"></script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+window.APP_CONFIG = {
+    appName: "IT Asset Management & Request Job System",
+    projectProfile: "Enterprise Clean",
+    webAppUrl: "https://script.google.com/macros/s/AKfycbzO5AydNfiG7IO31bXkNaZFvrr0WXEiNFEg25LHw4a1ZvbQdrTx95tdxO3_MbaP_nw/exec",
+    useMockDataWhenUrlMissing: true,
+    sessionStorageKey: "itms_session",
+    mockStorageKey: "itms_mock_store",
+    sessionHours: 12,
+    pageRoutes: {
+        dashboard: "dashboard.html",
+        assets: "assets.html",
+        tickets: "tickets.html",
+        accessRequests: "access-management.html",
+        stockItems: "inventory.html",
+        stockMovements: "stock-movements.html",
+        licenses: "licenses.html",
+        infrastructure: "infrastructure.html",
+        documents: "document-center.html",
+        reports: "reports.html",
+        users: "administration.html",
+        auditLogs: "audit-log.html"
+    },
+    roles: ["Admin", "User"],
+    statusPalette: {
+        Active: "success",
+        Available: "success",
+        Approved: "success",
+        Resolved: "success",
+        Closed: "neutral",
+        Open: "info",
+        Assigned: "info",
+        "In Progress": "info",
+        Pending: "warning",
+        "Pending Approval": "warning",
+        Repair: "warning",
+        "Low Stock": "warning",
+        Expiring: "warning",
+        Inbound: "success",
+        Outbound: "danger",
+        Adjustment: "info",
+        Normal: "success",
+        Expired: "danger",
+        Unknown: "neutral",
+        Rejected: "danger",
+        Broken: "danger",
+        Disabled: "danger",
+        Inactive: "danger"
+    },
+    priorityPalette: {
+        Low: "neutral",
+        Medium: "info",
+        High: "warning",
+        Critical: "danger"
+    },
+    menu: [
+        { group: "Overview", items: [{ key: "dashboard", label: "Dashboard", icon: "fa-chart-pie", description: "Summary and quick actions" }] },
+        { group: "Operations", items: [
+            { key: "assets", label: "Asset Management", icon: "fa-laptop-file", description: "Asset register and lifecycle" },
+            { key: "tickets", label: "IT Service Desk", icon: "fa-screwdriver-wrench", description: "Tickets and requests" },
+            { key: "accessRequests", label: "Access Management", icon: "fa-user-shield", description: "Account and permission requests" },
+            { key: "stockItems", label: "Inventory", icon: "fa-boxes-stacked", description: "Stock and movements" },
+            { key: "stockMovements", label: "Stock Movement", icon: "fa-arrow-right-arrow-left", description: "Inbound, outbound and adjustment logs" },
+            { key: "licenses", label: "License Management", icon: "fa-id-card-clip", description: "Software license tracking" },
+            { key: "infrastructure", label: "Infrastructure", icon: "fa-server", description: "Server and network assets" },
+            { key: "documents", label: "Document Center", icon: "fa-folder-open", description: "SOP, policy and contracts" }
+        ]},
+        { group: "Governance", items: [
+            { key: "reports", label: "Reports", icon: "fa-chart-column", description: "Exports and audit views" },
+            { key: "users", label: "Administration", icon: "fa-gear", description: "Users and audit logs" },
+            { key: "auditLogs", label: "Audit Log", icon: "fa-clipboard-list", description: "Read-only traceability" }
+        ]}
+    ],
+    dashboardMetrics: [
+        { key: "totalAssets", label: "Total Assets", icon: "fa-laptop-file" },
+        { key: "expiredAssets", label: "Expired Assets", icon: "fa-triangle-exclamation" },
+        { key: "expiringSoonAssets", label: "Expiring Soon", icon: "fa-hourglass-half" },
+        { key: "openTickets", label: "Open Tickets", icon: "fa-ticket" },
+        { key: "pendingApproval", label: "Pending Approval", icon: "fa-user-clock" },
+        { key: "lowStock", label: "Low Stock", icon: "fa-box-open" },
+        { key: "outOfStock", label: "Out of Stock", icon: "fa-ban" }
+    ],
+    quickActions: [
+        { key: "tickets", mode: "create", icon: "fa-ticket", title: "New Ticket", description: "Create service request or incident" },
+        { key: "assets", mode: "create", icon: "fa-computer", title: "Register Asset", description: "Add new asset to register" },
+        { key: "stockItems", mode: "create", icon: "fa-boxes-stacked", title: "Add Inventory", description: "Create stock master item" },
+        { key: "stockMovements", mode: "create", icon: "fa-arrow-right-arrow-left", title: "Stock Movement", description: "Inbound, outbound or adjustment" }
+    ],
+    moduleOrder: ["assets", "tickets", "accessRequests", "stockItems", "stockMovements", "licenses", "infrastructure", "documents", "users", "auditLogs"],
+    modules: {
+        assets: {
+            key: "assets",
+            label: "Asset Management",
+            icon: "fa-laptop-file",
+            idField: "AssetID",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["FixedAssetNo", "Group", "AssetName", "DateOfDepreciation", "LifeTime", "AssetAge", "AssetLifeStatus", "AmountBaht", "User", "Location"],
+            fields: [
+                { key: "AssetID", label: "IT Asset No.", type: "text", readonly: true, hint: "Auto generated by system" },
+                { key: "FixedAssetNo", label: "Fixed Assets No.", type: "text" },
+                { key: "Group", label: "Group", type: "select", options: ["Computer", "Software", "Office Equiment"] },
+                { key: "AssetName", label: "Asset Name", type: "text", required: true },
+                { key: "DateOfDepreciation", label: "Date of Depreciation", type: "date" },
+                { key: "PONo", label: "PO No.", type: "text" },
+                { key: "Quantity", label: "Quantity", type: "number", required: true },
+                { key: "LifeTime", label: "Life Time", type: "text" },
+                { key: "AmountBaht", label: "Amount (Baht)", type: "number" },
+                { key: "User", label: "User", type: "text" },
+                { key: "Location", label: "Location", type: "text" },
+                { key: "Remark", label: "Remark", type: "textarea", full: true }
+            ]
+        },
+        tickets: {
+            key: "tickets",
+            label: "IT Service Desk",
+            icon: "fa-screwdriver-wrench",
+            idField: "TicketID",
+            statusField: "Status",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin", "User"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["TicketID", "RequestDate", "Requester", "Department", "Category", "Priority", "AssignedTo", "Status", "ApprovalStatus"],
+            fields: [
+                { key: "TicketID", label: "Ticket ID", type: "text", required: true },
+                { key: "RequestDate", label: "Request Date", type: "date", required: true },
+                { key: "Requester", label: "Requester", type: "text", required: true },
+                { key: "Department", label: "Department", type: "select", options: ["IT", "Production", "Quality", "Finance", "HR", "Warehouse"] },
+                { key: "Category", label: "Category", type: "select", options: ["Software Installation", "Hardware Request", "Printer Request", "Network Request", "Email Request", "ERP / D365 Request", "New User Request", "Resignation User Request", "Other"] },
+                { key: "Priority", label: "Priority", type: "select", options: ["Low", "Medium", "High", "Critical"] },
+                { key: "Subject", label: "Subject", type: "text", required: true, full: true },
+                { key: "Description", label: "Description", type: "textarea", full: true },
+                { key: "AssignedTo", label: "Assigned To", type: "text" },
+                { key: "Status", label: "Status", type: "select", options: ["Open", "Assigned", "In Progress", "Pending", "Resolved", "Closed", "Rejected"] },
+                { key: "DueDate", label: "Due Date", type: "date" },
+                { key: "ResolvedDate", label: "Resolved Date", type: "date" },
+                { key: "ApprovedBy", label: "Approved By", type: "text" },
+                { key: "ApprovalStatus", label: "Approval Status", type: "select", options: ["Pending Approval", "Approved", "Rejected"] },
+                { key: "Remark", label: "Remark", type: "textarea", full: true }
+            ]
+        },
+        accessRequests: {
+            key: "accessRequests",
+            label: "Access Management",
+            icon: "fa-user-shield",
+            idField: "RequestID",
+            statusField: "Status",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin", "User"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["RequestID", "RequestDate", "Requester", "Department", "RequestType", "TargetUser", "Status", "ApprovedBy", "UpdatedAt"],
+            fields: [
+                { key: "RequestID", label: "Request ID", type: "text", required: true },
+                { key: "RequestDate", label: "Request Date", type: "date", required: true },
+                { key: "Requester", label: "Requester", type: "text", required: true },
+                { key: "Department", label: "Department", type: "select", options: ["IT", "Production", "Quality", "Finance", "HR", "Warehouse"] },
+                { key: "RequestType", label: "Request Type", type: "select", options: ["Create AD User", "Disable AD User", "Password Reset", "Shared Folder Permission", "Email Group", "ERP / D365 Permission", "VPN Permission"] },
+                { key: "TargetUser", label: "Target User", type: "text", required: true },
+                { key: "SystemName", label: "System / Resource", type: "text" },
+                { key: "Reason", label: "Reason", type: "textarea", full: true },
+                { key: "Status", label: "Status", type: "select", options: ["Pending Approval", "Approved", "Rejected", "In Progress", "Closed"] },
+                { key: "ApprovedBy", label: "Approved By", type: "text" },
+                { key: "Remark", label: "Remark", type: "textarea", full: true }
+            ]
+        },
+        stockItems: {
+            key: "stockItems",
+            label: "Inventory",
+            icon: "fa-boxes-stacked",
+            idField: "ItemID",
+            statusField: "StockStatus",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["ItemName", "Description", "Quantity", "MinimumStock", "StockStatus"],
+            fields: [
+                { key: "ItemName", label: "Item Name", type: "text", required: true },
+                { key: "Description", label: "Description", type: "textarea", full: true },
+                { key: "Quantity", label: "Quantity", type: "number", required: true },
+                { key: "MinimumStock", label: "Minimum Stock", type: "number", required: true }
+            ]
+        },
+        stockMovements: {
+            key: "stockMovements",
+            label: "Stock Movement",
+            icon: "fa-arrow-right-arrow-left",
+            idField: "MovementID",
+            statusField: "MovementType",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["MovementID", "MovementDate", "ItemID", "MovementType", "Quantity", "ReferenceNo", "PerformedBy", "Remark"],
+            fields: [
+                { key: "MovementID", label: "Movement ID", type: "text", required: true },
+                { key: "MovementDate", label: "Movement Date", type: "date", required: true },
+                { key: "ItemID", label: "Item ID", type: "text", required: true },
+                { key: "MovementType", label: "Movement Type", type: "select", options: ["Inbound", "Outbound", "Adjustment"] },
+                { key: "Quantity", label: "Quantity", type: "number", required: true },
+                { key: "ReferenceNo", label: "Reference No", type: "text" },
+                { key: "PerformedBy", label: "Performed By", type: "text" },
+                { key: "Remark", label: "Remark", type: "textarea", full: true }
+            ]
+        },
+        licenses: {
+            key: "licenses",
+            label: "License Inventory",
+            icon: "fa-id-card-clip",
+            idField: "LicenseID",
+            statusField: "Status",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["LicenseID", "SoftwareName", "LicenseType", "TotalQty", "UsedQty", "ExpiryDate", "AssignedUser", "Status"],
+            fields: [
+                { key: "LicenseID", label: "License ID", type: "text", required: true },
+                { key: "SoftwareName", label: "Software Name", type: "text", required: true },
+                { key: "LicenseType", label: "License Type", type: "select", options: ["Per User", "Per Device", "Subscription", "Concurrent"] },
+                { key: "TotalQty", label: "Total Quantity", type: "number", required: true },
+                { key: "UsedQty", label: "Used Quantity", type: "number", required: true },
+                { key: "ExpiryDate", label: "Expiry Date", type: "date" },
+                { key: "Vendor", label: "Vendor", type: "text" },
+                { key: "AssignedUser", label: "Assigned User", type: "text" },
+                { key: "Status", label: "Status", type: "select", options: ["Active", "Expiring", "Expired"] },
+                { key: "Remark", label: "Remark", type: "textarea", full: true }
+            ]
+        },
+        infrastructure: {
+            key: "infrastructure",
+            label: "Infrastructure",
+            icon: "fa-server",
+            idField: "InfraID",
+            statusField: "Status",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["InfraID", "Type", "Hostname", "IPAddress", "Location", "Owner", "OS", "Status"],
+            fields: [
+                { key: "InfraID", label: "Infra ID", type: "text", required: true },
+                { key: "Type", label: "Type", type: "select", options: ["Server", "Network Device", "Firewall", "Storage", "Virtual Machine"] },
+                { key: "Hostname", label: "Hostname", type: "text", required: true },
+                { key: "IPAddress", label: "IP Address", type: "text" },
+                { key: "Location", label: "Location", type: "text" },
+                { key: "Owner", label: "Owner", type: "text" },
+                { key: "OS", label: "Operating System", type: "text" },
+                { key: "Status", label: "Status", type: "select", options: ["Active", "Standby", "Maintenance", "Retired"] },
+                { key: "Remark", label: "Remark", type: "textarea", full: true }
+            ]
+        },
+        documents: {
+            key: "documents",
+            label: "Document Center",
+            icon: "fa-folder-open",
+            idField: "DocumentID",
+            statusField: "Status",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["DocumentID", "DocumentType", "Title", "OwnerDepartment", "ReviewDate", "Status", "LinkURL"],
+            fields: [
+                { key: "DocumentID", label: "Document ID", type: "text", required: true },
+                { key: "DocumentType", label: "Document Type", type: "select", options: ["SOP", "WI", "Policy", "Manual", "Vendor Contract", "Maintenance Agreement"] },
+                { key: "Title", label: "Title", type: "text", required: true, full: true },
+                { key: "OwnerDepartment", label: "Owner Department", type: "select", options: ["IT", "Production", "Quality", "Finance", "HR", "Warehouse"] },
+                { key: "ReviewDate", label: "Review Date", type: "date" },
+                { key: "LinkURL", label: "Document Link", type: "text", required: true, full: true },
+                { key: "Status", label: "Status", type: "select", options: ["Active", "Review Required", "Archived"] },
+                { key: "Remark", label: "Remark", type: "textarea", full: true }
+            ]
+        },
+        users: {
+            key: "users",
+            label: "User Management",
+            icon: "fa-users-gear",
+            idField: "UserID",
+            statusField: "Status",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin"], edit: ["Admin"], delete: ["Admin"] },
+            listFields: ["UserID", "Username", "FullName", "Department", "Role", "Status", "Email", "LastLogin"],
+            fields: [
+                { key: "Username", label: "Username", type: "text", required: true },
+                { key: "FullName", label: "Full Name", type: "text", required: true },
+                { key: "Role", label: "Role", type: "select", options: ["Admin", "User"] },
+                { key: "Password", label: "Password", type: "password", hint: "Only required when creating or resetting password." }
+            ]
+        },
+        auditLogs: {
+            key: "auditLogs",
+            label: "Audit Log",
+            icon: "fa-clipboard-list",
+            idField: "LogID",
+            statusField: "Action",
+            roles: ["Admin", "User"],
+            permissions: { create: [], edit: [], delete: [] },
+            listFields: ["LogID", "Timestamp", "Action", "Module", "RecordID", "ActorName", "ActorRole", "Detail"],
+            fields: []
+        }
+    },
+    mockAccounts: [
+        { username: "admin", password: "ChangeMe123!", userId: "USR-001", role: "Admin" },
+        { username: "itmanager", password: "ChangeMe123!", userId: "USR-002", role: "Admin" },
+        { username: "itstaff", password: "ChangeMe123!", userId: "USR-003", role: "Admin" },
+        { username: "deptmgr", password: "ChangeMe123!", userId: "USR-004", role: "User" },
+        { username: "user01", password: "ChangeMe123!", userId: "USR-005", role: "User" },
+        { username: "auditor", password: "ChangeMe123!", userId: "USR-006", role: "User" }
+    ],
+    sampleData: {
+        users: [
+            { UserID: "USR-001", Username: "admin", FullName: "System Admin", Department: "IT", Role: "Admin", Status: "Active", Email: "admin@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { UserID: "USR-002", Username: "itmanager", FullName: "IT Manager", Department: "IT", Role: "Admin", Status: "Active", Email: "itmanager@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { UserID: "USR-003", Username: "itstaff", FullName: "IT Support", Department: "IT", Role: "Admin", Status: "Active", Email: "itstaff@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { UserID: "USR-004", Username: "deptmgr", FullName: "Production Manager", Department: "Production", Role: "User", Status: "Active", Email: "deptmgr@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { UserID: "USR-005", Username: "user01", FullName: "Production User", Department: "Production", Role: "User", Status: "Active", Email: "user01@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { UserID: "USR-006", Username: "auditor", FullName: "Compliance Auditor", Department: "Quality", Role: "User", Status: "Active", Email: "auditor@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
+        ],
+        assets: [
+            { AssetID: "ITA-001", FixedAssetNo: "FA-2026-001", AssetName: "Notebook Dell Latitude 5440", Group: "Computer", DateOfDepreciation: "2025-03-01", PONo: "PO-IT-250301", Quantity: 1, LifeTime: "5 Years", AmountBaht: 38500, User: "IT Support", Location: "HQ-IT", Remark: "Primary support notebook", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { AssetID: "ITA-002", FixedAssetNo: "FA-2026-002", AssetName: "Production Line PC", Group: "Computer", DateOfDepreciation: "2024-01-12", PONo: "PO-PRD-240112", Quantity: 1, LifeTime: "5 Years", AmountBaht: 28900, User: "Production User", Location: "Line A", Remark: "Production workstation", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { AssetID: "ITA-003", FixedAssetNo: "FA-2026-003", AssetName: "Domain Controller", Group: "Computer", DateOfDepreciation: "2023-06-10", PONo: "PO-IT-230610", Quantity: 1, LifeTime: "7 Years", AmountBaht: 145000, User: "Infrastructure Team", Location: "Server Room", Remark: "Core server asset", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
+        ],
+        tickets: [
+            { TicketID: "TCK-001", RequestDate: "2026-06-17", Requester: "Production User", Department: "Production", Category: "Printer Request", Priority: "Medium", Subject: "Printer toner replacement", Description: "Line B printer toner low", AssignedTo: "IT Support", Status: "Open", DueDate: "2026-06-19", ResolvedDate: "", ApprovedBy: "Production Manager", ApprovalStatus: "Approved", Remark: "", CreatedAt: "2026-06-17 09:30:00", UpdatedAt: "2026-06-17 09:30:00" },
+            { TicketID: "TCK-002", RequestDate: "2026-06-16", Requester: "Finance User", Department: "Finance", Category: "Software Installation", Priority: "High", Subject: "Install PDF editor", Description: "Urgent invoice update task", AssignedTo: "IT Support", Status: "In Progress", DueDate: "2026-06-18", ResolvedDate: "", ApprovedBy: "Finance Manager", ApprovalStatus: "Approved", Remark: "", CreatedAt: "2026-06-16 08:15:00", UpdatedAt: "2026-06-17 11:10:00" },
+            { TicketID: "TCK-003", RequestDate: "2026-06-15", Requester: "HR User", Department: "HR", Category: "New User Request", Priority: "Critical", Subject: "Prepare new starter account", Description: "Employee start date 2026-06-20", AssignedTo: "IT Manager", Status: "Pending", DueDate: "2026-06-19", ResolvedDate: "", ApprovedBy: "HR Manager", ApprovalStatus: "Pending Approval", Remark: "", CreatedAt: "2026-06-15 14:00:00", UpdatedAt: "2026-06-15 14:00:00" }
+        ],
+        accessRequests: [
+            { RequestID: "ACC-001", RequestDate: "2026-06-14", Requester: "HR User", Department: "HR", RequestType: "Create AD User", TargetUser: "New Starter", SystemName: "AD + Email", Reason: "Onboarding", Status: "Pending Approval", ApprovedBy: "", Remark: "", CreatedAt: "2026-06-14 10:00:00", UpdatedAt: "2026-06-14 10:00:00" },
+            { RequestID: "ACC-002", RequestDate: "2026-06-12", Requester: "Finance Manager", Department: "Finance", RequestType: "Shared Folder Permission", TargetUser: "Accountant B", SystemName: "Finance Shared Drive", Reason: "Monthly closing", Status: "Approved", ApprovedBy: "Finance Manager", Remark: "", CreatedAt: "2026-06-12 13:15:00", UpdatedAt: "2026-06-13 09:00:00" }
+        ],
+        stockItems: [
+            { ItemID: "STK-001", ItemName: "LAN Cable Cat6", Description: "Network cable for workstation and switch connection", Category: "Consumable", Quantity: 48, MinimumStock: 20, Location: "Main Store", Unit: "pcs", StockStatus: "Available", LastUpdated: "2026-06-18 08:00:00", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { ItemID: "STK-002", ItemName: "Wireless Mouse", Description: "Standard wireless mouse for office users", Category: "Accessory", Quantity: 8, MinimumStock: 10, Location: "Main Store", Unit: "pcs", StockStatus: "Low Stock", LastUpdated: "2026-06-18 08:00:00", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
+        ],
+        stockMovements: [
+            { MovementID: "MOV-001", MovementDate: "2026-06-18", ItemID: "STK-002", MovementType: "Outbound", Quantity: 2, ReferenceNo: "REQ-005", PerformedBy: "IT Support", Remark: "Issued to QA", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
+        ],
+        licenses: [
+            { LicenseID: "LIC-001", SoftwareName: "Microsoft 365 E3", LicenseType: "Subscription", TotalQty: 120, UsedQty: 108, ExpiryDate: "2026-08-01", Vendor: "Microsoft CSP", AssignedUser: "Shared Pool", Status: "Expiring", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { LicenseID: "LIC-002", SoftwareName: "Adobe Acrobat Pro", LicenseType: "Per User", TotalQty: 10, UsedQty: 7, ExpiryDate: "2027-02-15", Vendor: "Adobe", AssignedUser: "Finance Team", Status: "Active", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
+        ],
+        infrastructure: [
+            { InfraID: "INF-001", Type: "Server", Hostname: "DC-01", IPAddress: "10.10.0.10", Location: "Server Room", Owner: "Infrastructure Team", OS: "Windows Server 2022", Status: "Active", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { InfraID: "INF-002", Type: "Network Device", Hostname: "CORE-SW-01", IPAddress: "10.10.0.2", Location: "MDF", Owner: "Infrastructure Team", OS: "Cisco IOS", Status: "Maintenance", Remark: "Firmware upgrade scheduled", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
+        ],
+        documents: [
+            { DocumentID: "DOC-001", DocumentType: "SOP", Title: "IT Asset Receiving SOP", OwnerDepartment: "IT", ReviewDate: "2026-09-30", LinkURL: "https://example.com/documents/asset-receiving", Status: "Active", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
+            { DocumentID: "DOC-002", DocumentType: "Vendor Contract", Title: "Printer Maintenance Contract", OwnerDepartment: "IT", ReviewDate: "2026-07-31", LinkURL: "https://example.com/documents/printer-contract", Status: "Review Required", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
+        ],
+        auditLogs: [
+            { LogID: "LOG-001", Timestamp: "2026-06-18 08:05:00", Action: "LOGIN", Module: "auth", RecordID: "USR-001", ActorUserID: "USR-001", ActorName: "System Admin", ActorRole: "Admin", Detail: "User logged in" },
+            { LogID: "LOG-002", Timestamp: "2026-06-18 08:25:00", Action: "UPDATE", Module: "assets", RecordID: "AST-002", ActorUserID: "USR-003", ActorName: "IT Support", ActorRole: "IT Staff", Detail: "Updated asset repair remark" }
+        ]
+    }
+};
