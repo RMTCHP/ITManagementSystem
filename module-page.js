@@ -7,11 +7,14 @@
         records: [],
         stockItems: [],
         stockMovements: [],
+        knowledgeCategories: [],
         filters: {
             search: "",
             status: "",
             summary: "all",
-            assetGroup: "all"
+            assetGroup: "all",
+            knowledgeCategory: "all",
+            knowledgeType: ""
         },
         sort: {
             key: "",
@@ -39,8 +42,12 @@
         return moduleKey === "stockMovements";
     }
 
+    function isKnowledgeModule() {
+        return moduleKey === "documents";
+    }
+
     function needsDashboardSummary() {
-        return isAssetModule() || isInventoryModule() || isStockMovementModule();
+        return isAssetModule();
     }
 
     function getSortIndicator(fieldKey) {
@@ -787,20 +794,41 @@
         }
     }
 
+    async function refreshKnowledgeCategoriesInBackground() {
+        if (!isKnowledgeModule()) {
+            return;
+        }
+        try {
+            const result = await ApiClient.request("listKnowledgeCategories", {
+                token: ApiClient.getSessionToken()
+            });
+            const configuredCategories = (getFieldConfig("Category") || {}).options || [];
+            const recordCategories = state.records.map((record) => String(record.Category || "").trim()).filter(Boolean);
+            state.knowledgeCategories = [...new Set([
+                ...configuredCategories,
+                ...(result.data.categories || []),
+                ...recordCategories
+            ])];
+            const categoryField = getFieldConfig("Category");
+            if (categoryField) {
+                categoryField.options = state.knowledgeCategories;
+            }
+            renderTable();
+        } catch (error) {
+            // Category data is optional during initial page load; keep the library usable.
+        }
+    }
+
     async function loadModuleData() {
         if (isStockMovementModule()) {
-            const [movementResult, inventoryResult] = await Promise.all([
-                ApiClient.request("listRecords", {
-                    token: ApiClient.getSessionToken(),
-                    module: moduleKey
-                }),
-                ApiClient.request("listRecords", {
-                    token: ApiClient.getSessionToken(),
-                    module: "stockItems"
-                })
-            ]);
-            state.records = movementResult.data.records || [];
+            const inventoryResult = await ApiClient.request("listRecords", {
+                token: ApiClient.getSessionToken(),
+                module: "stockItems"
+            });
+            // The split Inbound/Outbound workspace does not render movement history.
+            state.records = [];
             state.stockItems = inventoryResult.data.records || [];
+            state.stockMovements = [];
             state.sort.key = "MovementDate";
             state.sort.direction = "desc";
             syncSidebarAlerts();
@@ -817,6 +845,26 @@
             state.sort.key = moduleConfig.listFields[0] || "";
             state.sort.direction = "asc";
             syncSidebarAlerts();
+            return;
+        }
+
+        if (isKnowledgeModule()) {
+            const documentResult = await ApiClient.request("listRecords", {
+                token: ApiClient.getSessionToken(),
+                module: moduleKey
+            });
+            state.records = documentResult.data.records || [];
+            state.knowledgeCategories = [...new Set([
+                ...((getFieldConfig("Category") || {}).options || []),
+                ...state.records.map((record) => String(record.Category || "").trim()).filter(Boolean)
+            ])];
+            const categoryField = getFieldConfig("Category");
+            if (categoryField) {
+                categoryField.options = state.knowledgeCategories;
+            }
+            state.sort.key = "";
+            state.sort.direction = "asc";
+            refreshKnowledgeCategoriesInBackground();
             return;
         }
 
@@ -856,6 +904,11 @@
         const heroPanel = document.getElementById("heroPanel");
         heroPanel.className = "hero-panel hero-panel--compact";
         heroPanel.style.display = "";
+        if (isKnowledgeModule()) {
+            heroPanel.innerHTML = "";
+            heroPanel.style.display = "none";
+            return;
+        }
         if (isAssetModule() && state.heroView === "groups") {
             const assetSummary = getAssetSummaryStats();
             heroPanel.innerHTML = `
@@ -1015,6 +1068,14 @@
         rows = rows.filter((record) => matchesSummaryFilter(record));
         rows = rows.filter((record) => matchesAssetGroupFilter(record));
 
+        if (isKnowledgeModule() && state.filters.knowledgeCategory !== "all") {
+            rows = rows.filter((record) => String(record.Category || "") === state.filters.knowledgeCategory);
+        }
+
+        if (isKnowledgeModule() && state.filters.knowledgeType) {
+            rows = rows.filter((record) => String(record.DocumentType || "") === state.filters.knowledgeType);
+        }
+
         if (state.filters.status && moduleConfig.statusField) {
             rows = rows.filter((record) => String(record[moduleConfig.statusField] || "") === state.filters.status);
         }
@@ -1035,7 +1096,71 @@
         return rows;
     }
 
+    function renderStockMovementSplitWorkspace() {
+        const itemOptions = state.stockItems
+            .slice()
+            .sort((left, right) => String(left.ItemName || "").localeCompare(String(right.ItemName || "")))
+            .map((item) => `<option value="${UI.escapeHtml(getStockItemSearchLabel(item))}"></option>`)
+            .join("");
+
+        const renderForm = (tabKey) => {
+            const draft = getMovementDraft(tabKey);
+            const summary = getStockMovementFormSummary(draft.ItemID);
+            const inbound = tabKey === "inbound";
+            const title = inbound ? "Inbound Stock" : "Outbound Stock";
+            const action = inbound ? "Record Inbound" : "Record Outbound";
+            return `
+                <section class="stock-movement-form-card stock-movement-form-card--${tabKey}" data-movement-panel="${tabKey}">
+                    <div class="stock-movement-form-card__heading">
+                        <div>
+                            <h4>${title}</h4>
+                            <p>${inbound ? "Receive items into inventory." : "Issue items from inventory."}</p>
+                        </div>
+                        <button class="primary-btn stock-movement-submit-icon" type="button" data-submit-movement="${tabKey}" title="${action}" aria-label="${action}">
+                            <i class="fa-solid ${inbound ? "fa-file-import" : "fa-file-export"}"></i>
+                        </button>
+                    </div>
+                    <div class="stock-movement-item-summary ${summary ? "" : "is-empty"}">
+                        ${summary ? `
+                            <div class="stock-movement-item-summary__title"><strong>${UI.escapeHtml(summary.item.ItemName || "-")}</strong><span>${UI.escapeHtml(summary.item.Description || "")}</span></div>
+                            <div class="stock-movement-item-summary__stats">
+                                <div><span>Current stock</span><strong>${UI.escapeHtml(String(summary.quantity))}</strong></div>
+                                <div><span>Minimum stock</span><strong>${UI.escapeHtml(String(summary.minimumStock))}</strong></div>
+                                <div><span>Status</span>${UI.badge(summary.status)}</div>
+                            </div>
+                        ` : `<div class="stock-movement-item-summary__placeholder"><i class="fa-solid fa-boxes-stacked"></i><p>Select an inventory item to view its current balance.</p></div>`}
+                    </div>
+                    <div class="stock-movement-form">
+                        <label class="stock-movement-field stock-movement-field--item">
+                            <span>Inventory item <em>*</em></span>
+                            <input type="text" data-movement-item-search list="stockMovementItemOptions" value="${UI.escapeHtml(draft.ItemSearch || "")}" placeholder="Search inventory item" autocomplete="off">
+                            <input type="hidden" data-movement-field="ItemID" value="${UI.escapeHtml(draft.ItemID || "")}">
+                        </label>
+                        <label class="stock-movement-field stock-movement-field--qty">
+                            <span>Quantity <em>*</em></span>
+                            <input type="number" min="1" step="1" data-movement-field="Quantity" value="${UI.escapeHtml(draft.Quantity || "")}" placeholder="0">
+                        </label>
+                        <label class="stock-movement-field stock-movement-field--full">
+                            <span>Remark</span>
+                            <textarea data-movement-field="Remark" placeholder="Reason, department, recipient, or receiving detail">${UI.escapeHtml(draft.Remark || "")}</textarea>
+                        </label>
+                    </div>
+                </section>`;
+        };
+
+        document.getElementById("viewContainer").innerHTML = `
+            <section class="table-panel stock-movement-panel">
+                <datalist id="stockMovementItemOptions">${itemOptions}</datalist>
+                <div class="stock-movement-split-layout">
+                    ${renderForm("inbound")}
+                    ${renderForm("outbound")}
+                </div>
+            </section>`;
+    }
+
     function renderStockMovementWorkspace() {
+        renderStockMovementSplitWorkspace();
+        return;
         const filtered = getFilteredRecords();
         const total = filtered.length;
         const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
@@ -1192,7 +1317,104 @@
         `;
     }
 
+    function getKnowledgeCategoryTone(category) {
+        const tones = {
+            "Network Diagram": "network",
+            "Server Guide": "server",
+            "IP Plan": "ip-plan",
+            "Backup & Recovery": "backup",
+            "Configuration": "configuration",
+            "Troubleshooting": "troubleshooting"
+        };
+        return tones[category] || "operations";
+    }
+
+    function renderKnowledgeCenter() {
+        const categoryField = getFieldConfig("Category");
+        const configuredCategories = (categoryField && categoryField.options) || [];
+        const existingCategories = state.records.map((record) => String(record.Category || "").trim()).filter(Boolean);
+        const categories = [...new Set([...configuredCategories, ...existingCategories])];
+        const filtered = getFilteredRecords().sort((left, right) => {
+            const leftDate = String(left.ReviewDate || "9999-12-31");
+            const rightDate = String(right.ReviewDate || "9999-12-31");
+            return leftDate.localeCompare(rightDate);
+        });
+        const pageSize = 12;
+        const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        const page = Math.min(state.page, totalPages);
+        const cards = filtered.slice((page - 1) * pageSize, page * pageSize);
+        const canCreate = AppShell.canDo(moduleConfig, "create", state.session);
+        const documentTypes = [...new Set(state.records.map((record) => record.DocumentType).filter(Boolean))].sort();
+
+        const cardsMarkup = cards.map((record) => {
+            const category = record.Category || "Uncategorized";
+            const tone = getKnowledgeCategoryTone(category);
+            const canEdit = AppShell.canDo(moduleConfig, "edit", state.session);
+            const canDelete = AppShell.canDo(moduleConfig, "delete", state.session);
+            return `
+                <article class="knowledge-card knowledge-card--${tone}">
+                    <div class="knowledge-card__topline">
+                        <span class="knowledge-tag knowledge-tag--${tone}">${UI.escapeHtml(category)}</span>
+                        <span class="knowledge-card__type">${UI.escapeHtml(record.DocumentType || "Document")}</span>
+                    </div>
+                    <h3>${UI.escapeHtml(record.Title || "Untitled knowledge")}</h3>
+                    <p class="knowledge-card__summary">${UI.escapeHtml(record.Remark || "No description provided.")}</p>
+                    <div class="knowledge-card__meta">
+                        <span><i class="fa-regular fa-building"></i>${UI.escapeHtml(record.OwnerDepartment || "IT")}</span>
+                        <span><i class="fa-regular fa-calendar"></i>${UI.escapeHtml(record.ReviewDate ? formatDateDisplay(record.ReviewDate) : "No review date")}</span>
+                        <span><i class="fa-solid fa-code-branch"></i>v${UI.escapeHtml(record.Version || "1")}</span>
+                    </div>
+                    <div class="knowledge-card__actions">
+                        ${record.LinkURL ? `<button class="knowledge-card__open" type="button" data-action="preview" data-id="${UI.escapeHtml(record.DocumentID)}" title="Preview document"><i class="fa-regular fa-eye"></i><span>Preview</span></button>` : ""}
+                        ${record.DriveFileId ? `<a class="knowledge-card__download" href="https://drive.google.com/uc?export=download&id=${encodeURIComponent(record.DriveFileId)}" target="_blank" rel="noopener noreferrer" title="Download document"><i class="fa-solid fa-download"></i></a>` : ""}
+                        ${canEdit ? `<button class="table-action" data-action="edit" data-id="${UI.escapeHtml(record.DocumentID)}" title="Edit document"><i class="fa-solid fa-pen"></i></button>` : ""}
+                        ${canDelete ? `<button class="table-action table-action--danger" data-action="delete" data-id="${UI.escapeHtml(record.DocumentID)}" title="Delete document"><i class="fa-solid fa-trash"></i></button>` : ""}
+                    </div>
+                </article>`;
+        }).join("");
+
+        document.getElementById("viewContainer").innerHTML = `
+            <section class="knowledge-layout">
+                <aside class="knowledge-categories" aria-label="Knowledge categories">
+                    <div class="knowledge-categories__header">
+                        <div><p>Browse knowledge</p><strong>Categories</strong></div>
+                        ${canCreate ? `<button class="knowledge-category-add" id="addKnowledgeCategoryButton" type="button" title="Add category" aria-label="Add category"><i class="fa-solid fa-plus"></i></button>` : ""}
+                    </div>
+                    <button class="knowledge-category ${state.filters.knowledgeCategory === "all" ? "is-active" : ""}" type="button" data-knowledge-category="all">
+                        <span><i class="fa-solid fa-layer-group"></i>All knowledge</span><b>${state.records.length}</b>
+                    </button>
+                    ${categories.map((category) => `
+                        <button class="knowledge-category ${state.filters.knowledgeCategory === category ? "is-active" : ""}" type="button" data-knowledge-category="${UI.escapeHtml(category)}">
+                            <span><i class="fa-solid fa-book-bookmark"></i>${UI.escapeHtml(category)}</span><b>${state.records.filter((record) => String(record.Category || "") === category).length}</b>
+                        </button>`).join("")}
+                </aside>
+                <div class="knowledge-library">
+                    <div class="knowledge-library__header">
+                        <div>
+                            <p class="section-card__eyebrow">Knowledge Library</p>
+                            <h3>IT Knowledge Center</h3>
+                            <p>Find operational guides, diagrams, recovery plans and technical references.</p>
+                        </div>
+                        ${canCreate ? `<button class="primary-btn" id="createRecordButton" title="Add knowledge"><i class="fa-solid fa-plus"></i><span>Add Knowledge</span></button>` : ""}
+                    </div>
+                    <div class="knowledge-filters">
+                        <label><span>Document type</span><select id="knowledgeTypeFilter"><option value="">All types</option>${documentTypes.map((type) => `<option value="${UI.escapeHtml(type)}" ${state.filters.knowledgeType === type ? "selected" : ""}>${UI.escapeHtml(type)}</option>`).join("")}</select></label>
+                        <label><span>Status</span><select id="statusFilter"><option value="">All status</option>${[...new Set(state.records.map((record) => record.Status).filter(Boolean))].map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.status === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}</select></label>
+                        <span class="knowledge-filters__count">${filtered.length} knowledge item${filtered.length === 1 ? "" : "s"}</span>
+                    </div>
+                    <div class="knowledge-card-grid">
+                        ${cardsMarkup || `<div class="knowledge-empty-state">${UI.emptyState("No knowledge found", "Try a different category or search phrase.")}</div>`}
+                    </div>
+                    ${totalPages > 1 ? `<div class="knowledge-pagination"><button class="ghost-btn" id="prevPageButton" ${page <= 1 ? "disabled" : ""}>Previous</button><span>Page ${page} of ${totalPages}</span><button class="ghost-btn" id="nextPageButton" ${page >= totalPages ? "disabled" : ""}>Next</button></div>` : ""}
+                </div>
+            </section>`;
+    }
+
     function renderTable() {
+        if (isKnowledgeModule()) {
+            renderKnowledgeCenter();
+            return;
+        }
         if (isStockMovementModule()) {
             renderStockMovementWorkspace();
             return;
@@ -1426,6 +1648,10 @@
     }
 
     async function openRecordModal(mode, recordId = "") {
+        if (isKnowledgeModule()) {
+            await openKnowledgeModal(mode, recordId);
+            return;
+        }
         const existing = recordId ? state.records.find((item) => item[moduleConfig.idField] === recordId) : {};
         const result = await UI.openFormModal(moduleConfig, existing, mode);
         if (!result.isConfirmed || !result.value) {
@@ -1436,6 +1662,167 @@
         try {
             await saveRecord(mode, values);
         } catch (error) {
+        }
+    }
+
+    function readKnowledgeFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const dataUrl = String(reader.result || "");
+                resolve(dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl);
+            };
+            reader.onerror = () => reject(new Error("Unable to read selected file"));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function openKnowledgeModal(mode, recordId = "") {
+        const existing = recordId ? state.records.find((item) => item.DocumentID === recordId) || {} : {};
+        const categoryOptions = state.knowledgeCategories.map((item) => `<option value="${UI.escapeHtml(item)}" ${existing.Category === item ? "selected" : ""}>${UI.escapeHtml(item)}</option>`).join("");
+        const typeOptions = ((getFieldConfig("DocumentType") || {}).options || []).map((item) => `<option value="${UI.escapeHtml(item)}" ${existing.DocumentType === item ? "selected" : ""}>${UI.escapeHtml(item)}</option>`).join("");
+        const statusOptions = ((getFieldConfig("Status") || {}).options || []).map((item) => `<option value="${UI.escapeHtml(item)}" ${(existing.Status || "Draft") === item ? "selected" : ""}>${UI.escapeHtml(item)}</option>`).join("");
+        const result = await Swal.fire({
+            title: mode === "create" ? "Add Knowledge" : "Edit Knowledge",
+            width: "min(860px, calc(100vw - 32px))",
+            customClass: { popup: "swal2-form-popup" },
+            showCancelButton: true,
+            showCloseButton: true,
+            confirmButtonText: mode === "create" ? "Save Knowledge" : "Update Knowledge",
+            html: `
+                <div class="knowledge-form">
+                    <div class="knowledge-form__intro"><i class="fa-solid fa-cloud-arrow-up"></i><span>Upload a supported file or paste an existing Google Drive link.</span></div>
+                    <label><span>Knowledge Category <em>*</em></span><select data-knowledge-field="Category"><option value="">Select category</option>${categoryOptions}</select></label>
+                    <label class="knowledge-form__full"><span>Title <em>*</em></span><input data-knowledge-field="Title" value="${UI.escapeHtml(existing.Title || "")}" placeholder="Example: Firewall backup and restore procedure"></label>
+                    <label class="knowledge-form__full"><span>Upload File</span><input type="file" data-knowledge-file accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg"><small>PDF, DOCX, XLSX, PPTX, PNG, JPG or JPEG. Maximum 10 MB.</small></label>
+                    <label class="knowledge-form__full"><span>Google Drive Link</span><input type="url" data-knowledge-field="LinkURL" value="${UI.escapeHtml(existing.LinkURL || "")}" placeholder="https://drive.google.com/... "><small>Use this when the file already exists in Google Drive.</small></label>
+                    <label class="knowledge-form__full"><span>Description</span><textarea data-knowledge-field="Remark" placeholder="Explain when and how this knowledge should be used.">${UI.escapeHtml(existing.Remark || "")}</textarea></label>
+                    <details class="knowledge-form__details knowledge-form__full">
+                        <summary>Additional details <span>Optional</span></summary>
+                        <div class="knowledge-form__details-grid">
+                            <label><span>Document Type</span><select data-knowledge-field="DocumentType"><option value="">Select type</option>${typeOptions}</select></label>
+                            <label><span>Owner Department</span><select data-knowledge-field="OwnerDepartment"><option value="IT" ${(existing.OwnerDepartment || "IT") === "IT" ? "selected" : ""}>IT</option><option value="Production" ${existing.OwnerDepartment === "Production" ? "selected" : ""}>Production</option><option value="Quality" ${existing.OwnerDepartment === "Quality" ? "selected" : ""}>Quality</option><option value="Finance" ${existing.OwnerDepartment === "Finance" ? "selected" : ""}>Finance</option><option value="HR" ${existing.OwnerDepartment === "HR" ? "selected" : ""}>HR</option><option value="Warehouse" ${existing.OwnerDepartment === "Warehouse" ? "selected" : ""}>Warehouse</option></select></label>
+                            <label><span>Review Date</span><input type="date" data-knowledge-field="ReviewDate" value="${UI.escapeHtml(String(existing.ReviewDate || "").slice(0, 10))}"></label>
+                            <label><span>Status</span><select data-knowledge-field="Status">${statusOptions}</select></label>
+                            <label><span>Version</span><input data-knowledge-field="Version" value="${UI.escapeHtml(existing.Version || "1")}" placeholder="1"></label>
+                            <label><span>Keywords</span><input data-knowledge-field="Keywords" value="${UI.escapeHtml(existing.Keywords || "")}" placeholder="Example: firewall, backup, recovery, VPN"></label>
+                        </div>
+                    </details>
+                </div>`,
+            preConfirm: () => {
+                const values = { ...existing };
+                document.querySelectorAll("[data-knowledge-field]").forEach((field) => {
+                    values[field.getAttribute("data-knowledge-field")] = field.value.trim();
+                });
+                const file = document.querySelector("[data-knowledge-file]").files[0];
+                if (!values.Category || !values.Title) {
+                    Swal.showValidationMessage("Knowledge Category and Title are required.");
+                    return false;
+                }
+                if (file && file.size > 10 * 1024 * 1024) {
+                    Swal.showValidationMessage("The selected file must not exceed 10 MB.");
+                    return false;
+                }
+                if (values.Status !== "Draft" && !file && !values.LinkURL) {
+                    Swal.showValidationMessage("Upload a file or provide a Google Drive link before publishing.");
+                    return false;
+                }
+                return { values, file };
+            }
+        });
+        if (!result.isConfirmed || !result.value) {
+            return;
+        }
+
+        const confirmation = await UI.confirm({
+            title: mode === "create" ? "Save this knowledge?" : "Update this knowledge?",
+            text: "The document metadata and selected file will be saved.",
+            confirmButtonText: mode === "create" ? "Save" : "Update"
+        });
+        if (!confirmation.isConfirmed) {
+            return;
+        }
+
+        UI.loading(mode === "create" ? "Saving knowledge" : "Updating knowledge", "Uploading file and saving document details");
+        try {
+            const file = result.value.file;
+            const filePayload = file ? {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                base64: await readKnowledgeFile(file)
+            } : null;
+            const response = await ApiClient.request("saveKnowledgeDocument", {
+                token: ApiClient.getSessionToken(),
+                mode,
+                record: result.value.values,
+                file: filePayload
+            });
+            upsertStateRecord(response.data.record, mode);
+            Swal.close();
+            renderTable();
+            UI.toast("success", mode === "create" ? "Knowledge saved" : "Knowledge updated", "The knowledge item is ready to use.");
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to save knowledge", text: error.message || "Unexpected error" });
+        }
+    }
+
+    async function openKnowledgePreview(recordId) {
+        const record = state.records.find((item) => item.DocumentID === recordId);
+        if (!record || !record.LinkURL) {
+            await UI.alert({ icon: "info", title: "Preview unavailable", text: "No document file or link has been attached." });
+            return;
+        }
+        const previewUrl = record.DriveFileId
+            ? `https://drive.google.com/file/d/${encodeURIComponent(record.DriveFileId)}/preview`
+            : record.LinkURL;
+        await Swal.fire({
+            title: record.Title || "Document Preview",
+            width: "min(1100px, calc(100vw - 32px))",
+            showCloseButton: true,
+            showConfirmButton: true,
+            confirmButtonText: "Open document",
+            html: `<div class="knowledge-preview"><iframe src="${UI.escapeHtml(previewUrl)}" title="${UI.escapeHtml(record.Title || "Document preview")}" loading="lazy"></iframe></div>`,
+            preConfirm: () => {
+                window.open(record.LinkURL, "_blank", "noopener");
+            }
+        });
+    }
+
+    async function addKnowledgeCategory() {
+        const result = await Swal.fire({
+            title: "Add knowledge category",
+            input: "text",
+            inputLabel: "Category name",
+            inputPlaceholder: "Example: Security Operations",
+            showCancelButton: true,
+            confirmButtonText: "Add category",
+            inputValidator(value) {
+                return String(value || "").trim() ? undefined : "Please enter a category name.";
+            }
+        });
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        UI.loading("Adding category", "Saving knowledge category");
+        try {
+            const response = await ApiClient.request("createKnowledgeCategory", {
+                token: ApiClient.getSessionToken(),
+                name: String(result.value || "").trim()
+            });
+            state.knowledgeCategories = response.data.categories || state.knowledgeCategories;
+            const categoryField = getFieldConfig("Category");
+            if (categoryField) {
+                categoryField.options = state.knowledgeCategories;
+            }
+            Swal.close();
+            renderTable();
+            UI.toast("success", "Category added", "The new category is ready to use.");
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to add category", text: error.message || "Unexpected error" });
         }
     }
 
@@ -1515,18 +1902,30 @@
                 return;
             }
 
-            if (event.target.closest("#submitMovementButton")) {
-                const draft = getMovementDraft();
+            const knowledgeCategoryButton = event.target.closest("[data-knowledge-category]");
+            if (knowledgeCategoryButton) {
+                state.filters.knowledgeCategory = knowledgeCategoryButton.getAttribute("data-knowledge-category") || "all";
+                state.page = 1;
+                renderTable();
+                return;
+            }
+
+            const submitMovementButton = event.target.closest("[data-submit-movement]");
+            if (submitMovementButton || event.target.closest("#submitMovementButton")) {
+                const movementTab = submitMovementButton
+                    ? (submitMovementButton.getAttribute("data-submit-movement") || "outbound")
+                    : state.movementTab;
+                const draft = getMovementDraft(movementTab);
                 const selectedItem = getStockItemById(draft.ItemID);
                 const quantity = Number(draft.Quantity || 0);
                 const movementRecord = {
                     ...draft,
-                    MovementType: getMovementTypeFromTab(state.movementTab),
-                    MovementDate: (state.movementTab === "inbound" || state.movementTab === "outbound") ? getTodayInputValue() : draft.MovementDate,
-                    PerformedBy: (state.movementTab === "inbound" || state.movementTab === "outbound")
+                    MovementType: getMovementTypeFromTab(movementTab),
+                    MovementDate: (movementTab === "inbound" || movementTab === "outbound") ? getTodayInputValue() : draft.MovementDate,
+                    PerformedBy: (movementTab === "inbound" || movementTab === "outbound")
                         ? getOperatorName()
                         : draft.PerformedBy,
-                    ReferenceNo: (state.movementTab === "inbound" || state.movementTab === "outbound") ? "" : draft.ReferenceNo
+                    ReferenceNo: (movementTab === "inbound" || movementTab === "outbound") ? "" : draft.ReferenceNo
                 };
 
                 if (!movementRecord.MovementDate) {
@@ -1549,7 +1948,7 @@
                     return;
                 }
 
-                if (state.movementTab === "outbound" && quantity > Number(selectedItem.Quantity || 0)) {
+                if (movementTab === "outbound" && quantity > Number(selectedItem.Quantity || 0)) {
                     await UI.alert({
                         icon: "warning",
                         title: "Insufficient stock",
@@ -1561,9 +1960,14 @@
                 await saveRecord("create", {
                     ...movementRecord
                 });
-                state.movementDrafts[state.movementTab] = getDefaultMovementDraft(state.movementTab);
+                state.movementDrafts[movementTab] = getDefaultMovementDraft(movementTab);
                 renderHero();
                 renderTable();
+                return;
+            }
+
+            if (event.target.closest("#addKnowledgeCategoryButton")) {
+                await addKnowledgeCategory();
                 return;
             }
 
@@ -1590,6 +1994,8 @@
                 const id = actionButton.getAttribute("data-id");
                 if (action === "history") {
                     await openInventoryHistory(id);
+                } else if (action === "preview") {
+                    await openKnowledgePreview(id);
                 } else if (action === "edit") {
                     await openRecordModal("edit", id);
                 } else if (action === "delete") {
@@ -1612,10 +2018,14 @@
         });
 
         document.getElementById("viewContainer").addEventListener("change", (event) => {
+            const movementPanel = event.target.closest("[data-movement-panel]");
+            const movementTab = movementPanel
+                ? (movementPanel.getAttribute("data-movement-panel") || "outbound")
+                : state.movementTab;
             if (event.target.matches("[data-movement-item-search]")) {
                 const stockItem = findStockItemBySearchLabel(event.target.value);
-                state.movementDrafts[state.movementTab] = {
-                    ...getMovementDraft(),
+                state.movementDrafts[movementTab] = {
+                    ...getMovementDraft(movementTab),
                     ItemID: stockItem ? stockItem.ItemID : "",
                     ItemSearch: event.target.value
                 };
@@ -1626,10 +2036,10 @@
             const movementField = event.target.getAttribute("data-movement-field");
             if (movementField) {
                 const nextDraft = {
-                    ...getMovementDraft(),
+                    ...getMovementDraft(movementTab),
                     [movementField]: event.target.value
                 };
-                state.movementDrafts[state.movementTab] = nextDraft;
+                state.movementDrafts[movementTab] = nextDraft;
                 if (movementField === "ItemID") {
                     renderTable();
                 }
@@ -1658,6 +2068,13 @@
                 return;
             }
 
+            if (event.target.id === "knowledgeTypeFilter") {
+                state.filters.knowledgeType = event.target.value;
+                state.page = 1;
+                renderTable();
+                return;
+            }
+
             if (event.target.id === "pageSizeSelect") {
                 state.pageSize = Number(event.target.value);
                 state.page = 1;
@@ -1666,10 +2083,14 @@
         });
 
         document.getElementById("viewContainer").addEventListener("input", (event) => {
+            const movementPanel = event.target.closest("[data-movement-panel]");
+            const movementTab = movementPanel
+                ? (movementPanel.getAttribute("data-movement-panel") || "outbound")
+                : state.movementTab;
             if (event.target.matches("[data-movement-item-search]")) {
                 const stockItem = findStockItemBySearchLabel(event.target.value);
-                state.movementDrafts[state.movementTab] = {
-                    ...getMovementDraft(),
+                state.movementDrafts[movementTab] = {
+                    ...getMovementDraft(movementTab),
                     ItemID: stockItem ? stockItem.ItemID : "",
                     ItemSearch: event.target.value
                 };
@@ -1681,8 +2102,8 @@
                 return;
             }
 
-            state.movementDrafts[state.movementTab] = {
-                ...getMovementDraft(),
+            state.movementDrafts[movementTab] = {
+                ...getMovementDraft(movementTab),
                 [movementField]: event.target.value
             };
         });
@@ -1773,6 +2194,9 @@
             }
         } catch (error) {
             Swal.close();
+            if (await AppShell.handleSessionError(error)) {
+                return;
+            }
             UI.alert({
                 icon: "error",
                 title: "Module failed",

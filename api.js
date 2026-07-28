@@ -84,9 +84,12 @@
 
     function getRequestTimeoutMs(action) {
         const timeoutMap = {
-            login: 30000,
+            login: 60000,
             dashboardSummary: 30000,
             listRecords: 30000,
+            listKnowledgeCategories: 30000,
+            createKnowledgeCategory: 30000,
+            saveKnowledgeDocument: 90000,
             createRecord: 30000,
             saveRecord: 30000,
             importRecords: 45000
@@ -352,7 +355,11 @@
 
         const result = await response.json();
         if (!result.success) {
-            throw new Error(result.message || "Request failed");
+            const error = new Error(result.message || "Request failed");
+            if (/^session expired or invalid$/i.test(error.message)) {
+                error.code = "SESSION_EXPIRED";
+            }
+            throw error;
         }
         return result;
     }

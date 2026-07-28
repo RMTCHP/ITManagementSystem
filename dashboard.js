@@ -311,6 +311,9 @@
             Swal.close();
         } catch (error) {
             Swal.close();
+            if (await AppShell.handleSessionError(error)) {
+                return;
+            }
             UI.alert({
                 icon: "error",
                 title: "Dashboard failed",

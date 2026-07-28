@@ -2,6 +2,7 @@
     const config = window.APP_CONFIG;
     const SIDEBAR_GROUPS_STORAGE_KEY = "it-management-sidebar-groups-v2";
     const SIDEBAR_ALERTS_STORAGE_KEY = "it-management-sidebar-alerts-v1";
+    const SIDEBAR_COLLAPSED_STORAGE_KEY = "it-management-sidebar-collapsed-v1";
 
     function normalizeRole(role) {
         return String(role || "").trim().toLowerCase();
@@ -321,6 +322,29 @@
         return button;
     }
 
+    function ensureSidebarToggleButton(elements) {
+        let button = document.getElementById("toggleSidebarBtn");
+        if (button) {
+            return button;
+        }
+
+        const topbar = document.querySelector(".topbar");
+        const titleGroup = document.querySelector(".topbar__title-group");
+        if (!topbar || !titleGroup) {
+            return null;
+        }
+
+        button = document.createElement("button");
+        button.id = "toggleSidebarBtn";
+        button.className = "topbar__menu-btn";
+        button.type = "button";
+        button.setAttribute("aria-label", "Hide sidebar");
+        button.setAttribute("title", "Hide sidebar");
+        button.innerHTML = '<i class="fa-solid fa-bars"></i>';
+        topbar.insertBefore(button, titleGroup);
+        return button;
+    }
+
     function configureTopbarButtons(elements, options, context) {
         const importButton = ensureTopbarImportButton(elements);
         elements.importButton = importButton;
@@ -364,13 +388,59 @@
         return savedSession;
     }
 
+    async function handleSessionError(error) {
+        const message = String(error && error.message || "");
+        if (!error || (error.code !== "SESSION_EXPIRED" && !/^session expired or invalid$/i.test(message))) {
+            return false;
+        }
+
+        ApiClient.clearSession();
+        await UI.alert({
+            icon: "warning",
+            title: "Session expired",
+            text: "Your session is no longer valid. Please sign in again."
+        });
+        window.location.replace("index.html");
+        return true;
+    }
+
     function bindSidebarToggle(sidebar, toggleSidebarBtn) {
         if (!toggleSidebarBtn) {
             return;
         }
+        const shell = sidebar.closest(".app-shell");
+        const desktopQuery = window.matchMedia("(min-width: 1281px)");
+        const updateButton = (collapsed) => {
+            const label = collapsed ? "Show sidebar" : "Hide sidebar";
+            toggleSidebarBtn.setAttribute("aria-label", label);
+            toggleSidebarBtn.setAttribute("title", label);
+            toggleSidebarBtn.innerHTML = '<i class="fa-solid fa-bars"></i>';
+        };
+        const applyDesktopState = () => {
+            if (!shell || !desktopQuery.matches) {
+                return;
+            }
+            const collapsed = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+            shell.classList.toggle("is-sidebar-collapsed", collapsed);
+            sidebar.classList.remove("is-open");
+            updateButton(collapsed);
+        };
+
+        applyDesktopState();
         toggleSidebarBtn.addEventListener("click", () => {
-            sidebar.classList.toggle("is-open");
+            if (!desktopQuery.matches) {
+                sidebar.classList.toggle("is-open");
+                return;
+            }
+
+            const collapsed = !(shell && shell.classList.contains("is-sidebar-collapsed"));
+            if (shell) {
+                shell.classList.toggle("is-sidebar-collapsed", collapsed);
+            }
+            window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
+            updateButton(collapsed);
         });
+        desktopQuery.addEventListener("change", applyDesktopState);
     }
 
     function bindLogout(logoutButton) {
@@ -414,7 +484,7 @@
             refreshButton: document.getElementById("refreshButton"),
             exportButton: document.getElementById("exportButton"),
             logoutButton: document.getElementById("logoutButton"),
-            toggleSidebarBtn: document.getElementById("toggleSidebarBtn"),
+            toggleSidebarBtn: null,
             heroPanel: document.getElementById("heroPanel"),
             viewContainer: document.getElementById("viewContainer")
         };
@@ -430,6 +500,7 @@
         elements.pageTitle.textContent = options.title || config.appName;
         elements.pageEyebrow.textContent = options.eyebrow || config.projectProfile;
         elements.globalSearch.placeholder = options.searchPlaceholder || "Search current module";
+        elements.toggleSidebarBtn = ensureSidebarToggleButton(elements);
         renderSidebar(options.currentView, session, elements.sidebarNav);
         updateSidebarAlerts(getSidebarAlertsState());
         bindSidebarGroupToggles(elements.sidebarNav);
@@ -455,6 +526,9 @@
                     UI.toast("success", "Refresh completed", "Latest data loaded successfully.");
                 } catch (error) {
                     Swal.close();
+                    if (await handleSessionError(error)) {
+                        return;
+                    }
                     UI.alert({
                         icon: "error",
                         title: "Refresh failed",
@@ -470,6 +544,9 @@
                     await options.onExport(context);
                 } catch (error) {
                     Swal.close();
+                    if (await handleSessionError(error)) {
+                        return;
+                    }
                     UI.alert({
                         icon: "error",
                         title: "Export failed",
@@ -513,6 +590,7 @@
         formatRole,
         getModule,
         getRoute,
+        handleSessionError,
         init,
         normalizeRole,
         navigateTo,

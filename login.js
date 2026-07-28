@@ -58,14 +58,32 @@
         try {
             UI.loading("Signing in", "Validating your credentials");
             const result = await ApiClient.request("login", { username, password });
-            ApiClient.saveSession(result.data);
+            let session = result && result.data && result.data.user
+                ? result.data
+                : (result && result.user ? result : null);
+            const loginData = result && result.data ? result.data : result;
+            if ((!session || !session.user) && loginData && loginData.token) {
+                const checkedSession = await ApiClient.request("checkSession", { token: loginData.token });
+                if (checkedSession.data && checkedSession.data.valid && checkedSession.data.user) {
+                    session = {
+                        token: checkedSession.data.token || loginData.token,
+                        expiresAt: checkedSession.data.expiresAt || loginData.expiresAt,
+                        user: checkedSession.data.user
+                    };
+                }
+            }
+            if (!session || !session.token || !session.user) {
+                throw new Error("Login response is incomplete. Confirm that the latest code.gs has been deployed.");
+            }
+
+            ApiClient.saveSession(session);
             if (rememberCheckbox.checked) {
                 localStorage.setItem("itms_remember_username", username);
             } else {
                 localStorage.removeItem("itms_remember_username");
             }
             Swal.close();
-            await UI.toast("success", "Login successful", `Welcome ${result.data.user.FullName}`);
+            await UI.toast("success", "Login successful", `Welcome ${session.user.FullName || session.user.Username || "User"}`);
             window.location.href = "dashboard.html";
         } catch (error) {
             Swal.close();
