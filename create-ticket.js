@@ -1,5 +1,6 @@
 (function () {
     const form = document.getElementById("publicTicketForm");
+    const formGrid = form.querySelector(".public-ticket-form__grid");
     const photoInput = document.getElementById("ticketPhoto");
     const photoPreview = document.getElementById("photoPreview");
     const photoPreviewImage = document.getElementById("photoPreviewImage");
@@ -10,6 +11,17 @@
     const requestedServiceInput = document.getElementById("requestedService");
     const remoteStartedAtInput = document.getElementById("remoteStartedAt");
     const remoteSessionInfo = document.getElementById("remoteSessionInfo");
+    const categoryInput = document.getElementById("category");
+    const categoryField = categoryInput.closest("label");
+    const requesterLabel = document.getElementById("requesterLabel");
+    const subjectInput = document.getElementById("subject");
+    const subjectField = subjectInput.closest("label");
+    const equipmentItemField = document.getElementById("equipmentItemField");
+    const equipmentItemInput = document.getElementById("equipmentItemId");
+    const equipmentQuantityField = document.getElementById("equipmentQuantityField");
+    const equipmentQuantityInput = document.getElementById("equipmentQuantity");
+    const equipmentSignatureSection = document.getElementById("equipmentSignatureSection");
+    const equipmentSignatureCanvas = document.getElementById("equipmentSignatureCanvas");
     const backToServiceButton = document.getElementById("backToServiceButton");
     const formTitle = document.getElementById("ticketFormTitle");
     const showMyJobsButton = document.getElementById("showMyJobsButton");
@@ -25,6 +37,7 @@
     let selectedPhoto = null;
     let previewUrl = "";
     let currentTicketJobs = [];
+    let hasEquipmentSignature = false;
 
     const serviceLabels = {
         "On-site": "On-site support details",
@@ -62,11 +75,69 @@
         ticketUserActions.classList.remove("hidden");
     }
 
-    function selectService(service) {
+    async function loadEquipmentItems() {
+        const session = getActiveSession();
+        if (!session) throw new Error("Please login to the Ticket Workspace again.");
+        UI.loading("Loading inventory", "Retrieving available equipment");
+        try {
+            const result = await ApiClient.request("listRecords", { token: session.token, module: "stockItems" });
+            const items = ((result.data && result.data.records) || []).filter((item) => Number(item.Quantity || 0) > 0);
+            equipmentItemInput.innerHTML = '<option value="">Select an inventory item</option>' + items.map((item) => `<option value="${escapeHtml(item.ItemID)}">${escapeHtml(item.ItemName)} - Available ${escapeHtml(item.Quantity)} ${escapeHtml(item.Unit || "")}</option>`).join("");
+        } finally {
+            Swal.close();
+        }
+    }
+
+    function setupEquipmentSignature() {
+        const rect = equipmentSignatureCanvas.getBoundingClientRect();
+        const context = equipmentSignatureCanvas.getContext("2d");
+        equipmentSignatureCanvas.width = Math.max(1, Math.floor(rect.width * window.devicePixelRatio));
+        equipmentSignatureCanvas.height = Math.max(1, Math.floor(rect.height * window.devicePixelRatio));
+        context.scale(window.devicePixelRatio, window.devicePixelRatio);
+        context.lineWidth = 2;
+        context.lineCap = "round";
+        context.strokeStyle = "#17324d";
+        let drawing = false;
+        let previous;
+        const point = (event) => ({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+        equipmentSignatureCanvas.onpointerdown = (event) => { drawing = true; previous = point(event); equipmentSignatureCanvas.setPointerCapture(event.pointerId); };
+        equipmentSignatureCanvas.onpointermove = (event) => {
+            if (!drawing) return;
+            const next = point(event);
+            context.beginPath(); context.moveTo(previous.x, previous.y); context.lineTo(next.x, next.y); context.stroke();
+            previous = next; hasEquipmentSignature = true;
+        };
+        equipmentSignatureCanvas.onpointerup = equipmentSignatureCanvas.onpointercancel = equipmentSignatureCanvas.onpointerleave = () => { drawing = false; };
+        document.getElementById("clearEquipmentSignature").onclick = () => { context.clearRect(0, 0, equipmentSignatureCanvas.width, equipmentSignatureCanvas.height); hasEquipmentSignature = false; };
+    }
+
+    async function selectService(service) {
         requestedServiceInput.value = service;
         formTitle.textContent = serviceLabels[service] || "Issue details";
-        photoSection.classList.toggle("hidden", service === "Remote Support");
+        const isEquipment = service === "Equipment Requisition";
+        requesterLabel.innerHTML = isEquipment ? 'ชื่อผู้เบิก <em>*</em>' : 'ชื่อผู้แจ้ง <em>*</em>';
+        categoryField.classList.toggle("hidden", isEquipment);
+        categoryInput.required = !isEquipment;
+        if (isEquipment) categoryInput.value = "Equipment";
+        equipmentItemField.classList.toggle("hidden", !isEquipment);
+        equipmentQuantityField.classList.toggle("hidden", !isEquipment);
+        equipmentSignatureSection.classList.toggle("hidden", !isEquipment);
+        equipmentItemInput.disabled = !isEquipment;
+        equipmentQuantityInput.disabled = !isEquipment;
+        equipmentItemInput.required = isEquipment;
+        equipmentQuantityInput.required = isEquipment;
+        if (isEquipment) {
+            formGrid.append(equipmentItemField, equipmentQuantityField);
+        }
+        subjectField.classList.toggle("hidden", isEquipment);
+        subjectInput.required = !isEquipment;
+        subjectInput.disabled = isEquipment;
+        if (isEquipment) subjectInput.value = "";
+        photoSection.classList.toggle("hidden", service === "Remote Support" || isEquipment);
         remoteSessionInfo.classList.toggle("hidden", service !== "Remote Support");
+        if (isEquipment) {
+            clearSelectedPhoto();
+        }
         if (service === "Remote Support") {
             clearSelectedPhoto();
             const startedAt = getLocalTimeValue();
@@ -77,6 +148,14 @@
         serviceChoice.classList.add("hidden");
         formCard.classList.remove("hidden");
         window.scrollTo({ top: 0, behavior: "smooth" });
+        if (isEquipment) {
+            try {
+                await loadEquipmentItems();
+                setupEquipmentSignature();
+            } catch (error) {
+                await UI.alert({ icon: "error", title: "Unable to load inventory", text: error.message || "Please try again." });
+            }
+        }
     }
 
     function getClientId() {
@@ -138,15 +217,16 @@
     }
 
     function renderTicketJobs(records) {
-        currentTicketJobs = records;
-        if (!records.length) {
+        currentTicketJobs = records.filter((ticket) => !["resolved", "closed", "rejected"].includes(String(ticket.Status || "Open").toLowerCase()));
+        if (!currentTicketJobs.length) {
             ticketJobList.innerHTML = '<div class="public-ticket-job-empty"><i class="fa-regular fa-folder-open"></i><strong>No ticket found</strong><span>Create a ticket to start work.</span></div>';
             return;
         }
 
-        ticketJobList.innerHTML = records.map((ticket) => {
+        ticketJobList.innerHTML = currentTicketJobs.map((ticket) => {
             const isCompleted = ["resolved", "closed", "rejected"].includes(String(ticket.Status || "").toLowerCase());
             const canResolve = !isCompleted && String(ticket.RequestedService || "").toLowerCase() !== "remote support";
+            const isEquipment = String(ticket.RequestedService || "").toLowerCase() === "equipment requisition";
             return `
             <article class="public-ticket-job">
                 <div class="public-ticket-job__main">
@@ -161,7 +241,7 @@
                 <div class="public-ticket-job__side">
                     <span class="public-ticket-job__service">${escapeHtml(ticket.RequestedService || "IT Request")}</span>
                     <span class="public-ticket-job__status ${getTicketStatusClass(ticket.Status)}">${escapeHtml(ticket.Status || "Open")}</span>
-                    ${canResolve ? `<button type="button" class="public-ticket-job__resolve" data-action="resolve-ticket" data-ticket-id="${escapeHtml(ticket.TicketID)}"><i class="fa-solid fa-circle-check"></i><span>Resolve</span></button>` : ""}
+                    ${canResolve ? `<button type="button" class="public-ticket-job__resolve" data-action="resolve-ticket" data-ticket-id="${escapeHtml(ticket.TicketID)}"><i class="fa-solid ${isEquipment ? "fa-box-open" : "fa-circle-check"}"></i><span>${isEquipment ? "Approve" : "Resolve"}</span></button>` : ""}
                 </div>
             </article>
         `;
@@ -218,6 +298,30 @@
         if (!session) {
             await UI.alert({ icon: "warning", title: "Session expired", text: "Please login to the Ticket Workspace again." });
             window.location.replace("ticket-login.html");
+            return;
+        }
+
+        if (String(ticket.RequestedService || "").toLowerCase() === "equipment requisition") {
+            const approval = await UI.confirm({
+                title: "Approve equipment issue?",
+                text: `This will issue ${ticket.RequestedQuantity || 0} unit(s) of ${ticket.InventoryItemID || "the selected inventory item"} and reduce its stock.`,
+                confirmButtonText: "Approve and issue"
+            });
+            if (!approval.isConfirmed) return;
+            try {
+                UI.loading("Approving equipment", "Recording the outbound stock movement");
+                await ApiClient.request("resolveTicket", {
+                    token: session.token,
+                    ticketId: ticket.TicketID,
+                    resolutionNote: "Equipment request approved and issued."
+                });
+                Swal.close();
+                await UI.alert({ icon: "success", title: "Equipment issued", text: "Inventory has been updated and the ticket is resolved." });
+                await Promise.all([loadMyJobs(), loadMyJobCount()]);
+            } catch (error) {
+                Swal.close();
+                await UI.alert({ icon: "error", title: "Unable to approve equipment", text: error.message || "Please try again." });
+            }
             return;
         }
 
@@ -356,6 +460,23 @@
 
     backToServiceButton.addEventListener("click", () => {
         requestedServiceInput.value = "";
+        categoryField.classList.remove("hidden");
+        requesterLabel.innerHTML = 'ชื่อผู้แจ้ง <em>*</em>';
+        categoryInput.required = true;
+        categoryInput.value = "";
+        equipmentItemField.classList.add("hidden");
+        equipmentQuantityField.classList.add("hidden");
+        equipmentSignatureSection.classList.add("hidden");
+        equipmentItemInput.disabled = true;
+        equipmentQuantityInput.disabled = true;
+        equipmentItemInput.required = false;
+        equipmentQuantityInput.required = false;
+        equipmentItemInput.value = "";
+        equipmentQuantityInput.value = "";
+        subjectField.classList.remove("hidden");
+        subjectInput.required = true;
+        subjectInput.disabled = false;
+        hasEquipmentSignature = false;
         photoSection.classList.remove("hidden");
         remoteSessionInfo.classList.add("hidden");
         remoteStartedAtInput.value = "";
@@ -421,15 +542,24 @@
         }
 
         const values = new FormData(form);
+        const isEquipment = values.get("requestedService") === "Equipment Requisition";
+        if (isEquipment && !hasEquipmentSignature) {
+            await UI.alert({ icon: "warning", title: "Signature required", text: "Requester signature is required for an equipment requisition." });
+            return;
+        }
         const payload = {
             requester: values.get("requester"),
             department: values.get("department"),
             contact: values.get("contact"),
             location: values.get("location"),
             category: values.get("category"),
-            subject: values.get("subject"),
+            subject: isEquipment
+                ? `Equipment requisition: ${equipmentItemInput.options[equipmentItemInput.selectedIndex].text}`
+                : values.get("subject"),
             requestedService: values.get("requestedService"),
             remoteStartedAt: values.get("remoteStartedAt"),
+            inventoryItemId: values.get("equipmentItemId"),
+            requestedQuantity: values.get("equipmentQuantity"),
             website: values.get("website"),
             clientId: getClientId()
         };
@@ -442,6 +572,10 @@
                     size: selectedPhoto.size,
                     base64: await readFileAsBase64(selectedPhoto)
                 };
+            }
+            if (isEquipment) {
+                const signatureData = equipmentSignatureCanvas.toDataURL("image/png");
+                payload.requestSignature = { name: "equipment-request-signature.png", type: "image/png", size: Math.ceil(signatureData.length * 0.75), base64: signatureData.split(",")[1] };
             }
             UI.loading("Submitting ticket", "Sending your issue to IT");
             const result = await ApiClient.request("createPublicTicket", payload);

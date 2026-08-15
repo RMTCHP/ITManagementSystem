@@ -31,11 +31,20 @@
             </div>
             <div class="public-ticket-hero__copy">
                 <p>IT SERVICE DESK</p>
-                <h1>Report an IT issue</h1>
+                <h1>IT Service Workspace</h1>
             </div>
         </section>
 
         <section class="public-ticket-choice" id="ticketServiceChoice" aria-label="Select IT service">
+            <div class="public-ticket-work-group">
+                <p>WORK MANAGEMENT</p>
+                <button class="public-ticket-work-card" id="showMyJobsButton" type="button" title="Open My Job">
+                    <span class="public-ticket-work-card__icon"><i class="fa-solid fa-briefcase"></i></span>
+                    <span class="public-ticket-work-card__copy"><strong>My Job</strong><small>View active tickets and resolve work</small></span>
+                    <b class="public-ticket-my-job__count hidden" id="myJobOpenCount" aria-label="Open tickets">0</b>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
             <div class="public-ticket-choice__grid">
                 <button class="public-ticket-choice__card public-ticket-choice__card--onsite" type="button" data-requested-service="On-site">
                     <span class="public-ticket-choice__icon"><i class="fa-solid fa-person-walking-arrow-right"></i></span>
@@ -56,15 +65,6 @@
                     <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
                 </button>
             </div>
-            <div class="public-ticket-work-group">
-                <p>WORK MANAGEMENT</p>
-                <button class="public-ticket-work-card" id="showMyJobsButton" type="button" title="Open My Job">
-                    <span class="public-ticket-work-card__icon"><i class="fa-solid fa-briefcase"></i></span>
-                    <span class="public-ticket-work-card__copy"><strong>My Job</strong><small>View active tickets and resolve work</small></span>
-                    <b class="public-ticket-my-job__count hidden" id="myJobOpenCount" aria-label="Open tickets">0</b>
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-            </div>
         </section>
 
         <section class="public-ticket-card hidden" id="ticketFormCard" aria-labelledby="ticketFormTitle">
@@ -74,15 +74,23 @@
                     <p>NEW REQUEST</p>
                     <h2 id="ticketFormTitle">Issue details</h2>
                 </div>
-                <button class="public-ticket-back" id="backToServiceButton" type="button"><i class="fa-solid fa-arrow-left"></i><span>Change service</span></button>
+                <button class="public-ticket-back" id="backToServiceButton" type="button" title="Back to service menu"><i class="fa-solid fa-arrow-left"></i><span>Back</span></button>
             </div>
 
             <form id="publicTicketForm" class="public-ticket-form" novalidate>
                 <input id="requestedService" name="requestedService" type="hidden">
                 <div class="public-ticket-form__grid">
                     <label>
-                        <span>ชื่อผู้แจ้ง <em>*</em></span>
+                        <span id="requesterLabel">ชื่อผู้แจ้ง <em>*</em></span>
                         <input id="requester" name="requester" type="text" maxlength="120" autocomplete="name" required placeholder="ชื่อ - นามสกุล">
+                    </label>
+                    <label class="hidden public-ticket-equipment-item" id="equipmentItemField">
+                        <span>Inventory item <em>*</em></span>
+                        <select id="equipmentItemId" name="equipmentItemId" disabled><option value="">Select an inventory item</option></select>
+                    </label>
+                    <label class="hidden" id="equipmentQuantityField">
+                        <span>Quantity <em>*</em></span>
+                        <input id="equipmentQuantity" name="equipmentQuantity" type="number" min="1" step="1" inputmode="numeric" disabled placeholder="0">
                     </label>
                     <label>
                         <span>แผนก <em>*</em></span>
@@ -128,6 +136,12 @@
                 <div class="public-ticket-remote-session hidden" id="remoteSessionInfo">
                     <label for="remoteStartedAt"><span>Start time</span><input id="remoteStartedAt" name="remoteStartedAt" type="time"></label>
                     <div><span>End time</span><strong>Recorded when submitted</strong></div>
+                </div>
+
+                <div class="public-ticket-request-signature hidden" id="equipmentSignatureSection">
+                    <div><span>Requester signature</span><em>*</em><button id="clearEquipmentSignature" type="button">Clear</button></div>
+                    <small>Sign to confirm the equipment request.</small>
+                    <canvas id="equipmentSignatureCanvas" aria-label="Requester signature"></canvas>
                 </div>
 
                 <div id="ticketPhotoSection">
