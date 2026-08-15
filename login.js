@@ -4,6 +4,15 @@
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
 
+    function getPostLoginDestination() {
+        const returnTo = new URL(window.location.href).searchParams.get("returnTo");
+        const allowedPages = new Set([
+            "create-ticket.html",
+            ...Object.values(window.APP_CONFIG.pageRoutes || {})
+        ]);
+        return allowedPages.has(returnTo) ? returnTo : "dashboard.html";
+    }
+
     function hasLikelyActiveSession(session) {
         if (!session || !session.token || !session.user) {
             return false;
@@ -26,7 +35,7 @@
 
         const savedSession = ApiClient.getSavedSession();
         if (hasLikelyActiveSession(savedSession)) {
-            window.location.href = "dashboard.html";
+            window.location.href = getPostLoginDestination();
             return;
         }
 
@@ -41,7 +50,11 @@
         const password = passwordInput.value.trim();
 
         if (!username || !password) {
-            UI.toast("warning", "Missing credentials", "Enter username and password.");
+            await UI.alert({
+                icon: "warning",
+                title: "Missing credentials",
+                text: "Enter username and password."
+            });
             return;
         }
 
@@ -83,8 +96,7 @@
                 localStorage.removeItem("itms_remember_username");
             }
             Swal.close();
-            await UI.toast("success", "Login successful", `Welcome ${session.user.FullName || session.user.Username || "User"}`);
-            window.location.href = "dashboard.html";
+            window.location.replace(getPostLoginDestination());
         } catch (error) {
             Swal.close();
             await UI.alert({

@@ -23,6 +23,7 @@
         page: 1,
         pageSize: 8,
         heroView: "summary",
+        ticketJobsVisible: false,
         movementTab: "outbound",
         movementDrafts: {
             outbound: {},
@@ -44,6 +45,10 @@
 
     function isKnowledgeModule() {
         return moduleKey === "documents";
+    }
+
+    function isTicketModule() {
+        return moduleKey === "tickets";
     }
 
     function needsDashboardSummary() {
@@ -1410,6 +1415,209 @@
             </section>`;
     }
 
+    function renderTicketWorkspace() {
+        const filtered = getFilteredRecords();
+        const openTickets = filtered.filter((record) => !["Resolved", "Closed", "Rejected"].includes(String(record.Status || "")));
+        const resolvedTickets = filtered.filter((record) => String(record.Status || "") === "Resolved");
+        const rowsMarkup = filtered.map((record) => {
+            const canResolve = !["Resolved", "Closed", "Rejected"].includes(String(record.Status || ""));
+            return `
+                <tr>
+                    <td>${UI.escapeHtml(record.TicketID || "-")}</td>
+                    <td><span class="cell-data cell-data--title">${UI.escapeHtml(record.Subject || "-")}</span></td>
+                    <td>${UI.escapeHtml(record.Requester || "-")}</td>
+                    <td>${UI.escapeHtml(record.RequestedService || "-")}</td>
+                    <td>${UI.escapeHtml(record.Location || "-")}</td>
+                    <td>${UI.badge(record.Status || "Open")}</td>
+                    <td>
+                        <div class="table-actions">
+                            ${canResolve ? `<button class="ticket-resolve-btn" data-action="resolve-ticket" data-id="${UI.escapeHtml(record.TicketID)}"><i class="fa-solid fa-circle-check"></i><span>Resolve</span></button>` : UI.badge(record.Status || "-")}
+                            <button class="table-action" data-action="edit" data-id="${UI.escapeHtml(record.TicketID)}" title="Edit ticket"><i class="fa-solid fa-pen"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
+        }).join("");
+
+        document.getElementById("viewContainer").innerHTML = `
+            <section class="ticket-workspace-summary">
+                <div>
+                    <p class="section-card__eyebrow">IT SERVICE OPERATIONS</p>
+                    <h3>Ticket Workspace</h3>
+                    <p>Review incoming requests, complete support work and capture requester confirmation.</p>
+                </div>
+                <div class="ticket-workspace-summary__stats">
+                    <span><b>${openTickets.length}</b> Active</span>
+                    <span><b>${resolvedTickets.length}</b> Resolved</span>
+                    <button id="showMyJobsButton" class="primary-btn" type="button"><i class="fa-solid fa-briefcase"></i><span>My Job</span></button>
+                </div>
+            </section>
+            ${state.ticketJobsVisible ? `
+                <section class="table-panel ticket-jobs-panel">
+                    <div class="table-panel__header">
+                        <div class="table-panel__header-copy">
+                            <p class="section-card__eyebrow">MY JOB</p>
+                            <h3>All Tickets</h3>
+                            <p class="table-panel__subtext">Resolve completed work with requester signature and optional evidence photo.</p>
+                        </div>
+                        <button id="hideMyJobsButton" class="ghost-btn" type="button">Hide list</button>
+                    </div>
+                    <div class="data-table-wrap">
+                        <table class="data-table">
+                            <thead><tr><th>Ticket ID</th><th>Summary</th><th>Requester</th><th>Requested Service</th><th>Location</th><th>Status</th><th>Action</th></tr></thead>
+                            <tbody>${rowsMarkup || `<tr><td colspan="7">${UI.emptyState("No ticket found", "There are no tickets matching the current search or status filter.")}</td></tr>`}</tbody>
+                        </table>
+                    </div>
+                </section>` : ""}
+        `;
+    }
+
+    function getLocalDateTimeInputValue(date = new Date()) {
+        const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+        return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+    }
+
+    async function openTicketResolveModal(ticketId) {
+        const ticket = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
+        if (!ticket) {
+            await UI.alert({ icon: "error", title: "Ticket not found", text: "Refresh the ticket list and try again." });
+            return;
+        }
+
+        const isRemoteSupport = String(ticket.RequestedService || "") === "Remote Support";
+        let hasSignature = false;
+        const result = await Swal.fire({
+            title: `${isRemoteSupport ? "Close" : "Resolve"} ${ticket.TicketID}`,
+            html: `
+                <div class="ticket-resolve-form">
+                    <p class="ticket-resolve-form__summary">${UI.escapeHtml(ticket.Subject || "-")}</p>
+                    ${isRemoteSupport ? `
+                        <div class="ticket-remote-times">
+                            <label><span>Start time <em>*</em></span><input id="ticketWorkStartedAt" type="datetime-local" value="${getLocalDateTimeInputValue()}"></label>
+                            <label><span>End time <em>*</em></span><input id="ticketWorkCompletedAt" type="datetime-local" value="${getLocalDateTimeInputValue()}"></label>
+                        </div>` : ""}
+                    <label><span>Detail <small>(optional)</small></span><textarea id="ticketResolutionNote" placeholder="Work performed, test result or follow-up note"></textarea></label>
+                    ${isRemoteSupport ? "" : `<label><span>Photo <small>(optional)</small></span><input id="ticketResolutionPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment"></label>
+                    <div class="ticket-signature-field">
+                        <div><span>Requester signature <em>*</em></span><button id="clearTicketSignature" type="button">Clear</button></div>
+                        <canvas id="ticketSignatureCanvas" width="720" height="250" aria-label="Requester signature"></canvas>
+                        <small>Ask the requester to sign in the box using a finger, stylus or mouse.</small>
+                    </div>`}
+                </div>`,
+            width: "min(720px, calc(100vw - 28px))",
+            showCancelButton: true,
+            showCloseButton: true,
+            confirmButtonText: isRemoteSupport ? "Close Ticket" : "Resolve Ticket",
+            cancelButtonText: "Cancel",
+            focusConfirm: false,
+            didOpen: () => {
+                if (isRemoteSupport) {
+                    return;
+                }
+                const canvas = document.getElementById("ticketSignatureCanvas");
+                const clearButton = document.getElementById("clearTicketSignature");
+                const context = canvas.getContext("2d");
+                context.strokeStyle = "#17314d";
+                context.lineWidth = 3;
+                context.lineCap = "round";
+                let drawing = false;
+
+                const pointFromEvent = (event) => {
+                    const bounds = canvas.getBoundingClientRect();
+                    return {
+                        x: (event.clientX - bounds.left) * (canvas.width / bounds.width),
+                        y: (event.clientY - bounds.top) * (canvas.height / bounds.height)
+                    };
+                };
+                const start = (event) => {
+                    drawing = true;
+                    const point = pointFromEvent(event);
+                    context.beginPath();
+                    context.moveTo(point.x, point.y);
+                    hasSignature = true;
+                    event.preventDefault();
+                };
+                const move = (event) => {
+                    if (!drawing) return;
+                    const point = pointFromEvent(event);
+                    context.lineTo(point.x, point.y);
+                    context.stroke();
+                    event.preventDefault();
+                };
+                const stop = () => { drawing = false; };
+                canvas.addEventListener("pointerdown", start);
+                canvas.addEventListener("pointermove", move);
+                canvas.addEventListener("pointerup", stop);
+                canvas.addEventListener("pointerleave", stop);
+                clearButton.addEventListener("click", () => {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    hasSignature = false;
+                });
+            },
+            preConfirm: async () => {
+                const resolutionNote = document.getElementById("ticketResolutionNote").value.trim();
+                if (isRemoteSupport) {
+                    const workStartedAt = document.getElementById("ticketWorkStartedAt").value;
+                    const workCompletedAt = document.getElementById("ticketWorkCompletedAt").value;
+                    if (!workStartedAt || !workCompletedAt) {
+                        Swal.showValidationMessage("Start time and end time are required");
+                        return false;
+                    }
+                    if (new Date(workCompletedAt).getTime() < new Date(workStartedAt).getTime()) {
+                        Swal.showValidationMessage("End time must be after start time");
+                        return false;
+                    }
+                    return { resolutionNote, workStartedAt, workCompletedAt, closeDirectly: true };
+                }
+                if (!hasSignature) {
+                    Swal.showValidationMessage("Requester signature is required");
+                    return false;
+                }
+                const canvas = document.getElementById("ticketSignatureCanvas");
+                const photo = document.getElementById("ticketResolutionPhoto").files[0];
+                if (photo && (!/^(image\/jpeg|image\/png|image\/webp)$/i.test(photo.type) || photo.size > 5 * 1024 * 1024)) {
+                    Swal.showValidationMessage("Use a JPG, PNG or WEBP photo no larger than 5 MB");
+                    return false;
+                }
+                const signatureDataUrl = canvas.toDataURL("image/png");
+                const signatureBase64 = signatureDataUrl.split(",")[1];
+                return {
+                    resolutionNote,
+                    signature: {
+                        name: `${ticket.TicketID}-signature.png`,
+                        type: "image/png",
+                        size: Math.ceil(signatureBase64.length * 0.75),
+                        base64: signatureBase64
+                    },
+                    photo: photo ? {
+                        name: photo.name,
+                        type: photo.type,
+                        size: photo.size,
+                        base64: await readKnowledgeFile(photo)
+                    } : null
+                };
+            }
+        });
+
+        if (!result.isConfirmed || !result.value) {
+            return;
+        }
+
+        UI.loading("Resolving ticket", "Saving signature and completion details");
+        try {
+            const response = await ApiClient.request("resolveTicket", {
+                token: ApiClient.getSessionToken(),
+                ticketId,
+                ...result.value
+            });
+            upsertStateRecord(response.data.record, "edit");
+            renderTicketWorkspace();
+            Swal.close();
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to resolve ticket", text: error.message || "Please try again." });
+        }
+    }
+
     function renderTable() {
         if (isKnowledgeModule()) {
             renderKnowledgeCenter();
@@ -1417,6 +1625,10 @@
         }
         if (isStockMovementModule()) {
             renderStockMovementWorkspace();
+            return;
+        }
+        if (isTicketModule()) {
+            renderTicketWorkspace();
             return;
         }
 
@@ -1549,18 +1761,15 @@
         UI.loading("Exporting data", `Preparing ${moduleConfig.label} ${format.toUpperCase()} file`);
         const fileName = `${moduleConfig.key}_${UI.buildTimestampForFileName()}`;
         if (format === "csv") {
-            UI.exportToCsv(fileName, state.records);
+            await UI.exportToCsv(fileName, state.records);
         } else {
-            UI.exportToExcel(fileName, state.records);
+            await UI.exportToExcel(fileName, state.records);
         }
         Swal.close();
-        UI.toast("success", "Export completed", `${moduleConfig.label} exported as ${format.toUpperCase()}.`);
     }
 
     async function importExcelFile(file) {
-        if (typeof XLSX === "undefined") {
-            throw new Error("Excel import library is not available");
-        }
+        const XLSX = await UI.loadSpreadsheetLibrary();
 
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: "array" });
@@ -1585,7 +1794,7 @@
         }
 
         UI.loading("Importing Excel", `Saving ${mappedRows.length} records to ${moduleConfig.label}`);
-        const result = await ApiClient.request("importRecords", {
+        await ApiClient.request("importRecords", {
             token: ApiClient.getSessionToken(),
             module: moduleKey,
             records: mappedRows
@@ -1595,12 +1804,6 @@
         renderHero();
         renderTable();
         Swal.close();
-        const importedCount = result.data.importedCount || 0;
-        const skippedCount = result.data.skippedCount || 0;
-        const importMessage = skippedCount
-            ? `${importedCount} records imported, ${skippedCount} duplicate rows skipped.`
-            : `${importedCount} records imported successfully.`;
-        UI.toast("success", "Import completed", importMessage);
     }
 
     async function saveRecord(mode, record) {
@@ -1627,7 +1830,6 @@
             if (isStockMovementModule()) {
                 await renderPage();
                 Swal.close();
-                UI.toast("success", mode === "create" ? "Record created" : "Record updated", `${moduleConfig.label} saved successfully.`);
                 return result;
             }
             upsertStateRecord(result.data && result.data.record ? result.data.record : record, mode);
@@ -1635,7 +1837,6 @@
             renderHero();
             renderTable();
             Swal.close();
-            UI.toast("success", mode === "create" ? "Record created" : "Record updated", `${moduleConfig.label} saved successfully.`);
         } catch (error) {
             Swal.close();
             await UI.alert({
@@ -1761,7 +1962,6 @@
             upsertStateRecord(response.data.record, mode);
             Swal.close();
             renderTable();
-            UI.toast("success", mode === "create" ? "Knowledge saved" : "Knowledge updated", "The knowledge item is ready to use.");
         } catch (error) {
             Swal.close();
             await UI.alert({ icon: "error", title: "Unable to save knowledge", text: error.message || "Unexpected error" });
@@ -1819,7 +2019,6 @@
             }
             Swal.close();
             renderTable();
-            UI.toast("success", "Category added", "The new category is ready to use.");
         } catch (error) {
             Swal.close();
             await UI.alert({ icon: "error", title: "Unable to add category", text: error.message || "Unexpected error" });
@@ -1846,7 +2045,6 @@
         if (isStockMovementModule()) {
             await renderPage();
             Swal.close();
-            UI.toast("success", "Record deleted", `${recordId} removed successfully.`);
             return;
         }
         state.records = state.records.filter((item) => item[moduleConfig.idField] !== recordId);
@@ -1854,7 +2052,6 @@
         renderHero();
         renderTable();
         Swal.close();
-        UI.toast("success", "Record deleted", `${recordId} removed successfully.`);
     }
 
     function attachEvents() {
@@ -1893,6 +2090,18 @@
         });
 
         document.getElementById("viewContainer").addEventListener("click", async (event) => {
+            if (event.target.closest("#showMyJobsButton")) {
+                state.ticketJobsVisible = true;
+                renderTable();
+                return;
+            }
+
+            if (event.target.closest("#hideMyJobsButton")) {
+                state.ticketJobsVisible = false;
+                renderTable();
+                return;
+            }
+
             const movementTabButton = event.target.closest("[data-movement-tab]");
             if (movementTabButton) {
                 state.movementTab = movementTabButton.getAttribute("data-movement-tab") || "outbound";
@@ -1996,6 +2205,8 @@
                     await openInventoryHistory(id);
                 } else if (action === "preview") {
                     await openKnowledgePreview(id);
+                } else if (action === "resolve-ticket") {
+                    await openTicketResolveModal(id);
                 } else if (action === "edit") {
                     await openRecordModal("edit", id);
                 } else if (action === "delete") {

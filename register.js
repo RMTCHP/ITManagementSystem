@@ -9,7 +9,7 @@
     const acceptPolicyCheckbox = document.getElementById("acceptPolicy");
 
     function getDepartmentOptions() {
-        return (window.APP_CONFIG.modules.users.fields.find((field) => field.key === "Department") || {}).options || [];
+        return window.APP_CONFIG.departments || [];
     }
 
     function populateDepartments() {

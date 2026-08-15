@@ -73,12 +73,11 @@
         const rows = result.data.records || [];
         const fileName = `${moduleKey}_${UI.buildTimestampForFileName()}`;
         if (format === "csv") {
-            UI.exportToCsv(fileName, rows);
+            await UI.exportToCsv(fileName, rows);
         } else {
-            UI.exportToExcel(fileName, rows);
+            await UI.exportToExcel(fileName, rows);
         }
         Swal.close();
-        UI.toast("success", "Export completed", `${moduleKey} exported as ${format.toUpperCase()}.`);
     }
 
     function attachEvents() {

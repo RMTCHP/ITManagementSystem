@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report IT Issue | IT Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="app.css?v=20260815-4">
+    <script>
+        if (window.matchMedia("(max-width: 767px)").matches) {
+            document.documentElement.classList.add("mobile-ticket-auth-pending");
+        }
+    </script>
+</head>
+<body class="public-ticket-body">
+    <main class="public-ticket-shell">
+        <section class="public-ticket-hero">
+            <a class="public-ticket-brand" href="index.html" title="IT Management sign in">
+                <span>IT</span>
+                <strong>IT Management</strong>
+            </a>
+            <div class="public-ticket-hero__actions hidden" id="ticketUserActions">
+                <div class="public-ticket-profile" id="ticketProfile" title="Signed-in IT user">
+                    <span class="public-ticket-profile__initial" id="ticketProfileInitial">IT</span>
+                </div>
+                <button class="public-ticket-logout" id="ticketLogoutButton" type="button" title="Logout"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></button>
+            </div>
+            <div class="public-ticket-hero__copy">
+                <p>IT SERVICE DESK</p>
+                <h1>Report an IT issue</h1>
+            </div>
+        </section>
+
+        <section class="public-ticket-choice" id="ticketServiceChoice" aria-label="Select IT service">
+            <div class="public-ticket-choice__grid">
+                <button class="public-ticket-choice__card public-ticket-choice__card--onsite" type="button" data-requested-service="On-site">
+                    <span class="public-ticket-choice__icon"><i class="fa-solid fa-person-walking-arrow-right"></i></span>
+                    <strong>On-site</strong>
+                    <small>ให้ IT เข้าดำเนินการหน้างาน</small>
+                    <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
+                </button>
+                <button class="public-ticket-choice__card public-ticket-choice__card--remote" type="button" data-requested-service="Remote Support">
+                    <span class="public-ticket-choice__icon"><i class="fa-solid fa-desktop"></i></span>
+                    <strong>Remote Support</strong>
+                    <small>ให้ IT ติดต่อเพื่อช่วยเหลือระยะไกล</small>
+                    <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
+                </button>
+                <button class="public-ticket-choice__card public-ticket-choice__card--equipment" type="button" data-requested-service="Equipment Requisition">
+                    <span class="public-ticket-choice__icon"><i class="fa-solid fa-box-open"></i></span>
+                    <strong>เบิกอุปกรณ์</strong>
+                    <small>แจ้งความต้องการอุปกรณ์จาก Inventory</small>
+                    <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
+                </button>
+            </div>
+            <div class="public-ticket-work-group">
+                <p>WORK MANAGEMENT</p>
+                <button class="public-ticket-work-card" id="showMyJobsButton" type="button" title="Open My Job">
+                    <span class="public-ticket-work-card__icon"><i class="fa-solid fa-briefcase"></i></span>
+                    <span class="public-ticket-work-card__copy"><strong>My Job</strong><small>View active tickets and resolve work</small></span>
+                    <b class="public-ticket-my-job__count hidden" id="myJobOpenCount" aria-label="Open tickets">0</b>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <section class="public-ticket-card hidden" id="ticketFormCard" aria-labelledby="ticketFormTitle">
+            <div class="public-ticket-card__header">
+                <div class="public-ticket-card__icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                <div>
+                    <p>NEW REQUEST</p>
+                    <h2 id="ticketFormTitle">Issue details</h2>
+                </div>
+                <button class="public-ticket-back" id="backToServiceButton" type="button"><i class="fa-solid fa-arrow-left"></i><span>Change service</span></button>
+            </div>
+
+            <form id="publicTicketForm" class="public-ticket-form" novalidate>
+                <input id="requestedService" name="requestedService" type="hidden">
+                <div class="public-ticket-form__grid">
+                    <label>
+                        <span>ชื่อผู้แจ้ง <em>*</em></span>
+                        <input id="requester" name="requester" type="text" maxlength="120" autocomplete="name" required placeholder="ชื่อ - นามสกุล">
+                    </label>
+                    <label>
+                        <span>แผนก <em>*</em></span>
+                        <select id="department" name="department" required>
+                            <option value="">เลือกแผนก</option>
+                            <option>IT</option>
+                            <option>Production</option>
+                            <option>Quality</option>
+                            <option>Finance</option>
+                            <option>HR</option>
+                            <option>Warehouse</option>
+                            <option>Other</option>
+                        </select>
+                    </label>
+                    <label class="public-ticket-form__full">
+                        <span>เบอร์ติดต่อหรืออีเมล</span>
+                        <input id="contact" name="contact" type="text" maxlength="160" autocomplete="tel" placeholder="เช่น 081-234-5678 หรือ name@company.com">
+                    </label>
+                    <label class="public-ticket-form__full">
+                        <span>สถานที่ / จุดที่พบปัญหา / เครื่องคอมพิวเตอร์ <em>*</em></span>
+                        <input id="location" name="location" type="text" maxlength="240" required placeholder="เช่น ชั้น 2, Line A, โต๊ะ QA-04">
+                    </label>
+                    <label>
+                        <span>ประเภทปัญหา <em>*</em></span>
+                        <select id="category" name="category" required>
+                            <option value="">เลือกประเภทปัญหา</option>
+                            <option>Hardware</option>
+                            <option>Software</option>
+                            <option>Printer</option>
+                            <option>Network / Internet</option>
+                            <option>Email / Microsoft 365</option>
+                            <option>ERP / D365</option>
+                            <option>Account / Access</option>
+                            <option>Other</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>สรุปปัญหา <em>*</em></span>
+                        <input id="subject" name="subject" type="text" maxlength="180" required placeholder="เช่น Printer ชั้น 2 พิมพ์ไม่ได้">
+                    </label>
+                </div>
+
+                <div class="public-ticket-remote-session hidden" id="remoteSessionInfo">
+                    <label for="remoteStartedAt"><span>Start time</span><input id="remoteStartedAt" name="remoteStartedAt" type="time"></label>
+                    <div><span>End time</span><strong>Recorded when submitted</strong></div>
+                </div>
+
+                <div id="ticketPhotoSection">
+                    <label class="public-ticket-photo" for="ticketPhoto">
+                        <input id="ticketPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+                        <span class="public-ticket-photo__icon"><i class="fa-solid fa-camera"></i></span>
+                        <span class="public-ticket-photo__copy"><strong>ถ่ายรูปหรือแนบรูป</strong><small>JPG, PNG หรือ WEBP ไม่เกิน 5 MB</small></span>
+                        <span class="public-ticket-photo__action">Choose photo</span>
+                    </label>
+                    <div class="public-ticket-preview hidden" id="photoPreview">
+                        <img id="photoPreviewImage" alt="Selected issue photo preview">
+                        <button id="removePhotoButton" type="button" title="Remove photo" aria-label="Remove photo"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+
+                <input class="public-ticket-honeypot" id="website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+                <div class="public-ticket-form__footer">
+                    <p><i class="fa-solid fa-circle-info"></i> IT will receive this request with status Open.</p>
+                    <button class="public-ticket-submit" type="submit"><i class="fa-solid fa-paper-plane"></i><span>Submit Ticket</span></button>
+                </div>
+            </form>
+        </section>
+
+        <section class="public-ticket-jobs hidden" id="ticketJobsCard" aria-labelledby="ticketJobsTitle">
+            <div class="public-ticket-jobs__header">
+                <div>
+                    <p>IT SERVICE DESK</p>
+                    <h2 id="ticketJobsTitle">My Job</h2>
+                    <span>Latest 100 tickets</span>
+                </div>
+                <div class="public-ticket-jobs__actions">
+                    <button id="refreshMyJobsButton" type="button" title="Refresh ticket list"><i class="fa-solid fa-rotate"></i><span>Refresh</span></button>
+                    <button class="public-ticket-jobs__back" id="backToTicketButton" type="button" title="Back to main menu"><i class="fa-solid fa-arrow-left"></i><span>Back to Menu</span></button>
+                </div>
+            </div>
+            <div class="public-ticket-job-list" id="ticketJobList" aria-live="polite"></div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="ui.js"></script>
+    <script src="mobile-ticket-auth.js"></script>
+    <script src="create-ticket.js"></script>
+</body>
+</html>

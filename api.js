@@ -90,6 +90,10 @@
             listKnowledgeCategories: 30000,
             createKnowledgeCategory: 30000,
             saveKnowledgeDocument: 90000,
+            createPublicTicket: 60000,
+            listPublicTicketJobs: 30000,
+            getPublicTicketJobSummary: 30000,
+            resolveTicket: 60000,
             createRecord: 30000,
             saveRecord: 30000,
             importRecords: 45000
@@ -143,7 +147,6 @@
             stockItems: "STK",
             stockMovements: "MOV",
             licenses: "LIC",
-            infrastructure: "INF",
             documents: "DOC",
             users: "USR",
             auditLogs: "LOG"
@@ -327,16 +330,22 @@
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
         let response;
+        const requestOptions = {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+            },
+            body: body.toString(),
+            signal: controller.signal
+        };
+        const retryableActions = new Set(["login", "checkSession", "dashboardSummary", "listRecords", "listKnowledgeCategories"]);
 
         try {
-            response = await fetch(config.webAppUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-                },
-                body: body.toString(),
-                signal: controller.signal
-            });
+            response = await fetch(config.webAppUrl, requestOptions);
+            if (response.status === 404 && retryableActions.has(action)) {
+                await new Promise((resolve) => window.setTimeout(resolve, 700));
+                response = await fetch(config.webAppUrl, requestOptions);
+            }
         } catch (error) {
             if (error && error.name === "AbortError") {
                 throw new Error(`API request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
@@ -527,9 +536,6 @@
         const isWebAppReady = Boolean(config.webAppUrl && config.webAppUrl.startsWith("https://"));
         if (isWebAppReady) {
             return callWebApp(action, payload);
-        }
-        if (config.useMockDataWhenUrlMissing) {
-            return callMock(action, payload);
         }
         throw new Error("Google Apps Script Web App URL is not configured");
     }

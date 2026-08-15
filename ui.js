@@ -1,6 +1,7 @@
 (function () {
     const palette = window.APP_CONFIG.statusPalette;
     const priorityPalette = window.APP_CONFIG.priorityPalette;
+    let spreadsheetLibraryPromise;
 
     function loading(title, text) {
         Swal.fire({
@@ -11,19 +12,6 @@
             showConfirmButton: false,
             showCloseButton: false,
             didOpen: () => Swal.showLoading()
-        });
-    }
-
-    function toast(icon, title, text = "") {
-        return Swal.fire({
-            toast: true,
-            position: "top-end",
-            icon,
-            title,
-            text,
-            showConfirmButton: false,
-            timer: 2600,
-            timerProgressBar: true
         });
     }
 
@@ -66,14 +54,35 @@
         return `<span class="badge badge--${tone}">${escapeHtml(value)}</span>`;
     }
 
-    function exportToExcel(fileName, rows) {
+    function loadSpreadsheetLibrary() {
+        if (window.XLSX) {
+            return Promise.resolve(window.XLSX);
+        }
+        if (spreadsheetLibraryPromise) {
+            return spreadsheetLibraryPromise;
+        }
+
+        spreadsheetLibraryPromise = new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+            script.async = true;
+            script.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error("Excel library failed to load"));
+            script.onerror = () => reject(new Error("Unable to load the Excel library"));
+            document.head.appendChild(script);
+        });
+        return spreadsheetLibraryPromise;
+    }
+
+    async function exportToExcel(fileName, rows) {
+        const XLSX = await loadSpreadsheetLibrary();
         const worksheet = XLSX.utils.json_to_sheet(rows);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
         XLSX.writeFile(workbook, `${fileName}.xlsx`);
     }
 
-    function exportToCsv(fileName, rows) {
+    async function exportToCsv(fileName, rows) {
+        const XLSX = await loadSpreadsheetLibrary();
         const worksheet = XLSX.utils.json_to_sheet(rows);
         const csv = XLSX.utils.sheet_to_csv(worksheet);
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -174,7 +183,15 @@
             `;
         }
 
-        const inputType = field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "password" ? "password" : "text";
+        const inputType = field.type === "number"
+            ? "number"
+            : field.type === "date"
+                ? "date"
+                : field.type === "datetime-local"
+                    ? "datetime-local"
+                    : field.type === "password"
+                        ? "password"
+                        : "text";
         const readonly = field.readonly ? "readonly" : "";
         return `
             <label class="modal-form__field ${fieldClass}">
@@ -226,13 +243,13 @@
 
     window.UI = {
         loading,
-        toast,
         confirm,
         alert,
         badge,
         emptyState,
         exportToExcel,
         exportToCsv,
+        loadSpreadsheetLibrary,
         buildTimestampForFileName,
         openFormModal,
         escapeHtml
