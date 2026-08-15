@@ -539,6 +539,35 @@ button {
     color: #c83e48;
 }
 
+.public-ticket-job__resolve {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: #16845a;
+    color: #fff;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 8px 16px rgba(22, 132, 90, 0.18);
+    transition: transform var(--transition), background var(--transition), box-shadow var(--transition);
+}
+
+.public-ticket-job__resolve:hover {
+    background: #0e6e49;
+    box-shadow: 0 10px 18px rgba(22, 132, 90, 0.25);
+    transform: translateY(-1px);
+}
+
+.public-ticket-job__resolve:active {
+    transform: translateY(0);
+}
+
 .public-ticket-job-empty {
     display: grid;
     justify-items: center;
@@ -777,14 +806,18 @@ button {
 .public-ticket-form__grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
+    gap: 16px 20px;
+    padding: 22px;
+    border: 1px solid #e4edf5;
+    border-radius: 18px;
+    background: linear-gradient(145deg, #fbfdff, #f5f9fc);
 }
 
 .public-ticket-form label:not(.public-ticket-photo) {
     display: grid;
-    gap: 7px;
+    gap: 8px;
     color: var(--text-soft);
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 800;
 }
 
@@ -797,17 +830,20 @@ button {
 .public-ticket-form select,
 .public-ticket-form textarea {
     width: 100%;
-    border: 1px solid rgba(23, 40, 61, 0.16);
-    border-radius: 12px;
-    padding: 12px 13px;
+    min-height: 48px;
+    border: 1px solid #cfddea;
+    border-radius: 13px;
+    padding: 12px 14px;
     outline: 0;
     background: #fff;
     color: var(--text);
+    font-size: 0.98rem;
+    line-height: 1.35;
     transition: border-color var(--transition), box-shadow var(--transition);
 }
 
 .public-ticket-form textarea {
-    min-height: 118px;
+    min-height: 132px;
     resize: vertical;
 }
 
@@ -836,40 +872,45 @@ button {
 
 .public-ticket-remote-session {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 20px;
-    padding: 12px;
-    border: 1px solid rgba(118, 86, 217, 0.18);
-    border-radius: 14px;
-    background: linear-gradient(135deg, rgba(241, 238, 255, 0.9), rgba(250, 249, 255, 0.92));
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 14px;
+    margin-top: 18px;
+    padding: 18px;
+    border: 1px solid #d9cffa;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #f6f3ff, #fbfaff);
 }
 
 .public-ticket-remote-session div {
     display: grid;
-    gap: 3px;
-    padding: 9px 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.72);
+    align-content: center;
+    gap: 5px;
+    min-height: 76px;
+    padding: 12px 14px;
+    border: 1px solid #e6defd;
+    border-radius: 14px;
+    background: #fff;
 }
 
 .public-ticket-remote-session label {
     display: grid;
-    gap: 3px;
-    padding: 9px 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.72);
+    gap: 5px;
+    min-height: 76px;
+    padding: 12px 14px;
+    border: 1px solid #e6defd;
+    border-radius: 14px;
+    background: #fff;
 }
 
 .public-ticket-remote-session input {
     width: 100%;
-    min-height: 28px;
+    min-height: 34px;
     padding: 0;
     border: 0;
     background: transparent;
     color: #5541aa;
     font: inherit;
-    font-size: 0.78rem;
+    font-size: 1.05rem;
     font-weight: 800;
     outline: none;
 }
@@ -884,7 +925,19 @@ button {
 
 .public-ticket-remote-session strong {
     color: #5541aa;
-    font-size: 0.78rem;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+    .public-ticket-form__grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 20px;
+    }
+
+    .public-ticket-form__full {
+        grid-column: auto;
+    }
 }
 
 .public-ticket-photo input {

@@ -24,6 +24,7 @@
     const ticketLogoutButton = document.getElementById("ticketLogoutButton");
     let selectedPhoto = null;
     let previewUrl = "";
+    let currentTicketJobs = [];
 
     const serviceLabels = {
         "On-site": "On-site support details",
@@ -137,12 +138,16 @@
     }
 
     function renderTicketJobs(records) {
+        currentTicketJobs = records;
         if (!records.length) {
             ticketJobList.innerHTML = '<div class="public-ticket-job-empty"><i class="fa-regular fa-folder-open"></i><strong>No ticket found</strong><span>Create a ticket to start work.</span></div>';
             return;
         }
 
-        ticketJobList.innerHTML = records.map((ticket) => `
+        ticketJobList.innerHTML = records.map((ticket) => {
+            const isCompleted = ["resolved", "closed", "rejected"].includes(String(ticket.Status || "").toLowerCase());
+            const canResolve = !isCompleted && String(ticket.RequestedService || "").toLowerCase() !== "remote support";
+            return `
             <article class="public-ticket-job">
                 <div class="public-ticket-job__main">
                     <div class="public-ticket-job__meta"><strong>${escapeHtml(ticket.TicketID)}</strong><span>${escapeHtml(formatDate(ticket.RequestDate))}</span></div>
@@ -156,9 +161,11 @@
                 <div class="public-ticket-job__side">
                     <span class="public-ticket-job__service">${escapeHtml(ticket.RequestedService || "IT Request")}</span>
                     <span class="public-ticket-job__status ${getTicketStatusClass(ticket.Status)}">${escapeHtml(ticket.Status || "Open")}</span>
+                    ${canResolve ? `<button type="button" class="public-ticket-job__resolve" data-action="resolve-ticket" data-ticket-id="${escapeHtml(ticket.TicketID)}"><i class="fa-solid fa-circle-check"></i><span>Resolve</span></button>` : ""}
                 </div>
             </article>
-        `).join("");
+        `;
+        }).join("");
     }
 
     async function loadMyJobs() {
@@ -206,6 +213,125 @@
         });
     }
 
+    async function openTicketResolveModal(ticket) {
+        const session = getActiveSession();
+        if (!session) {
+            await UI.alert({ icon: "warning", title: "Session expired", text: "Please login to the Ticket Workspace again." });
+            window.location.replace("ticket-login.html");
+            return;
+        }
+
+        let signatureCanvas;
+        let signatureContext;
+        let hasSignature = false;
+
+        const result = await Swal.fire({
+            title: "Resolve Ticket",
+            html: `
+                <form class="ticket-resolve-form">
+                    <p class="ticket-resolve-form__summary">${escapeHtml(ticket.TicketID)} - ${escapeHtml(ticket.Subject || "Untitled ticket")}</p>
+                    <label>Resolution details <small>Optional</small><textarea id="ticketResolutionNote" maxlength="2000" placeholder="Work performed, parts used, or notes for follow-up"></textarea></label>
+                    <label>Completion photo <small>Optional. JPG, PNG or WEBP up to 5 MB</small><input id="ticketResolutionPhoto" type="file" accept="image/jpeg,image/png,image/webp"></label>
+                    <div class="ticket-signature-field">
+                        <div><span>Requester signature</span><em>Required</em><button type="button" id="clearTicketSignature">Clear</button></div>
+                        <canvas id="ticketSignatureCanvas" aria-label="Requester signature"></canvas>
+                    </div>
+                </form>`,
+            width: "min(680px, calc(100vw - 28px))",
+            showCancelButton: true,
+            showCloseButton: true,
+            confirmButtonText: "Resolve Ticket",
+            cancelButtonText: "Cancel",
+            focusConfirm: false,
+            didOpen: () => {
+                signatureCanvas = document.getElementById("ticketSignatureCanvas");
+                signatureContext = signatureCanvas.getContext("2d");
+                const resizeCanvas = () => {
+                    const rect = signatureCanvas.getBoundingClientRect();
+                    signatureCanvas.width = Math.max(1, Math.floor(rect.width * window.devicePixelRatio));
+                    signatureCanvas.height = Math.max(1, Math.floor(rect.height * window.devicePixelRatio));
+                    signatureContext.scale(window.devicePixelRatio, window.devicePixelRatio);
+                    signatureContext.lineWidth = 2;
+                    signatureContext.lineCap = "round";
+                    signatureContext.strokeStyle = "#17324d";
+                };
+                resizeCanvas();
+
+                let isDrawing = false;
+                let lastPoint;
+                const getPoint = (event) => {
+                    const rect = signatureCanvas.getBoundingClientRect();
+                    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+                };
+                signatureCanvas.addEventListener("pointerdown", (event) => {
+                    isDrawing = true;
+                    lastPoint = getPoint(event);
+                    signatureCanvas.setPointerCapture(event.pointerId);
+                });
+                signatureCanvas.addEventListener("pointermove", (event) => {
+                    if (!isDrawing) return;
+                    const point = getPoint(event);
+                    signatureContext.beginPath();
+                    signatureContext.moveTo(lastPoint.x, lastPoint.y);
+                    signatureContext.lineTo(point.x, point.y);
+                    signatureContext.stroke();
+                    lastPoint = point;
+                    hasSignature = true;
+                });
+                ["pointerup", "pointercancel", "pointerleave"].forEach((name) => {
+                    signatureCanvas.addEventListener(name, () => { isDrawing = false; });
+                });
+                document.getElementById("clearTicketSignature").addEventListener("click", () => {
+                    signatureContext.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+                    hasSignature = false;
+                });
+            },
+            preConfirm: async () => {
+                const photo = document.getElementById("ticketResolutionPhoto").files[0];
+                if (!hasSignature) {
+                    Swal.showValidationMessage("Requester signature is required before resolving this ticket.");
+                    return false;
+                }
+                if (photo && (!/^(image\/jpeg|image\/png|image\/webp)$/i.test(photo.type) || photo.size > 5 * 1024 * 1024)) {
+                    Swal.showValidationMessage("Use a JPG, PNG or WEBP photo no larger than 5 MB.");
+                    return false;
+                }
+                return {
+                    resolutionNote: document.getElementById("ticketResolutionNote").value.trim(),
+                    signature: {
+                        name: `${ticket.TicketID}-signature.png`,
+                        type: "image/png",
+                        size: Math.ceil(signatureCanvas.toDataURL("image/png").length * 0.75),
+                        base64: signatureCanvas.toDataURL("image/png").split(",")[1]
+                    },
+                    photo: photo ? {
+                        name: photo.name,
+                        type: photo.type,
+                        size: photo.size,
+                        base64: await readFileAsBase64(photo)
+                    } : null
+                };
+            }
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            UI.loading("Resolving ticket", "Saving the completion record");
+            await ApiClient.request("resolveTicket", {
+                token: session.token,
+                ticketId: ticket.TicketID,
+                ...result.value
+            });
+            Swal.close();
+            await UI.alert({ icon: "success", title: "Ticket resolved", text: `${ticket.TicketID} has been closed successfully.` });
+            await Promise.all([loadMyJobs(), loadMyJobCount()]);
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to resolve ticket", text: error.message || "Please try again." });
+        }
+    }
+
     photoInput.addEventListener("change", async () => {
         const file = photoInput.files && photoInput.files[0];
         clearSelectedPhoto();
@@ -240,6 +366,12 @@
 
     showMyJobsButton.addEventListener("click", showMyJobs);
     refreshMyJobsButton.addEventListener("click", loadMyJobs);
+    ticketJobList.addEventListener("click", (event) => {
+        const resolveButton = event.target.closest('[data-action="resolve-ticket"]');
+        if (!resolveButton) return;
+        const ticket = currentTicketJobs.find((record) => record.TicketID === resolveButton.dataset.ticketId);
+        if (ticket) openTicketResolveModal(ticket);
+    });
     backToTicketButton.addEventListener("click", () => {
         ticketJobsCard.classList.add("hidden");
         serviceChoice.classList.remove("hidden");
