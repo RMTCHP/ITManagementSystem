@@ -581,20 +581,13 @@
         }
 
         const session = getActiveSession();
-        try {
-            UI.loading("Logging out", "Closing your IT session");
-            if (session) {
-                await ApiClient.request("logout", { token: session.token });
-            }
-            ApiClient.clearSession();
-            sessionStorage.removeItem("itms_ticket_mobile_access");
-            Swal.close();
-            await Swal.fire({ icon: "success", title: "Logged out", text: "Your IT session has been closed.", showConfirmButton: false, timer: 800, timerProgressBar: true });
-            window.location.replace("ticket-login.html");
-        } catch (error) {
-            Swal.close();
-            await UI.alert({ icon: "error", title: "Logout failed", text: error.message || "Please try again." });
+        if (session) {
+            // Session closure is best-effort. Do not block logout while Apps Script is writing to Sheets.
+            ApiClient.fireAndForget("logout", { token: session.token });
         }
+        ApiClient.clearSession();
+        sessionStorage.removeItem("itms_ticket_mobile_access");
+        window.location.replace("ticket-login.html");
     });
 
     form.addEventListener("submit", async (event) => {
