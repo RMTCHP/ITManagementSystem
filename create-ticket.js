@@ -622,6 +622,13 @@
             return;
         }
 
+        const session = getActiveSession();
+        if (!session) {
+            await UI.alert({ icon: "warning", title: "Login required", text: "Please login to the Ticket Workspace again before submitting a ticket." });
+            window.location.replace("ticket-login.html");
+            return;
+        }
+
         const confirmation = await UI.confirm({
             title: "Submit this ticket?",
             text: "IT will receive your issue and contact you using the details provided.",
@@ -633,6 +640,7 @@
 
         const values = new FormData(form);
         const payload = {
+            token: session.token,
             requester: values.get("requester"),
             department: values.get("department"),
             contact: values.get("contact"),
