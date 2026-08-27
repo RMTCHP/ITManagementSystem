@@ -523,7 +523,6 @@
                     UI.loading("Refreshing data", "Loading the latest information");
                     await options.onRefresh(context);
                     Swal.close();
-                    UI.toast("success", "Refresh completed", "Latest data loaded successfully.");
                 } catch (error) {
                     Swal.close();
                     if (await handleSessionError(error)) {

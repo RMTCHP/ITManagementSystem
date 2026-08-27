@@ -41,16 +41,6 @@
             { label: "Pending Approvals", value: summary.pendingApproval || 0, icon: "fa-user-clock", note: "Waiting for decision" }
         ]);
 
-        const quickCards = config.quickActions
-            .filter((item) => AppShell.canAccess(item.key, state.session))
-            .map((item) => `
-                <button class="quick-card" data-quick-module="${item.key}" data-quick-mode="${item.mode}">
-                    <i class="fa-solid ${item.icon}"></i>
-                    <h3>${UI.escapeHtml(item.title)}</h3>
-                    <p>${UI.escapeHtml(item.description)}</p>
-                </button>
-            `).join("");
-
         const expiredAssetRows = (summary.expiredAssetItems || []).map((item) => `
             <tr>
                 <td>${UI.escapeHtml(item.FixedAssetNo || "-")}</td>
@@ -67,26 +57,6 @@
                 <td>${UI.escapeHtml(item.Quantity || 0)}</td>
                 <td>${UI.escapeHtml(item.MinimumStock || 0)}</td>
                 <td>${UI.escapeHtml(item.Location || "-")}</td>
-            </tr>
-        `).join("");
-
-        const recentRows = (summary.recentRequests || []).map((item) => `
-            <tr>
-                <td>${UI.escapeHtml(item.TicketID)}</td>
-                <td>${UI.escapeHtml(item.Subject)}</td>
-                <td>${UI.badge(item.Priority, "priority")}</td>
-                <td>${UI.badge(item.Status)}</td>
-                <td>${UI.escapeHtml(item.AssignedTo || "-")}</td>
-            </tr>
-        `).join("");
-
-        const auditRows = (summary.recentAuditLogs || []).map((item) => `
-            <tr>
-                <td>${UI.escapeHtml(item.Timestamp)}</td>
-                <td>${UI.badge(item.Action)}</td>
-                <td>${UI.escapeHtml(item.Module)}</td>
-                <td>${UI.escapeHtml(item.ActorName)}</td>
-                <td>${UI.escapeHtml(item.Detail)}</td>
             </tr>
         `).join("");
 
@@ -120,16 +90,6 @@
                         </div>
                     </div>
                     <div class="metrics-grid metrics-grid--dashboard">${serviceCards}</div>
-                </section>
-
-                <section class="dashboard-section">
-                    <div class="dashboard-section__header">
-                        <div>
-                            <p class="section-card__eyebrow">Quick Actions</p>
-                            <h3>Common Daily Tasks</h3>
-                        </div>
-                    </div>
-                    <div class="quick-grid quick-grid--dashboard">${quickCards}</div>
                 </section>
 
                 <section class="dashboard-section">
@@ -186,60 +146,6 @@
                     </div>
                 </section>
 
-                <section class="dashboard-section">
-                    <div class="dashboard-section__header">
-                        <div>
-                            <p class="section-card__eyebrow">Activity</p>
-                            <h3>Requests And Audit Timeline</h3>
-                        </div>
-                    </div>
-                    <div class="dashboard-watch-grid">
-                        <article class="table-panel">
-                            <div class="table-panel__header">
-                                <div>
-                                    <p class="section-card__eyebrow">Recent Requests</p>
-                                    <h3>Latest Ticket Queue</h3>
-                                </div>
-                            </div>
-                            <div class="data-table-wrap">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Ticket ID</th>
-                                            <th>Subject</th>
-                                            <th>Priority</th>
-                                            <th>Status</th>
-                                            <th>Assigned To</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>${recentRows || `<tr><td colspan="5">${UI.emptyState("No recent ticket", "Create a new ticket from quick action.")}</td></tr>`}</tbody>
-                                </table>
-                            </div>
-                        </article>
-                        <article class="table-panel">
-                            <div class="table-panel__header">
-                                <div>
-                                    <p class="section-card__eyebrow">Audit Trail</p>
-                                    <h3>Latest Critical Events</h3>
-                                </div>
-                            </div>
-                            <div class="data-table-wrap">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Timestamp</th>
-                                            <th>Action</th>
-                                            <th>Module</th>
-                                            <th>Actor</th>
-                                            <th>Detail</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>${auditRows || `<tr><td colspan="5">${UI.emptyState("No audit log", "Audit entries will appear after data activity.")}</td></tr>`}</tbody>
-                                </table>
-                            </div>
-                        </article>
-                    </div>
-                </section>
             </section>
         `;
     }
@@ -247,24 +153,7 @@
     async function renderPage() {
         await loadDashboard();
         AppShell.updateSidebarAlerts(state.dashboard);
-        const heroPanel = document.getElementById("heroPanel");
-        if (heroPanel) {
-            heroPanel.classList.add("hidden");
-            heroPanel.innerHTML = "";
-        }
         renderDashboard();
-    }
-
-    function attachEvents() {
-        document.getElementById("viewContainer").addEventListener("click", (event) => {
-            const quick = event.target.closest("[data-quick-module]");
-            if (!quick) {
-                return;
-            }
-            AppShell.navigateTo(quick.getAttribute("data-quick-module"), {
-                action: quick.getAttribute("data-quick-mode")
-            });
-        });
     }
 
     async function bootstrap() {
@@ -290,12 +179,6 @@
             },
             async onRefresh() {
                 await renderPage();
-            },
-            async onExport() {
-                await UI.alert({
-                    title: "Use report export",
-                    text: "Dashboard is not exported directly. Use the Reports page for structured exports."
-                });
             }
         });
 
@@ -304,7 +187,6 @@
         }
 
         state.session = shell.session;
-        attachEvents();
         try {
             UI.loading("Loading dashboard", "Preparing operational summary");
             await renderPage();
