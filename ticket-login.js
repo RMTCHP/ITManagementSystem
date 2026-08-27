@@ -4,20 +4,6 @@
     const passwordInput = document.getElementById("ticketLoginPassword");
     const ticketMobileAccessKey = "itms_ticket_mobile_access";
 
-    async function verifyTicketAccess(token) {
-        const result = await ApiClient.request("checkSession", { token });
-        const data = result && result.data;
-        const role = String(data && data.user && data.user.Role || "").trim().toLowerCase();
-        if (!data || !data.valid || role !== "admin") {
-            throw new Error("This workspace is available to IT Admin accounts only.");
-        }
-        return {
-            token: data.token || token,
-            expiresAt: data.expiresAt || "",
-            user: data.user
-        };
-    }
-
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (!form.reportValidity()) {
@@ -40,7 +26,15 @@
                 password: passwordInput.value
             });
             const loginData = result && result.data ? result.data : result;
-            const session = await verifyTicketAccess(loginData && loginData.token);
+            const role = String(loginData && loginData.user && loginData.user.Role || "").trim().toLowerCase();
+            if (!loginData || !loginData.token || !loginData.user || role !== "admin") {
+                throw new Error("This workspace is available to IT Admin accounts only.");
+            }
+            const session = {
+                token: loginData.token,
+                expiresAt: loginData.expiresAt || "",
+                user: loginData.user
+            };
             ApiClient.saveSession(session);
             sessionStorage.setItem(ticketMobileAccessKey, "granted");
             Swal.close();
