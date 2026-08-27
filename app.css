@@ -750,6 +750,19 @@ button {
     font-size: 1.1rem;
 }
 
+@media (min-width: 641px) {
+    .public-ticket-work-group {
+        min-height: 0;
+        height: 100%;
+        align-self: stretch;
+    }
+
+    .public-ticket-work-card {
+        height: 100%;
+        min-height: 0;
+    }
+}
+
 @media (max-width: 640px) {
     .public-ticket-work-card__icon {
         width: 60px;
