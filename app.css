@@ -1001,6 +1001,7 @@ button {
 .public-ticket-remote-session label {
     display: grid;
     gap: 5px;
+    min-width: 0;
     min-height: 76px;
     padding: 12px 14px;
     border: 1px solid #e6defd;
@@ -1010,6 +1011,8 @@ button {
 
 .public-ticket-remote-session input {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 34px;
     padding: 0;
     border: 0;
@@ -1019,6 +1022,21 @@ button {
     font-size: 1.05rem;
     font-weight: 800;
     outline: none;
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+    .public-ticket-remote-session {
+        gap: 10px;
+        padding: 14px;
+    }
+
+    .public-ticket-remote-session label {
+        padding: 10px 11px;
+    }
+
+    .public-ticket-remote-session input {
+        font-size: 0.96rem;
+    }
 }
 
 .public-ticket-remote-session span {
