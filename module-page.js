@@ -14,7 +14,8 @@
             summary: "all",
             assetGroup: "all",
             knowledgeCategory: "all",
-            knowledgeType: ""
+            knowledgeType: "",
+            ticketQueue: "active"
         },
         sort: {
             key: "",
@@ -1416,59 +1417,96 @@
     }
 
     function renderTicketWorkspace() {
-        const filtered = getFilteredRecords();
-        const openTickets = filtered.filter((record) => !["Resolved", "Closed", "Rejected"].includes(String(record.Status || "")));
-        const resolvedTickets = filtered.filter((record) => String(record.Status || "") === "Resolved");
-        const rowsMarkup = filtered.map((record) => {
-            const canResolve = !["Resolved", "Closed", "Rejected"].includes(String(record.Status || ""));
+        const records = getFilteredRecords();
+        const isCompleted = (record) => ["resolved", "closed", "rejected"].includes(String(record.Status || "Open").toLowerCase());
+        const queueCounts = {
+            all: records.length,
+            active: records.filter((record) => !isCompleted(record)).length,
+            open: records.filter((record) => String(record.Status || "Open").toLowerCase() === "open").length,
+            progress: records.filter((record) => ["assigned", "in progress"].includes(String(record.Status || "").toLowerCase())).length,
+            pending: records.filter((record) => String(record.Status || "").toLowerCase() === "pending").length,
+            completed: records.filter(isCompleted).length
+        };
+        const queue = state.filters.ticketQueue || "active";
+        const visibleRecords = records.filter((record) => {
+            const status = String(record.Status || "Open").toLowerCase();
+            if (queue === "all") return true;
+            if (queue === "active") return !isCompleted(record);
+            if (queue === "open") return status === "open";
+            if (queue === "progress") return ["assigned", "in progress"].includes(status);
+            if (queue === "pending") return status === "pending";
+            return isCompleted(record);
+        }).sort((left, right) => String(right.RequestDate || "").localeCompare(String(left.RequestDate || "")));
+
+        const cardsMarkup = visibleRecords.map((record) => {
+            const completed = isCompleted(record);
+            const isEquipment = String(record.RequestedService || "") === "Equipment Requisition";
+            const assigned = String(record.AssignedTo || "").trim();
+            const serviceIcon = isEquipment
+                ? "fa-box-open"
+                : String(record.RequestedService || "") === "Remote Support" ? "fa-desktop" : "fa-person-walking-arrow-right";
+            const primaryAction = completed
+                ? ""
+                : isEquipment
+                    ? `<button class="ticket-queue-card__primary" type="button" data-action="resolve-ticket" data-id="${UI.escapeHtml(record.TicketID)}"><i class="fa-solid fa-box-open"></i><span>Issue equipment</span></button>`
+                    : `<button class="ticket-queue-card__primary" type="button" data-action="resolve-ticket" data-id="${UI.escapeHtml(record.TicketID)}"><i class="fa-solid fa-circle-check"></i><span>Resolve</span></button>`;
             return `
-                <tr>
-                    <td>${UI.escapeHtml(record.TicketID || "-")}</td>
-                    <td><span class="cell-data cell-data--title">${UI.escapeHtml(record.Subject || "-")}</span></td>
-                    <td>${UI.escapeHtml(record.Requester || "-")}</td>
-                    <td>${UI.escapeHtml(record.RequestedService || "-")}</td>
-                    <td>${UI.escapeHtml(record.Location || "-")}</td>
-                    <td>${UI.badge(record.Status || "Open")}</td>
-                    <td>
-                        <div class="table-actions">
-                            ${canResolve ? `<button class="ticket-resolve-btn" data-action="resolve-ticket" data-id="${UI.escapeHtml(record.TicketID)}"><i class="fa-solid fa-circle-check"></i><span>Resolve</span></button>` : UI.badge(record.Status || "-")}
-                            <button class="table-action" data-action="edit" data-id="${UI.escapeHtml(record.TicketID)}" title="Edit ticket"><i class="fa-solid fa-pen"></i></button>
+                <article class="ticket-queue-card ${completed ? "is-completed" : ""}">
+                    <div class="ticket-queue-card__header">
+                        <span class="ticket-queue-card__service"><i class="fa-solid ${serviceIcon}"></i>${UI.escapeHtml(record.RequestedService || "IT Service")}</span>
+                        ${UI.badge(record.Status || "Open")}
+                    </div>
+                    <div class="ticket-queue-card__title-row">
+                        <div><p>${UI.escapeHtml(record.TicketID || "-")}</p><h4>${UI.escapeHtml(record.Subject || "No subject provided")}</h4></div>
+                        ${UI.badge(record.Priority || "Medium", "priority")}
+                    </div>
+                    <div class="ticket-queue-card__meta">
+                        <span><i class="fa-solid fa-user"></i>${UI.escapeHtml(record.Requester || "-")}</span>
+                        <span><i class="fa-solid fa-building"></i>${UI.escapeHtml(record.Department || "-")}</span>
+                        <span><i class="fa-solid fa-location-dot"></i>${UI.escapeHtml(record.Location || "-")}</span>
+                    </div>
+                    <div class="ticket-queue-card__footer">
+                        <span class="ticket-queue-card__assignee"><i class="fa-solid fa-user-gear"></i>${UI.escapeHtml(assigned || "Unassigned")}</span>
+                        <div class="ticket-queue-card__actions">
+                            <button class="table-action" type="button" data-action="ticket-details" data-id="${UI.escapeHtml(record.TicketID)}" title="View ticket details"><i class="fa-regular fa-eye"></i></button>
+                            ${!completed && !assigned ? `<button class="secondary-btn ticket-queue-card__assign" type="button" data-action="assign-ticket" data-id="${UI.escapeHtml(record.TicketID)}"><i class="fa-solid fa-hand"></i><span>Assign to me</span></button>` : ""}
+                            ${primaryAction}
                         </div>
-                    </td>
-                </tr>`;
+                    </div>
+                </article>`;
         }).join("");
+
+        const queueFilters = [
+            ["active", "Active", "fa-inbox"],
+            ["open", "New", "fa-bell"],
+            ["progress", "In progress", "fa-screwdriver-wrench"],
+            ["pending", "Pending", "fa-clock"],
+            ["completed", "Completed", "fa-circle-check"]
+        ].map(([key, label, icon]) => `
+            <button class="ticket-queue-filter ${queue === key ? "is-active" : ""}" type="button" data-ticket-queue="${key}">
+                <i class="fa-solid ${icon}"></i><span>${label}</span><b>${queueCounts[key]}</b>
+            </button>`).join("");
 
         document.getElementById("viewContainer").innerHTML = `
             <section class="ticket-workspace-summary">
                 <div>
                     <p class="section-card__eyebrow">IT SERVICE OPERATIONS</p>
                     <h3>Ticket Workspace</h3>
-                    <p>Review incoming requests, complete support work and capture requester confirmation.</p>
+                    <p>Receive requests, assign work, and record a completed service in one queue.</p>
                 </div>
                 <div class="ticket-workspace-summary__stats">
-                    <span><b>${openTickets.length}</b> Active</span>
-                    <span><b>${resolvedTickets.length}</b> Resolved</span>
-                    <button id="showMyJobsButton" class="primary-btn" type="button"><i class="fa-solid fa-briefcase"></i><span>My Job</span></button>
+                    <span><b>${queueCounts.active}</b> Active</span>
+                    <span><b>${queueCounts.completed}</b> Completed</span>
                 </div>
             </section>
-            ${state.ticketJobsVisible ? `
-                <section class="table-panel ticket-jobs-panel">
-                    <div class="table-panel__header">
-                        <div class="table-panel__header-copy">
-                            <p class="section-card__eyebrow">MY JOB</p>
-                            <h3>All Tickets</h3>
-                            <p class="table-panel__subtext">Resolve completed work with requester signature and optional evidence photo.</p>
-                        </div>
-                        <button id="hideMyJobsButton" class="ghost-btn" type="button">Hide list</button>
-                    </div>
-                    <div class="data-table-wrap">
-                        <table class="data-table">
-                            <thead><tr><th>Ticket ID</th><th>Summary</th><th>Requester</th><th>Requested Service</th><th>Location</th><th>Status</th><th>Action</th></tr></thead>
-                            <tbody>${rowsMarkup || `<tr><td colspan="7">${UI.emptyState("No ticket found", "There are no tickets matching the current search or status filter.")}</td></tr>`}</tbody>
-                        </table>
-                    </div>
-                </section>` : ""}
-        `;
+            <section class="ticket-queue-panel">
+                <div class="ticket-queue-panel__header">
+                    <div><p class="section-card__eyebrow">WORK QUEUE</p><h3>Incoming Tickets</h3></div>
+                    <span>${visibleRecords.length} shown</span>
+                </div>
+                <div class="ticket-queue-filters">${queueFilters}</div>
+                <div class="ticket-queue-grid">${cardsMarkup || `<div class="ticket-queue-empty">${UI.emptyState("No ticket found", "There are no tickets in this queue.")}</div>`}</div>
+            </section>`;
     }
 
     function getLocalDateTimeInputValue(date = new Date()) {
@@ -1476,10 +1514,103 @@
         return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
     }
 
+    async function openTicketDetailsModal(ticketId) {
+        const ticket = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
+        if (!ticket) {
+            await UI.alert({ icon: "error", title: "Ticket not found", text: "Refresh the ticket queue and try again." });
+            return;
+        }
+        const rows = [
+            ["Requester", ticket.Requester],
+            ["Department", ticket.Department],
+            ["Contact", ticket.Contact],
+            ["Location", ticket.Location],
+            ["Service", ticket.RequestedService],
+            ["Category", ticket.Category],
+            ["Assigned to", ticket.AssignedTo || "Unassigned"],
+            ["Requested date", formatDateDisplay(ticket.RequestDate)],
+            ["Work started", formatDateDisplay(ticket.WorkStartedAt)],
+            ["Completed", formatDateDisplay(ticket.WorkCompletedAt)]
+        ].filter(([, value]) => value);
+        await Swal.fire({
+            title: ticket.TicketID || "Ticket details",
+            showCloseButton: true,
+            showConfirmButton: false,
+            html: `<div class="ticket-detail-modal">
+                <div class="ticket-detail-modal__headline"><h3>${UI.escapeHtml(ticket.Subject || "No subject provided")}</h3>${UI.badge(ticket.Status || "Open")}</div>
+                ${ticket.Description ? `<p class="ticket-detail-modal__description">${UI.escapeHtml(ticket.Description)}</p>` : ""}
+                <div class="ticket-detail-modal__grid">${rows.map(([label, value]) => `<div><span>${UI.escapeHtml(label)}</span><strong>${UI.escapeHtml(String(value || "-"))}</strong></div>`).join("")}</div>
+                ${ticket.AttachmentUrl ? `<a class="ticket-detail-modal__attachment" href="${UI.escapeHtml(ticket.AttachmentUrl)}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-paperclip"></i>Open request photo</a>` : ""}
+            </div>`
+        });
+    }
+
+    async function assignTicketToCurrentUser(ticketId) {
+        const ticket = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
+        if (!ticket) {
+            await UI.alert({ icon: "error", title: "Ticket not found", text: "Refresh the ticket queue and try again." });
+            return;
+        }
+        const assignee = getOperatorName();
+        const confirmation = await UI.confirm({
+            title: "Assign this ticket to you?",
+            text: `${ticket.TicketID} will be marked as In Progress under ${assignee}.`,
+            confirmButtonText: "Assign to me"
+        });
+        if (!confirmation.isConfirmed) return;
+
+        UI.loading("Assigning ticket", "Updating work ownership");
+        try {
+            const response = await ApiClient.request("saveRecord", {
+                token: ApiClient.getSessionToken(),
+                module: "tickets",
+                record: {
+                    ...ticket,
+                    AssignedTo: assignee,
+                    Status: "In Progress",
+                    WorkStartedAt: ticket.WorkStartedAt || getLocalDateTimeInputValue()
+                }
+            });
+            upsertStateRecord(response.data.record, "edit");
+            Swal.close();
+            renderTicketWorkspace();
+            await UI.alert({ icon: "success", title: "Ticket assigned", text: `${ticket.TicketID} is now assigned to you.` });
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to assign ticket", text: error.message || "Please try again." });
+        }
+    }
+
     async function openTicketResolveModal(ticketId) {
         const ticket = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
         if (!ticket) {
             await UI.alert({ icon: "error", title: "Ticket not found", text: "Refresh the ticket list and try again." });
+            return;
+        }
+
+        const isEquipmentRequisition = String(ticket.RequestedService || "") === "Equipment Requisition";
+        if (isEquipmentRequisition) {
+            const confirmation = await UI.confirm({
+                title: "Issue requested equipment?",
+                text: `Issue ${ticket.RequestedQuantity || 0} unit(s) for ${ticket.TicketID}. Inventory will be deducted after approval.`,
+                confirmButtonText: "Issue equipment"
+            });
+            if (!confirmation.isConfirmed) return;
+            UI.loading("Issuing equipment", "Reducing inventory and closing ticket");
+            try {
+                const response = await ApiClient.request("resolveTicket", {
+                    token: ApiClient.getSessionToken(),
+                    ticketId,
+                    resolutionNote: "Equipment issued by IT."
+                });
+                upsertStateRecord(response.data.record, "edit");
+                Swal.close();
+                renderTicketWorkspace();
+                await UI.alert({ icon: "success", title: "Equipment issued", text: "Inventory was updated and the ticket is resolved." });
+            } catch (error) {
+                Swal.close();
+                await UI.alert({ icon: "error", title: "Unable to issue equipment", text: error.message || "Please try again." });
+            }
             return;
         }
 
@@ -2102,6 +2233,13 @@
                 return;
             }
 
+            const ticketQueueButton = event.target.closest("[data-ticket-queue]");
+            if (ticketQueueButton) {
+                state.filters.ticketQueue = ticketQueueButton.getAttribute("data-ticket-queue") || "active";
+                renderTicketWorkspace();
+                return;
+            }
+
             const movementTabButton = event.target.closest("[data-movement-tab]");
             if (movementTabButton) {
                 state.movementTab = movementTabButton.getAttribute("data-movement-tab") || "outbound";
@@ -2205,6 +2343,10 @@
                     await openInventoryHistory(id);
                 } else if (action === "preview") {
                     await openKnowledgePreview(id);
+                } else if (action === "ticket-details") {
+                    await openTicketDetailsModal(id);
+                } else if (action === "assign-ticket") {
+                    await assignTicketToCurrentUser(id);
                 } else if (action === "resolve-ticket") {
                     await openTicketResolveModal(id);
                 } else if (action === "edit") {

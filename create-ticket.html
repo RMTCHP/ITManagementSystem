@@ -86,7 +86,12 @@
                     </label>
                     <label class="hidden public-ticket-equipment-item" id="equipmentItemField">
                         <span>Inventory item <em>*</em></span>
-                        <select id="equipmentItemId" name="equipmentItemId" disabled><option value="">Select an inventory item</option></select>
+                        <div class="public-ticket-combobox">
+                            <input id="equipmentItemSearch" type="search" autocomplete="off" disabled placeholder="Search an inventory item">
+                            <input id="equipmentItemId" name="equipmentItemId" type="hidden" disabled>
+                            <div class="public-ticket-combobox__options hidden" id="equipmentItemOptions" role="listbox"></div>
+                        </div>
+                        <small id="equipmentItemHint">Search and select an available item.</small>
                     </label>
                     <label class="hidden" id="equipmentQuantityField">
                         <span>Quantity <em>*</em></span>
@@ -96,22 +101,22 @@
                         <span>แผนก <em>*</em></span>
                         <select id="department" name="department" required>
                             <option value="">เลือกแผนก</option>
+                            <option>PD</option>
+                            <option>PC/Warehouse</option>
+                            <option>PE/Tooling</option>
+                            <option>QA/QC</option>
+                            <option>Design</option>
+                            <option>ซ่อมบำรุง</option>
+                            <option>จัดซื้อ</option>
+                            <option>บุคคล</option>
+                            <option>บัญชี</option>
+                            <option>Safety</option>
                             <option>IT</option>
-                            <option>Production</option>
-                            <option>Quality</option>
-                            <option>Finance</option>
-                            <option>HR</option>
-                            <option>Warehouse</option>
-                            <option>Other</option>
                         </select>
                     </label>
-                    <label class="public-ticket-form__full">
+                    <label>
                         <span>เบอร์ติดต่อหรืออีเมล</span>
                         <input id="contact" name="contact" type="text" maxlength="160" autocomplete="tel" placeholder="เช่น 081-234-5678 หรือ name@company.com">
-                    </label>
-                    <label class="public-ticket-form__full">
-                        <span>สถานที่ / จุดที่พบปัญหา / เครื่องคอมพิวเตอร์ <em>*</em></span>
-                        <input id="location" name="location" type="text" maxlength="240" required placeholder="เช่น ชั้น 2, Line A, โต๊ะ QA-04">
                     </label>
                     <label>
                         <span>ประเภทปัญหา <em>*</em></span>
@@ -128,14 +133,18 @@
                         </select>
                     </label>
                     <label>
+                        <span>สถานที่ / จุดที่พบปัญหา / เครื่องคอมพิวเตอร์ <em>*</em></span>
+                        <input id="location" name="location" type="text" maxlength="240" required placeholder="เช่น ชั้น 2, Line A, โต๊ะ QA-04">
+                    </label>
+                    <label class="public-ticket-form__full">
                         <span>สรุปปัญหา <em>*</em></span>
-                        <input id="subject" name="subject" type="text" maxlength="180" required placeholder="เช่น Printer ชั้น 2 พิมพ์ไม่ได้">
+                        <textarea id="subject" name="subject" rows="2" maxlength="180" required placeholder="เช่น Printer ชั้น 2 พิมพ์ไม่ได้"></textarea>
                     </label>
                 </div>
 
                 <div class="public-ticket-remote-session hidden" id="remoteSessionInfo">
                     <label for="remoteStartedAt"><span>Start time</span><input id="remoteStartedAt" name="remoteStartedAt" type="time"></label>
-                    <div><span>End time</span><strong>Recorded when submitted</strong></div>
+                    <label for="remoteEndedAt"><span>End time</span><input id="remoteEndedAt" name="remoteEndedAt" type="time"></label>
                 </div>
 
                 <div class="public-ticket-request-signature hidden" id="equipmentSignatureSection">
@@ -186,6 +195,6 @@
     <script src="api.js"></script>
     <script src="ui.js"></script>
     <script src="mobile-ticket-auth.js"></script>
-    <script src="create-ticket.js"></script>
+    <script src="create-ticket.js?v=20260827-1"></script>
 </body>
 </html>

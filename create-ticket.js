@@ -10,6 +10,7 @@
     const formCard = document.getElementById("ticketFormCard");
     const requestedServiceInput = document.getElementById("requestedService");
     const remoteStartedAtInput = document.getElementById("remoteStartedAt");
+    const remoteEndedAtInput = document.getElementById("remoteEndedAt");
     const remoteSessionInfo = document.getElementById("remoteSessionInfo");
     const categoryInput = document.getElementById("category");
     const categoryField = categoryInput.closest("label");
@@ -18,6 +19,9 @@
     const subjectField = subjectInput.closest("label");
     const equipmentItemField = document.getElementById("equipmentItemField");
     const equipmentItemInput = document.getElementById("equipmentItemId");
+    const equipmentItemSearch = document.getElementById("equipmentItemSearch");
+    const equipmentItemOptions = document.getElementById("equipmentItemOptions");
+    const equipmentItemHint = document.getElementById("equipmentItemHint");
     const equipmentQuantityField = document.getElementById("equipmentQuantityField");
     const equipmentQuantityInput = document.getElementById("equipmentQuantity");
     const equipmentSignatureSection = document.getElementById("equipmentSignatureSection");
@@ -38,6 +42,7 @@
     let previewUrl = "";
     let currentTicketJobs = [];
     let hasEquipmentSignature = false;
+    let equipmentItems = [];
 
     const serviceLabels = {
         "On-site": "On-site support details",
@@ -81,11 +86,42 @@
         UI.loading("Loading inventory", "Retrieving available equipment");
         try {
             const result = await ApiClient.request("listRecords", { token: session.token, module: "stockItems" });
-            const items = ((result.data && result.data.records) || []).filter((item) => Number(item.Quantity || 0) > 0);
-            equipmentItemInput.innerHTML = '<option value="">Select an inventory item</option>' + items.map((item) => `<option value="${escapeHtml(item.ItemID)}">${escapeHtml(item.ItemName)} - Available ${escapeHtml(item.Quantity)} ${escapeHtml(item.Unit || "")}</option>`).join("");
+            equipmentItems = ((result.data && result.data.records) || [])
+                .filter((item) => Number(item.Quantity || 0) > 0)
+                .sort((left, right) => String(left.ItemName || "").localeCompare(String(right.ItemName || "")));
+            equipmentItemSearch.disabled = false;
+            equipmentItemSearch.value = "";
+            equipmentItemInput.value = "";
+            equipmentItemHint.textContent = equipmentItems.length
+                ? `${equipmentItems.length} available item${equipmentItems.length === 1 ? "" : "s"}. Search by name.`
+                : "No inventory items are currently available.";
+            renderEquipmentOptions();
         } finally {
             Swal.close();
         }
+    }
+
+    function renderEquipmentOptions(query = "") {
+        const searchText = String(query || "").trim().toLowerCase();
+        const matches = equipmentItems.filter((item) => [item.ItemName, item.Category, item.Unit]
+            .join(" ")
+            .toLowerCase()
+            .includes(searchText));
+
+        if (!matches.length) {
+            equipmentItemOptions.innerHTML = '<div class="public-ticket-combobox__empty">No available inventory item found.</div>';
+        } else {
+            equipmentItemOptions.innerHTML = matches.map((item) => `
+                <button class="public-ticket-combobox__option" type="button" role="option" data-item-id="${escapeHtml(item.ItemID)}">
+                    <span>
+                        <strong>${escapeHtml(item.ItemName)}</strong>
+                        <small>${escapeHtml(item.Category || "Inventory item")}</small>
+                    </span>
+                    <b>${escapeHtml(item.Quantity)} ${escapeHtml(item.Unit || "unit")}</b>
+                </button>
+            `).join("");
+        }
+        equipmentItemOptions.classList.remove("hidden");
     }
 
     function setupEquipmentSignature() {
@@ -123,8 +159,8 @@
         equipmentQuantityField.classList.toggle("hidden", !isEquipment);
         equipmentSignatureSection.classList.toggle("hidden", !isEquipment);
         equipmentItemInput.disabled = !isEquipment;
+        equipmentItemSearch.disabled = !isEquipment;
         equipmentQuantityInput.disabled = !isEquipment;
-        equipmentItemInput.required = isEquipment;
         equipmentQuantityInput.required = isEquipment;
         if (isEquipment) {
             formGrid.append(equipmentItemField, equipmentQuantityField);
@@ -142,8 +178,10 @@
             clearSelectedPhoto();
             const startedAt = getLocalTimeValue();
             remoteStartedAtInput.value = startedAt;
+            remoteEndedAtInput.value = startedAt;
         } else {
             remoteStartedAtInput.value = "";
+            remoteEndedAtInput.value = "";
         }
         serviceChoice.classList.add("hidden");
         formCard.classList.remove("hidden");
@@ -458,6 +496,35 @@
         button.addEventListener("click", () => selectService(button.dataset.requestedService));
     });
 
+    equipmentItemSearch.addEventListener("focus", () => {
+        if (!equipmentItemSearch.disabled) {
+            renderEquipmentOptions(equipmentItemSearch.value);
+        }
+    });
+
+    equipmentItemSearch.addEventListener("input", () => {
+        equipmentItemInput.value = "";
+        equipmentItemHint.textContent = "Select an item from the results below.";
+        renderEquipmentOptions(equipmentItemSearch.value);
+    });
+
+    equipmentItemOptions.addEventListener("click", (event) => {
+        const option = event.target.closest("[data-item-id]");
+        if (!option) return;
+        const item = equipmentItems.find((record) => String(record.ItemID) === option.dataset.itemId);
+        if (!item) return;
+        equipmentItemInput.value = item.ItemID;
+        equipmentItemSearch.value = item.ItemName;
+        equipmentItemHint.textContent = `Available: ${item.Quantity} ${item.Unit || "unit"}`;
+        equipmentItemOptions.classList.add("hidden");
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest(".public-ticket-combobox")) {
+            equipmentItemOptions.classList.add("hidden");
+        }
+    });
+
     backToServiceButton.addEventListener("click", () => {
         requestedServiceInput.value = "";
         categoryField.classList.remove("hidden");
@@ -468,10 +535,13 @@
         equipmentQuantityField.classList.add("hidden");
         equipmentSignatureSection.classList.add("hidden");
         equipmentItemInput.disabled = true;
+        equipmentItemSearch.disabled = true;
         equipmentQuantityInput.disabled = true;
-        equipmentItemInput.required = false;
         equipmentQuantityInput.required = false;
         equipmentItemInput.value = "";
+        equipmentItemSearch.value = "";
+        equipmentItemOptions.classList.add("hidden");
+        equipmentItemHint.textContent = "Search and select an available item.";
         equipmentQuantityInput.value = "";
         subjectField.classList.remove("hidden");
         subjectInput.required = true;
@@ -480,6 +550,7 @@
         photoSection.classList.remove("hidden");
         remoteSessionInfo.classList.add("hidden");
         remoteStartedAtInput.value = "";
+        remoteEndedAtInput.value = "";
         formCard.classList.add("hidden");
         serviceChoice.classList.remove("hidden");
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -532,6 +603,25 @@
             return;
         }
 
+        const isEquipment = requestedServiceInput.value === "Equipment Requisition";
+        const isRemoteSupport = requestedServiceInput.value === "Remote Support";
+        if (isEquipment && (!equipmentItemInput.value || Number(equipmentQuantityInput.value) < 1)) {
+            await UI.alert({ icon: "warning", title: "Inventory item required", text: "Select an inventory item and enter the requested quantity." });
+            return;
+        }
+        if (isEquipment && !hasEquipmentSignature) {
+            await UI.alert({ icon: "warning", title: "Signature required", text: "Requester signature is required for an equipment requisition." });
+            return;
+        }
+        if (isRemoteSupport && (!remoteStartedAtInput.value || !remoteEndedAtInput.value)) {
+            await UI.alert({ icon: "warning", title: "Time required", text: "Select both start time and end time for Remote Support." });
+            return;
+        }
+        if (isRemoteSupport && remoteEndedAtInput.value < remoteStartedAtInput.value) {
+            await UI.alert({ icon: "warning", title: "Invalid end time", text: "End time must be the same as or after start time." });
+            return;
+        }
+
         const confirmation = await UI.confirm({
             title: "Submit this ticket?",
             text: "IT will receive your issue and contact you using the details provided.",
@@ -542,11 +632,6 @@
         }
 
         const values = new FormData(form);
-        const isEquipment = values.get("requestedService") === "Equipment Requisition";
-        if (isEquipment && !hasEquipmentSignature) {
-            await UI.alert({ icon: "warning", title: "Signature required", text: "Requester signature is required for an equipment requisition." });
-            return;
-        }
         const payload = {
             requester: values.get("requester"),
             department: values.get("department"),
@@ -554,10 +639,11 @@
             location: values.get("location"),
             category: values.get("category"),
             subject: isEquipment
-                ? `Equipment requisition: ${equipmentItemInput.options[equipmentItemInput.selectedIndex].text}`
+                ? `Equipment requisition: ${equipmentItemSearch.value}`
                 : values.get("subject"),
             requestedService: values.get("requestedService"),
             remoteStartedAt: values.get("remoteStartedAt"),
+            remoteEndedAt: values.get("remoteEndedAt"),
             inventoryItemId: values.get("equipmentItemId"),
             requestedQuantity: values.get("equipmentQuantity"),
             website: values.get("website"),
