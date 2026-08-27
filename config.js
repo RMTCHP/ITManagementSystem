@@ -1,7 +1,7 @@
 window.APP_CONFIG = {
     appName: "IT Asset Management & Request Job System",
     projectProfile: "Enterprise Clean",
-    webAppUrl: "https://script.google.com/macros/s/AKfycbx4_NK46oxDtZm42sht_rBaG7UpFESwp9nRjTZ74jdt04sYPMGVEPGdVmtaP3Hy9w/exec",
+    webAppUrl: "https://script.google.com/macros/s/AKfycbxXHII3d30tJWoNKUyUp9dywkkJBqqTazNCRzoj622bIrTlb4zVplc4bMw2dg8R_pA/exec",
     sessionStorageKey: "itms_session",
     sessionHours: 12,
     pageRoutes: {
@@ -106,7 +106,7 @@ window.APP_CONFIG = {
         },
         tickets: {
             key: "tickets",
-            label: "IT Service Desk",
+            label: "Ticket Workspace",
             icon: "fa-screwdriver-wrench",
             idField: "TicketID",
             statusField: "Status",

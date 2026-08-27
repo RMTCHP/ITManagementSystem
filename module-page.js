@@ -15,7 +15,10 @@
             assetGroup: "all",
             knowledgeCategory: "all",
             knowledgeType: "",
-            ticketQueue: "active"
+            ticketStartDate: "",
+            ticketEndDate: "",
+            ticketService: "",
+            ticketStatus: ""
         },
         sort: {
             key: "",
@@ -172,6 +175,18 @@
             return "-";
         }
 
+        // Date cells from Google Sheets can arrive as UTC ISO strings. Convert before extracting the date.
+        if (/^\d{4}-\d{2}-\d{2}T.*Z$/i.test(raw)) {
+            const utcDate = new Date(raw);
+            if (!Number.isNaN(utcDate.getTime())) {
+                return [
+                    String(utcDate.getDate()).padStart(2, "0"),
+                    String(utcDate.getMonth() + 1).padStart(2, "0"),
+                    String(utcDate.getFullYear())
+                ].join("-");
+            }
+        }
+
         const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
         if (isoMatch) {
             return `${isoMatch[3]}-${isoMatch[2]}-${isoMatch[1]}`;
@@ -184,6 +199,50 @@
                 String(parsed.getMonth() + 1).padStart(2, "0"),
                 String(parsed.getFullYear())
             ].join("-");
+        }
+
+        return raw;
+    }
+
+    function getDateFilterKey(value) {
+        const displayDate = formatDateDisplay(value);
+        const match = String(displayDate).match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        return match ? `${match[3]}-${match[2]}-${match[1]}` : "";
+    }
+
+    function formatTimeDisplay(value) {
+        if (value == null || value === "") {
+            return "-";
+        }
+
+        const raw = String(value).trim();
+        const directTime = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+        if (directTime) {
+            return `${String(directTime[1]).padStart(2, "0")}:${directTime[2]}`;
+        }
+
+        // Google Sheets can return time-only cells as an Excel serial fraction (for example, 0.5 = 12:00).
+        if (/^0(?:\.\d+)?$/.test(raw)) {
+            const totalMinutes = Math.round(Number(raw) * 24 * 60) % (24 * 60);
+            return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
+        }
+
+        // Older records may be returned as UTC ISO strings. Convert them to the browser's local time.
+        if (/T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)) {
+            const utcDate = new Date(raw);
+            if (!Number.isNaN(utcDate.getTime())) {
+                return `${String(utcDate.getHours()).padStart(2, "0")}:${String(utcDate.getMinutes()).padStart(2, "0")}`;
+            }
+        }
+
+        const timeInsideDate = raw.match(/[T\s](\d{2}):(\d{2})(?::\d{2})?/);
+        if (timeInsideDate) {
+            return `${timeInsideDate[1]}:${timeInsideDate[2]}`;
+        }
+
+        const parsed = new Date(raw);
+        if (!Number.isNaN(parsed.getTime())) {
+            return `${String(parsed.getHours()).padStart(2, "0")}:${String(parsed.getMinutes()).padStart(2, "0")}`;
         }
 
         return raw;
@@ -915,6 +974,12 @@
             heroPanel.style.display = "none";
             return;
         }
+        if (isTicketModule()) {
+            // Ticket status totals are shown by the queue filters below; the generic module hero is redundant.
+            heroPanel.innerHTML = "";
+            heroPanel.style.display = "none";
+            return;
+        }
         if (isAssetModule() && state.heroView === "groups") {
             const assetSummary = getAssetSummaryStats();
             heroPanel.innerHTML = `
@@ -1419,26 +1484,34 @@
     function renderTicketWorkspace() {
         const records = getFilteredRecords();
         const isCompleted = (record) => ["resolved", "closed", "rejected"].includes(String(record.Status || "Open").toLowerCase());
-        const queueCounts = {
-            all: records.length,
-            active: records.filter((record) => !isCompleted(record)).length,
-            open: records.filter((record) => String(record.Status || "Open").toLowerCase() === "open").length,
-            progress: records.filter((record) => ["assigned", "in progress"].includes(String(record.Status || "").toLowerCase())).length,
-            pending: records.filter((record) => String(record.Status || "").toLowerCase() === "pending").length,
-            completed: records.filter(isCompleted).length
+        const getTicketSequence = (ticketId) => {
+            const match = String(ticketId || "").match(/(\d+)(?!.*\d)/);
+            return match ? Number(match[1]) : -1;
         };
-        const queue = state.filters.ticketQueue || "active";
+        const ticketServices = [...new Set(state.records.map((record) => String(record.RequestedService || "").trim()).filter(Boolean))].sort();
+        const ticketStatuses = [...new Set(state.records.map((record) => String(record.Status || "").trim()).filter(Boolean))].sort();
         const visibleRecords = records.filter((record) => {
-            const status = String(record.Status || "Open").toLowerCase();
-            if (queue === "all") return true;
-            if (queue === "active") return !isCompleted(record);
-            if (queue === "open") return status === "open";
-            if (queue === "progress") return ["assigned", "in progress"].includes(status);
-            if (queue === "pending") return status === "pending";
-            return isCompleted(record);
-        }).sort((left, right) => String(right.RequestDate || "").localeCompare(String(left.RequestDate || "")));
+            const requestDate = getDateFilterKey(record.RequestDate);
+            if (state.filters.ticketStartDate && requestDate < state.filters.ticketStartDate) return false;
+            if (state.filters.ticketEndDate && requestDate > state.filters.ticketEndDate) return false;
+            if (state.filters.ticketService && String(record.RequestedService || "") !== state.filters.ticketService) return false;
+            if (state.filters.ticketStatus && String(record.Status || "") !== state.filters.ticketStatus) return false;
+            return true;
+        }).sort((left, right) => {
+            // Ticket IDs are generated sequentially; newest work should always appear first.
+            const sequenceDifference = getTicketSequence(right.TicketID) - getTicketSequence(left.TicketID);
+            if (sequenceDifference) return sequenceDifference;
+            return String(right.RequestDate || "").localeCompare(String(left.RequestDate || ""));
+        });
+        const queueCounts = {
+            all: visibleRecords.length,
+            open: visibleRecords.filter((record) => String(record.Status || "Open").toLowerCase() === "open").length,
+            progress: visibleRecords.filter((record) => ["assigned", "in progress"].includes(String(record.Status || "").toLowerCase())).length,
+            pending: visibleRecords.filter((record) => String(record.Status || "").toLowerCase() === "pending").length,
+            completed: visibleRecords.filter(isCompleted).length
+        };
 
-        const cardsMarkup = visibleRecords.map((record) => {
+        const rowsMarkup = visibleRecords.map((record) => {
             const completed = isCompleted(record);
             const isEquipment = String(record.RequestedService || "") === "Equipment Requisition";
             const assigned = String(record.AssignedTo || "").trim();
@@ -1451,61 +1524,53 @@
                     ? `<button class="ticket-queue-card__primary" type="button" data-action="resolve-ticket" data-id="${UI.escapeHtml(record.TicketID)}"><i class="fa-solid fa-box-open"></i><span>Issue equipment</span></button>`
                     : `<button class="ticket-queue-card__primary" type="button" data-action="resolve-ticket" data-id="${UI.escapeHtml(record.TicketID)}"><i class="fa-solid fa-circle-check"></i><span>Resolve</span></button>`;
             return `
-                <article class="ticket-queue-card ${completed ? "is-completed" : ""}">
-                    <div class="ticket-queue-card__header">
-                        <span class="ticket-queue-card__service"><i class="fa-solid ${serviceIcon}"></i>${UI.escapeHtml(record.RequestedService || "IT Service")}</span>
-                        ${UI.badge(record.Status || "Open")}
-                    </div>
-                    <div class="ticket-queue-card__title-row">
-                        <div><p>${UI.escapeHtml(record.TicketID || "-")}</p><h4>${UI.escapeHtml(record.Subject || "No subject provided")}</h4></div>
-                        ${UI.badge(record.Priority || "Medium", "priority")}
-                    </div>
-                    <div class="ticket-queue-card__meta">
-                        <span><i class="fa-solid fa-user"></i>${UI.escapeHtml(record.Requester || "-")}</span>
-                        <span><i class="fa-solid fa-building"></i>${UI.escapeHtml(record.Department || "-")}</span>
-                        <span><i class="fa-solid fa-location-dot"></i>${UI.escapeHtml(record.Location || "-")}</span>
-                    </div>
-                    <div class="ticket-queue-card__footer">
-                        <span class="ticket-queue-card__assignee"><i class="fa-solid fa-user-gear"></i>${UI.escapeHtml(assigned || "Unassigned")}</span>
-                        <div class="ticket-queue-card__actions">
-                            <button class="table-action" type="button" data-action="ticket-details" data-id="${UI.escapeHtml(record.TicketID)}" title="View ticket details"><i class="fa-regular fa-eye"></i></button>
-                            ${!completed && !assigned ? `<button class="secondary-btn ticket-queue-card__assign" type="button" data-action="assign-ticket" data-id="${UI.escapeHtml(record.TicketID)}"><i class="fa-solid fa-hand"></i><span>Assign to me</span></button>` : ""}
-                            ${primaryAction}
-                        </div>
-                    </div>
-                </article>`;
+                <tr>
+                    <td><span class="cell-data cell-data--id">${UI.escapeHtml(record.TicketID || "-")}</span></td>
+                    <td><span class="ticket-table__service"><i class="fa-solid ${serviceIcon}"></i>${UI.escapeHtml(record.RequestedService || "IT Service")}</span></td>
+                    <td><span class="cell-data cell-data--date">${UI.escapeHtml(formatDateDisplay(record.RequestDate))}</span></td>
+                    <td><span class="cell-data cell-data--nowrap">${UI.escapeHtml(formatTimeDisplay(record.WorkStartedAt))}</span></td>
+                    <td><span class="cell-data cell-data--nowrap">${UI.escapeHtml(formatTimeDisplay(record.WorkCompletedAt))}</span></td>
+                    <td><span class="cell-data cell-data--title">${UI.escapeHtml(record.Subject || "No subject provided")}</span></td>
+                    <td><span class="cell-data">${UI.escapeHtml(record.Requester || "-")}</span><small class="ticket-table__department">${UI.escapeHtml(record.Department || "-")}</small></td>
+                    <td><span class="cell-data cell-data--wrap">${UI.escapeHtml(record.Location || "-")}</span></td>
+                    <td><span class="cell-data">${UI.escapeHtml(assigned || "-")}</span></td>
+                    <td><div class="ticket-table__status">${UI.badge(record.Status || "Open")}</div></td>
+                    <td><div class="table-actions ticket-table__actions">
+                        <button class="table-action" type="button" data-action="ticket-details" data-id="${UI.escapeHtml(record.TicketID)}" title="View ticket details"><i class="fa-regular fa-eye"></i></button>
+                        ${!completed && !assigned ? `<button class="secondary-btn ticket-table__assign" type="button" data-action="assign-ticket" data-id="${UI.escapeHtml(record.TicketID)}" title="Assign to me"><i class="fa-solid fa-hand"></i></button>` : ""}
+                        ${primaryAction}
+                    </div></td>
+                </tr>`;
         }).join("");
 
-        const queueFilters = [
-            ["active", "Active", "fa-inbox"],
-            ["open", "New", "fa-bell"],
-            ["progress", "In progress", "fa-screwdriver-wrench"],
-            ["pending", "Pending", "fa-clock"],
-            ["completed", "Completed", "fa-circle-check"]
-        ].map(([key, label, icon]) => `
-            <button class="ticket-queue-filter ${queue === key ? "is-active" : ""}" type="button" data-ticket-queue="${key}">
-                <i class="fa-solid ${icon}"></i><span>${label}</span><b>${queueCounts[key]}</b>
-            </button>`).join("");
-
         document.getElementById("viewContainer").innerHTML = `
-            <section class="ticket-workspace-summary">
-                <div>
-                    <p class="section-card__eyebrow">IT SERVICE OPERATIONS</p>
-                    <h3>Ticket Workspace</h3>
-                    <p>Receive requests, assign work, and record a completed service in one queue.</p>
-                </div>
-                <div class="ticket-workspace-summary__stats">
-                    <span><b>${queueCounts.active}</b> Active</span>
-                    <span><b>${queueCounts.completed}</b> Completed</span>
+            <section class="ticket-workspace-summary ticket-workspace-summary--metrics-only" aria-label="Ticket summary">
+                <div class="ticket-workspace-summary__metrics">
+                    <span><small>Total</small><b>${queueCounts.all}</b></span>
+                    <span><small>New</small><b>${queueCounts.open}</b></span>
+                    <span><small>In Progress</small><b>${queueCounts.progress}</b></span>
+                    <span><small>Pending</small><b>${queueCounts.pending}</b></span>
+                    <span><small>Completed</small><b>${queueCounts.completed}</b></span>
                 </div>
             </section>
             <section class="ticket-queue-panel">
                 <div class="ticket-queue-panel__header">
-                    <div><p class="section-card__eyebrow">WORK QUEUE</p><h3>Incoming Tickets</h3></div>
+                    <div><p class="section-card__eyebrow">WORK QUEUE</p></div>
                     <span>${visibleRecords.length} shown</span>
                 </div>
-                <div class="ticket-queue-filters">${queueFilters}</div>
-                <div class="ticket-queue-grid">${cardsMarkup || `<div class="ticket-queue-empty">${UI.emptyState("No ticket found", "There are no tickets in this queue.")}</div>`}</div>
+                <div class="ticket-date-filter">
+                    <label><span>Start date</span><input id="ticketStartDateFilter" type="date" value="${UI.escapeHtml(state.filters.ticketStartDate)}"></label>
+                    <label><span>End date</span><input id="ticketEndDateFilter" type="date" value="${UI.escapeHtml(state.filters.ticketEndDate)}"></label>
+                    <label><span>Service</span><select id="ticketServiceFilter"><option value="">All services</option>${ticketServices.map((service) => `<option value="${UI.escapeHtml(service)}" ${state.filters.ticketService === service ? "selected" : ""}>${UI.escapeHtml(service)}</option>`).join("")}</select></label>
+                    <label><span>Status</span><select id="ticketStatusFilter"><option value="">All statuses</option>${ticketStatuses.map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.ticketStatus === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}</select></label>
+                    <button class="ghost-btn ticket-date-filter__clear" type="button" data-action="clear-ticket-dates" title="Clear date range"><i class="fa-solid fa-rotate-left"></i><span>Clear</span></button>
+                </div>
+                <div class="data-table-wrap ticket-queue-table-wrap">
+                    <table class="data-table ticket-queue-table">
+                        <thead><tr><th>Ticket ID</th><th>Service</th><th>Date</th><th>Start Time</th><th>End Time</th><th>Summary</th><th>Requester</th><th>Location</th><th>Performed By</th><th>Status</th><th>Action</th></tr></thead>
+                        <tbody>${rowsMarkup || `<tr><td colspan="11">${UI.emptyState("No ticket found", "There are no tickets in this queue.")}</td></tr>`}</tbody>
+                    </table>
+                </div>
             </section>`;
     }
 
@@ -2233,9 +2298,11 @@
                 return;
             }
 
-            const ticketQueueButton = event.target.closest("[data-ticket-queue]");
-            if (ticketQueueButton) {
-                state.filters.ticketQueue = ticketQueueButton.getAttribute("data-ticket-queue") || "active";
+            if (event.target.closest('[data-action="clear-ticket-dates"]')) {
+                state.filters.ticketStartDate = "";
+                state.filters.ticketEndDate = "";
+                state.filters.ticketService = "";
+                state.filters.ticketStatus = "";
                 renderTicketWorkspace();
                 return;
             }
@@ -2370,7 +2437,20 @@
             }
         });
 
-        document.getElementById("viewContainer").addEventListener("change", (event) => {
+        document.getElementById("viewContainer").addEventListener("change", async (event) => {
+            if (["ticketStartDateFilter", "ticketEndDateFilter", "ticketServiceFilter", "ticketStatusFilter"].includes(event.target.id)) {
+                state.filters.ticketStartDate = document.getElementById("ticketStartDateFilter").value;
+                state.filters.ticketEndDate = document.getElementById("ticketEndDateFilter").value;
+                state.filters.ticketService = document.getElementById("ticketServiceFilter").value;
+                state.filters.ticketStatus = document.getElementById("ticketStatusFilter").value;
+                if (state.filters.ticketStartDate && state.filters.ticketEndDate && state.filters.ticketEndDate < state.filters.ticketStartDate) {
+                    await UI.alert({ icon: "warning", title: "Invalid date range", text: "End date must be the same as or after start date." });
+                    state.filters.ticketEndDate = "";
+                }
+                renderTicketWorkspace();
+                return;
+            }
+
             const movementPanel = event.target.closest("[data-movement-panel]");
             const movementTab = movementPanel
                 ? (movementPanel.getAttribute("data-movement-panel") || "outbound")
