@@ -1481,16 +1481,12 @@
             </section>`;
     }
 
-    function renderTicketWorkspace() {
-        const records = getFilteredRecords();
-        const isCompleted = (record) => ["resolved", "closed", "rejected"].includes(String(record.Status || "Open").toLowerCase());
+    function getVisibleTicketRecords() {
         const getTicketSequence = (ticketId) => {
             const match = String(ticketId || "").match(/(\d+)(?!.*\d)/);
             return match ? Number(match[1]) : -1;
         };
-        const ticketServices = [...new Set(state.records.map((record) => String(record.RequestedService || "").trim()).filter(Boolean))].sort();
-        const ticketStatuses = [...new Set(state.records.map((record) => String(record.Status || "").trim()).filter(Boolean))].sort();
-        const visibleRecords = records.filter((record) => {
+        return getFilteredRecords().filter((record) => {
             const requestDate = getDateFilterKey(record.RequestDate);
             if (state.filters.ticketStartDate && requestDate < state.filters.ticketStartDate) return false;
             if (state.filters.ticketEndDate && requestDate > state.filters.ticketEndDate) return false;
@@ -1503,6 +1499,13 @@
             if (sequenceDifference) return sequenceDifference;
             return String(right.RequestDate || "").localeCompare(String(left.RequestDate || ""));
         });
+    }
+
+    function renderTicketWorkspace() {
+        const isCompleted = (record) => ["resolved", "closed", "rejected"].includes(String(record.Status || "Open").toLowerCase());
+        const ticketServices = [...new Set(state.records.map((record) => String(record.RequestedService || "").trim()).filter(Boolean))].sort();
+        const ticketStatuses = [...new Set(state.records.map((record) => String(record.Status || "").trim()).filter(Boolean))].sort();
+        const visibleRecords = getVisibleTicketRecords();
         const queueCounts = {
             all: visibleRecords.length,
             open: visibleRecords.filter((record) => String(record.Status || "Open").toLowerCase() === "open").length,
@@ -1956,10 +1959,24 @@
 
         UI.loading("Exporting data", `Preparing ${moduleConfig.label} ${format.toUpperCase()} file`);
         const fileName = `${moduleConfig.key}_${UI.buildTimestampForFileName()}`;
+        const rows = isTicketModule()
+            ? getVisibleTicketRecords().map((record) => ({
+                "Ticket ID": record.TicketID || "-",
+                Service: record.RequestedService || "IT Service",
+                Date: formatDateDisplay(record.RequestDate),
+                "Start Time": formatTimeDisplay(record.WorkStartedAt),
+                "End Time": formatTimeDisplay(record.WorkCompletedAt),
+                Summary: record.Subject || "-",
+                Requester: record.Requester || "-",
+                Location: record.Location || "-",
+                "Performed By": record.AssignedTo || "-",
+                Status: record.Status || "Open"
+            }))
+            : state.records;
         if (format === "csv") {
-            await UI.exportToCsv(fileName, state.records);
+            await UI.exportToCsv(fileName, rows);
         } else {
-            await UI.exportToExcel(fileName, state.records);
+            await UI.exportToExcel(fileName, rows);
         }
         Swal.close();
     }
@@ -2570,7 +2587,7 @@
                 state.page = 1;
                 renderTable();
             },
-            async onImport() {
+            onImport: isTicketModule() ? null : async () => {
                 if (!AppShell.canDo(moduleConfig, "create", state.session)) {
                     throw new Error("You do not have permission to import files in this module");
                 }

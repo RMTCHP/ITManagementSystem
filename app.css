@@ -1392,6 +1392,25 @@ button {
     width: 100%;
 }
 
+.ticket-workspace-summary--metrics-only .ticket-workspace-summary__metrics span {
+    min-height: 72px;
+    align-content: center;
+    padding: 12px 14px;
+}
+
+.ticket-workspace-summary--metrics-only .ticket-workspace-summary__metrics small {
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+}
+
+.ticket-workspace-summary--metrics-only .ticket-workspace-summary__metrics b {
+    margin-top: 4px;
+    color: #10263f;
+    font-size: 1.72rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+}
+
 .ticket-workspace-summary__metrics span {
     display: grid;
     gap: 3px;
