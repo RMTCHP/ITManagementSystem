@@ -91,6 +91,8 @@
             createKnowledgeCategory: 30000,
             saveKnowledgeDocument: 90000,
             createPublicTicket: 60000,
+            createUserRequest: 60000,
+            listPublicInventoryItems: 30000,
             listPublicTicketJobs: 30000,
             getPublicTicketJobSummary: 30000,
             resolveTicket: 60000,

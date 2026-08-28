@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Request | IT Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="app.css?v=20260827-1">
+    <link rel="stylesheet" href="user-request.css?v=20260828-1">
+</head>
+<body class="public-ticket-body user-request-body">
+    <main class="public-ticket-shell user-request-shell">
+        <section class="public-ticket-hero user-request-hero">
+            <div class="public-ticket-brand" aria-label="IT Management">
+                <span>IT</span>
+                <strong>IT Management</strong>
+            </div>
+            <div class="public-ticket-hero__copy">
+                <p>USER REQUEST</p>
+                <h1>IT Service Request</h1>
+                <span>Request on-site support or equipment from IT.</span>
+            </div>
+        </section>
+
+        <section class="public-ticket-choice public-ticket-choice--user" id="userRequestChoice" aria-label="Select request type">
+            <div class="public-ticket-choice__grid">
+                <button class="public-ticket-choice__card public-ticket-choice__card--onsite" type="button" data-requested-service="On-site">
+                    <span class="public-ticket-choice__icon"><i class="fa-solid fa-person-walking-arrow-right"></i></span>
+                    <strong>On-site Support</strong>
+                    <small>Request IT support at your location</small>
+                    <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
+                </button>
+                <button class="public-ticket-choice__card public-ticket-choice__card--equipment" type="button" data-requested-service="Equipment Requisition">
+                    <span class="public-ticket-choice__icon"><i class="fa-solid fa-box-open"></i></span>
+                    <strong>Equipment Requisition</strong>
+                    <small>Request an available item from Inventory</small>
+                    <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
+                </button>
+            </div>
+        </section>
+
+        <section class="public-ticket-card hidden" id="userRequestFormCard" aria-labelledby="userRequestFormTitle">
+            <div class="public-ticket-card__header">
+                <div class="public-ticket-card__icon"><i class="fa-solid fa-clipboard-list"></i></div>
+                <div>
+                    <p>NEW USER REQUEST</p>
+                    <h2 id="userRequestFormTitle">Request details</h2>
+                </div>
+                <button class="public-ticket-back" id="backToRequestTypeButton" type="button" title="Back to request types"><i class="fa-solid fa-arrow-left"></i><span>Back</span></button>
+            </div>
+
+            <form id="userRequestForm" class="public-ticket-form" novalidate>
+                <input id="requestedService" name="requestedService" type="hidden">
+                <div class="public-ticket-form__grid" id="userRequestFormGrid">
+                    <label>
+                        <span id="requesterLabel">Requester name <em>*</em></span>
+                        <input id="requester" name="requester" type="text" maxlength="120" autocomplete="name" required placeholder="Enter your name">
+                    </label>
+                    <label>
+                        <span>Department <em>*</em></span>
+                        <select id="department" name="department" required>
+                            <option value="">Select department</option>
+                            <option>PD</option>
+                            <option>PC/Warehouse</option>
+                            <option>PE/Tooling</option>
+                            <option>QA/QC</option>
+                            <option>Design</option>
+                            <option>Maintenance</option>
+                            <option>Purchasing</option>
+                            <option>HR</option>
+                            <option>Accounting</option>
+                            <option>Safety</option>
+                            <option>IT</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Contact phone or email</span>
+                        <input id="contact" name="contact" type="text" maxlength="160" autocomplete="tel" placeholder="Phone number or email">
+                    </label>
+                    <label class="hidden public-ticket-equipment-item" id="equipmentItemField">
+                        <span>Inventory item <em>*</em></span>
+                        <div class="public-ticket-combobox">
+                            <input id="equipmentItemSearch" type="search" autocomplete="off" disabled placeholder="Search an inventory item">
+                            <input id="equipmentItemId" name="equipmentItemId" type="hidden" disabled>
+                            <div class="public-ticket-combobox__options hidden" id="equipmentItemOptions" role="listbox"></div>
+                        </div>
+                        <small id="equipmentItemHint">Search and select an available item.</small>
+                    </label>
+                    <label class="hidden" id="equipmentQuantityField">
+                        <span>Quantity <em>*</em></span>
+                        <input id="equipmentQuantity" name="equipmentQuantity" type="number" min="1" step="1" inputmode="numeric" disabled placeholder="0">
+                    </label>
+                    <label id="categoryField">
+                        <span>Issue category <em>*</em></span>
+                        <select id="category" name="category" required>
+                            <option value="">Select issue category</option>
+                            <option>Hardware</option>
+                            <option>Software</option>
+                            <option>Printer</option>
+                            <option>Network / Internet</option>
+                            <option>Email / Microsoft 365</option>
+                            <option>ERP / D365</option>
+                            <option>Account / Access</option>
+                            <option>Other</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Location / device <em>*</em></span>
+                        <input id="location" name="location" type="text" maxlength="240" required placeholder="Example: Floor 2, QA-04, Line A">
+                    </label>
+                    <label class="public-ticket-form__full" id="subjectField">
+                        <span>Request summary <em>*</em></span>
+                        <textarea id="subject" name="subject" rows="2" maxlength="180" required placeholder="Briefly describe the issue or request"></textarea>
+                    </label>
+                </div>
+
+                <div class="public-ticket-request-signature hidden" id="equipmentSignatureSection">
+                    <div><span>Requester signature</span><em>*</em><button id="clearEquipmentSignature" type="button">Clear</button></div>
+                    <small>Sign to confirm this equipment request.</small>
+                    <canvas id="equipmentSignatureCanvas" aria-label="Requester signature"></canvas>
+                </div>
+
+                <div id="ticketPhotoSection">
+                    <label class="public-ticket-photo" for="ticketPhoto">
+                        <input id="ticketPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+                        <span class="public-ticket-photo__icon"><i class="fa-solid fa-camera"></i></span>
+                        <span class="public-ticket-photo__copy"><strong>Take or attach a photo</strong><small>Optional. JPG, PNG or WEBP up to 5 MB</small></span>
+                        <span class="public-ticket-photo__action">Choose photo</span>
+                    </label>
+                    <div class="public-ticket-preview hidden" id="photoPreview">
+                        <img id="photoPreviewImage" alt="Selected request photo preview">
+                        <button id="removePhotoButton" type="button" title="Remove photo" aria-label="Remove photo"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+
+                <input class="public-ticket-honeypot" id="website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+                <div class="public-ticket-form__footer">
+                    <p><i class="fa-solid fa-circle-info"></i> Your request will be sent to IT with status Open.</p>
+                    <button class="public-ticket-submit" type="submit"><i class="fa-solid fa-paper-plane"></i><span>Submit Request</span></button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="ui.js"></script>
+    <script src="user-request.js?v=20260828-1"></script>
+</body>
+</html>
