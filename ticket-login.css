@@ -694,3 +694,44 @@ body.ticket-login-body {
         box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.7), 0 16px 34px rgba(28, 65, 100, 0.1);
     }
 }
+
+/* Secondary entry point for general users without affecting IT authentication. */
+.ticket-login-card .ticket-login-card__qr-button {
+    margin-top: 12px;
+    border: 1px solid #bfd8ee;
+    background: #f7fbff;
+    box-shadow: none;
+    color: #176eb5;
+}
+
+.ticket-login-card .ticket-login-card__qr-button:hover {
+    background: #edf7ff;
+    box-shadow: none;
+}
+
+.ticket-login-qr-modal {
+    max-width: min(92vw, 430px);
+}
+
+.ticket-login-qr-modal .swal2-html-container {
+    margin: 14px 0 0;
+}
+
+.ticket-login-qr-image {
+    display: block;
+    width: min(100%, 320px);
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid #d7e5f0;
+    border-radius: 14px;
+    background: #fff;
+}
+
+@media (max-width: 767px) {
+    .ticket-login-card .ticket-login-card__qr-button {
+        min-height: 52px;
+        margin-top: 12px;
+        border-radius: 15px;
+        font-size: 0.84rem;
+    }
+}

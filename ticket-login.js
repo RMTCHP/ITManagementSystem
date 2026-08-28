@@ -2,6 +2,7 @@
     const form = document.getElementById("ticketLoginForm");
     const usernameInput = document.getElementById("ticketLoginUsername");
     const passwordInput = document.getElementById("ticketLoginPassword");
+    const userQrCodeButton = document.getElementById("userQrCodeButton");
     const ticketMobileAccessKey = "itms_ticket_mobile_access";
 
     form.addEventListener("submit", async (event) => {
@@ -44,6 +45,18 @@
             ApiClient.clearSession();
             await UI.alert({ icon: "error", title: "Login failed", text: error.message || "Unable to sign in." });
         }
+    });
+
+    userQrCodeButton.addEventListener("click", () => {
+        Swal.fire({
+            title: "User Request QR Code",
+            html: '<img class="ticket-login-qr-image" src="assets/Userlink.png" alt="User Request QR Code">',
+            showConfirmButton: true,
+            confirmButtonText: "Close",
+            customClass: {
+                popup: "ticket-login-qr-modal"
+            }
+        });
     });
 
 })();
