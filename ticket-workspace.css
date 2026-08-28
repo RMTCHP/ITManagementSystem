@@ -1,0 +1,352 @@
+/* Mobile-first presentation for the IT-only ticket workspace. */
+@media (max-width: 1024px) {
+    .public-ticket-body {
+        min-height: 100dvh;
+        background:
+            radial-gradient(circle at 100% 100%, rgba(66, 209, 176, 0.18), transparent 38%),
+            #edf4fa;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    .public-ticket-shell {
+        width: 100%;
+        max-width: none;
+        min-height: 100dvh;
+        padding: env(safe-area-inset-top) 0 max(20px, env(safe-area-inset-bottom));
+    }
+
+    .public-ticket-hero {
+        min-height: 184px;
+        padding: 20px 20px 40px;
+        border-radius: 0;
+        background: linear-gradient(135deg, #0a467d 0%, #0877c8 58%, #10a4b2 100%);
+    }
+
+    .public-ticket-hero__copy {
+        margin-top: 26px;
+    }
+
+    .public-ticket-hero__copy h1 {
+        max-width: 290px;
+        font-size: clamp(1.7rem, 6vw, 2.15rem);
+    }
+
+    .public-ticket-hero__actions {
+        top: 16px;
+        right: 18px;
+        gap: 8px;
+    }
+
+    .public-ticket-profile,
+    .public-ticket-logout {
+        min-height: 44px;
+        border-radius: 14px;
+    }
+
+    .public-ticket-profile {
+        width: 44px;
+        height: 44px;
+    }
+
+    .public-ticket-logout {
+        padding: 0 14px;
+        font-size: 0.8rem;
+    }
+
+    .public-ticket-choice {
+        position: relative;
+        z-index: 2;
+        display: block;
+        margin-top: -20px;
+        padding: 18px 16px 28px;
+        border: 0;
+        border-radius: 28px 28px 0 0;
+        background: #fff;
+        box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.7), 0 18px 34px rgba(28, 65, 100, 0.1);
+    }
+
+    .public-ticket-work-group {
+        margin-bottom: 16px;
+    }
+
+    .public-ticket-work-card {
+        min-height: 108px;
+        padding: 18px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #0e73c8, #2196e4);
+        box-shadow: 0 14px 24px rgba(12, 106, 185, 0.22);
+    }
+
+    .public-ticket-work-card__icon {
+        width: 62px;
+        height: 62px;
+        border-radius: 19px;
+        background: rgba(255, 255, 255, 0.19);
+        font-size: 1.5rem;
+    }
+
+    .public-ticket-work-card__copy strong {
+        font-size: 1.08rem;
+    }
+
+    .public-ticket-work-card__copy small {
+        font-size: 0.72rem;
+    }
+
+    .public-ticket-my-job__count {
+        top: 15px;
+        right: 48px;
+    }
+
+    .public-ticket-choice__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .public-ticket-choice__card {
+        min-height: 176px;
+        padding: 18px 12px;
+        border: 1px solid #dce8f3;
+        border-radius: 20px;
+        background: linear-gradient(145deg, #fff, #f5f9fd);
+        box-shadow: 0 8px 18px rgba(30, 67, 102, 0.06);
+    }
+
+    .public-ticket-choice__card--equipment {
+        grid-column: 1 / -1;
+    }
+
+    .public-ticket-choice__icon {
+        width: 68px;
+        height: 68px;
+        border-radius: 22px;
+        font-size: 1.65rem;
+    }
+
+    .public-ticket-choice__card strong {
+        color: #17324d;
+        font-size: 0.95rem;
+    }
+
+    .public-ticket-choice__card small {
+        font-size: 0.67rem;
+    }
+
+    .public-ticket-choice__arrow {
+        right: 14px;
+        bottom: 13px;
+        display: grid;
+        width: 29px;
+        height: 29px;
+        place-items: center;
+        border-radius: 10px;
+        background: #e8f3fc;
+        color: #0877c8;
+    }
+
+    .public-ticket-card,
+    .public-ticket-jobs {
+        position: relative;
+        z-index: 2;
+        margin-top: -20px;
+        padding: 0;
+        border: 0;
+        border-radius: 28px 28px 0 0;
+        background: #fff;
+        box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.7), 0 18px 34px rgba(28, 65, 100, 0.1);
+    }
+
+    .public-ticket-card__header,
+    .public-ticket-jobs__header {
+        min-height: 78px;
+        margin: 0;
+        padding: 16px 18px;
+        gap: 11px;
+        border-bottom: 1px solid #e5edf5;
+        background: linear-gradient(180deg, #fff, #f8fbfe);
+    }
+
+    .public-ticket-card__icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        font-size: 1rem;
+    }
+
+    .public-ticket-card__header h2,
+    .public-ticket-jobs__header h2 {
+        font-size: 1.08rem;
+        line-height: 1.25;
+    }
+
+    .public-ticket-card__header p,
+    .public-ticket-jobs__header p {
+        margin-bottom: 3px;
+        font-size: 0.58rem;
+    }
+
+    .public-ticket-back,
+    .public-ticket-jobs__back,
+    .public-ticket-jobs__actions button {
+        min-height: 40px;
+        padding: 0 11px;
+        border-radius: 12px;
+        font-size: 0.72rem;
+    }
+
+    .public-ticket-back {
+        margin-left: auto;
+        background: #eaf4fc;
+        color: #0877c8;
+    }
+
+    .public-ticket-form__grid {
+        padding: 20px 18px 16px;
+        gap: 16px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .public-ticket-form label:not(.public-ticket-photo) {
+        gap: 7px;
+        color: #58718d;
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .public-ticket-form input:not([type="file"]),
+    .public-ticket-form select,
+    .public-ticket-form textarea {
+        min-height: 54px;
+        padding: 0 15px;
+        border-color: #cbdbe9;
+        border-radius: 15px;
+        background: #fbfdff;
+        font-size: 16px;
+    }
+
+    .public-ticket-form textarea {
+        min-height: 122px;
+        padding-top: 14px;
+    }
+
+    .public-ticket-remote-session,
+    .public-ticket-request-signature {
+        margin: 4px 18px 20px;
+        padding: 16px;
+        border-radius: 18px;
+    }
+
+    .public-ticket-remote-session {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    #ticketPhotoSection {
+        margin: 0 18px;
+    }
+
+    .public-ticket-photo {
+        min-height: 104px;
+        padding: 14px;
+        border-radius: 18px;
+    }
+
+    .public-ticket-form__footer {
+        margin-top: 20px;
+        padding: 16px 18px max(22px, env(safe-area-inset-bottom));
+        border-top: 1px solid #e5edf5;
+        background: #fff;
+    }
+
+    .public-ticket-submit {
+        width: 100%;
+        min-height: 56px;
+        border-radius: 16px;
+        justify-content: center;
+    }
+
+    .public-ticket-jobs__header {
+        align-items: center;
+    }
+
+    .public-ticket-jobs__header > div:first-child span {
+        font-size: 0.67rem;
+    }
+
+    .public-ticket-jobs__actions {
+        gap: 6px;
+    }
+
+    .public-ticket-job-list {
+        padding: 16px 18px max(24px, env(safe-area-inset-bottom));
+    }
+}
+
+@media (max-width: 640px) {
+    .public-ticket-choice__card--equipment {
+        min-height: 158px;
+    }
+
+    .public-ticket-jobs__header {
+        align-items: flex-start;
+    }
+
+    .public-ticket-jobs__actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+}
+
+@media (orientation: landscape) and (max-width: 1024px) {
+    .public-ticket-shell {
+        width: 100%;
+        padding: 0;
+    }
+
+    .public-ticket-hero {
+        min-height: 132px;
+        padding: 15px 24px 32px;
+    }
+
+    .public-ticket-hero__copy {
+        margin-top: 12px;
+    }
+
+    .public-ticket-hero__copy h1 {
+        font-size: 1.55rem;
+    }
+
+    .public-ticket-choice {
+        margin-top: -16px;
+        padding: 14px 24px 22px;
+    }
+
+    .public-ticket-work-card {
+        min-height: 82px;
+    }
+
+    .public-ticket-choice__grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .public-ticket-choice__card,
+    .public-ticket-choice__card--equipment {
+        min-height: 118px;
+        grid-column: auto;
+        padding: 12px;
+    }
+
+    .public-ticket-choice__icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 15px;
+        font-size: 1.1rem;
+    }
+
+    .public-ticket-choice__card small {
+        font-size: 0.58rem;
+    }
+}

@@ -69,23 +69,23 @@
         equipmentItemOptions.innerHTML = matches.length
             ? matches.map((item) => `
                 <button class="public-ticket-combobox__option" type="button" role="option" data-item-id="${escapeHtml(item.ItemID)}">
-                    <span><strong>${escapeHtml(item.ItemName)}</strong><small>${escapeHtml(item.Category || "Inventory item")}</small></span>
-                    <b>${escapeHtml(item.Quantity)} ${escapeHtml(item.Unit || "unit")}</b>
+                    <span><strong>${escapeHtml(item.ItemName)}</strong><small>${escapeHtml(item.Category || "รายการอุปกรณ์")}</small></span>
+                    <b>${escapeHtml(item.Quantity)} ${escapeHtml(item.Unit || "ชิ้น")}</b>
                 </button>`).join("")
-            : '<div class="public-ticket-combobox__empty">No available inventory item found.</div>';
+            : '<div class="public-ticket-combobox__empty">ไม่พบรายการอุปกรณ์ที่พร้อมเบิก</div>';
         equipmentItemOptions.classList.remove("hidden");
     }
 
     async function loadEquipmentItems() {
-        UI.loading("Loading inventory", "Retrieving available equipment");
+        UI.loading("กำลังโหลดรายการอุปกรณ์", "กำลังค้นหารายการที่พร้อมเบิก");
         try {
             const result = await ApiClient.request("listPublicInventoryItems");
             equipmentItems = ((result.data && result.data.records) || [])
                 .sort((left, right) => String(left.ItemName || "").localeCompare(String(right.ItemName || "")));
             equipmentItemSearch.disabled = false;
             equipmentItemHint.textContent = equipmentItems.length
-                ? `${equipmentItems.length} available item${equipmentItems.length === 1 ? "" : "s"}. Search by name.`
-                : "No inventory items are currently available.";
+                ? `มีรายการอุปกรณ์พร้อมเบิก ${equipmentItems.length} รายการ ค้นหาด้วยชื่ออุปกรณ์ได้`
+                : "ขณะนี้ไม่มีรายการอุปกรณ์พร้อมเบิก";
             renderEquipmentOptions();
         } finally {
             Swal.close();
@@ -131,8 +131,8 @@
     async function selectService(service) {
         const isEquipment = service === "Equipment Requisition";
         requestedServiceInput.value = service;
-        formTitle.textContent = isEquipment ? "Equipment requisition details" : "On-site support details";
-        requesterLabel.innerHTML = isEquipment ? "Requester name <em>*</em>" : "Requester name <em>*</em>";
+        formTitle.textContent = isEquipment ? "รายละเอียดการเบิกอุปกรณ์" : "รายละเอียดแจ้งปัญหาหน้างาน";
+        requesterLabel.innerHTML = "ชื่อผู้แจ้ง <em>*</em>";
         categoryField.classList.toggle("hidden", isEquipment);
         categoryInput.disabled = isEquipment;
         categoryInput.required = !isEquipment;
@@ -158,7 +158,7 @@
                 await loadEquipmentItems();
                 setupEquipmentSignature();
             } catch (error) {
-                await UI.alert({ icon: "error", title: "Unable to load inventory", text: error.message || "Please try again." });
+                await UI.alert({ icon: "error", title: "โหลดรายการอุปกรณ์ไม่สำเร็จ", text: error.message || "กรุณาลองใหม่อีกครั้ง" });
             }
         }
     }
@@ -199,7 +199,7 @@
                 const value = String(reader.result || "");
                 resolve(value.includes(",") ? value.split(",")[1] : value);
             };
-            reader.onerror = () => reject(new Error("Unable to read the selected photo"));
+            reader.onerror = () => reject(new Error("ไม่สามารถอ่านรูปภาพที่เลือกได้"));
             reader.readAsDataURL(file);
         });
     }
@@ -216,7 +216,7 @@
         clearSelectedPhoto();
         if (!file) return;
         if (!/^(image\/jpeg|image\/png|image\/webp)$/i.test(file.type) || file.size > 5 * 1024 * 1024) {
-            await UI.alert({ icon: "warning", title: "Invalid photo", text: "Use a JPG, PNG or WEBP photo no larger than 5 MB." });
+            await UI.alert({ icon: "warning", title: "รูปภาพไม่ถูกต้อง", text: "กรุณาใช้รูป JPG, PNG หรือ WEBP ขนาดไม่เกิน 5 MB" });
             return;
         }
         selectedPhoto = file;
@@ -230,7 +230,7 @@
     });
     equipmentItemSearch.addEventListener("input", () => {
         equipmentItemInput.value = "";
-        equipmentItemHint.textContent = "Select an item from the results below.";
+        equipmentItemHint.textContent = "เลือกรายการจากผลการค้นหาด้านล่าง";
         renderEquipmentOptions(equipmentItemSearch.value);
     });
     equipmentItemOptions.addEventListener("click", (event) => {
@@ -240,7 +240,7 @@
         if (!item) return;
         equipmentItemInput.value = item.ItemID;
         equipmentItemSearch.value = item.ItemName;
-        equipmentItemHint.textContent = `Available: ${item.Quantity} ${item.Unit || "unit"}`;
+        equipmentItemHint.textContent = `คงเหลือ ${item.Quantity} ${item.Unit || "ชิ้น"}`;
         equipmentItemOptions.classList.add("hidden");
     });
     document.addEventListener("click", (event) => {
@@ -253,18 +253,18 @@
 
         const isEquipment = requestedServiceInput.value === "Equipment Requisition";
         if (isEquipment && (!equipmentItemInput.value || Number(equipmentQuantityInput.value) < 1)) {
-            await UI.alert({ icon: "warning", title: "Inventory item required", text: "Select an inventory item and enter a quantity." });
+            await UI.alert({ icon: "warning", title: "กรุณาเลือกรายการอุปกรณ์", text: "เลือกรายการอุปกรณ์และระบุจำนวนที่ต้องการเบิก" });
             return;
         }
         if (isEquipment && !hasEquipmentSignature) {
-            await UI.alert({ icon: "warning", title: "Signature required", text: "Please sign before submitting the equipment request." });
+            await UI.alert({ icon: "warning", title: "กรุณาลงลายเซ็น", text: "ลงลายเซ็นผู้เบิกก่อนส่งคำขอ" });
             return;
         }
 
         const confirmation = await UI.confirm({
-            title: "Submit this request?",
-            text: "Your request will be sent to IT for processing.",
-            confirmButtonText: "Submit"
+            title: "ยืนยันการส่งคำขอ?",
+            text: "ระบบจะส่งคำขอให้ฝ่าย IT ดำเนินการ",
+            confirmButtonText: "ส่งคำขอ"
         });
         if (!confirmation.isConfirmed) return;
 
@@ -301,14 +301,14 @@
                     base64: signatureData.split(",")[1]
                 };
             }
-            UI.loading("Submitting request", "Sending your request to IT");
+            UI.loading("กำลังส่งคำขอ", "ระบบกำลังส่งข้อมูลให้ฝ่าย IT");
             const result = await ApiClient.request("createUserRequest", payload);
             Swal.close();
-            await UI.alert({ icon: "success", title: "Request submitted", text: `Your Ticket ID is ${result.data.TicketID}. IT will process this request shortly.` });
+            await UI.alert({ icon: "success", title: "ส่งคำขอเรียบร้อย", text: `เลขที่รายการ ${result.data.TicketID} ฝ่าย IT จะดำเนินการต่อไป` });
             resetToChoice();
         } catch (error) {
             Swal.close();
-            await UI.alert({ icon: "error", title: "Unable to submit request", text: error.message || "Please try again." });
+            await UI.alert({ icon: "error", title: "ไม่สามารถส่งคำขอได้", text: error.message || "กรุณาลองใหม่อีกครั้ง" });
         }
     });
 })();

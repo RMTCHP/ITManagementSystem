@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Request | IT Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>แจ้งขอรับบริการ | IT Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="app.css?v=20260827-1">
-    <link rel="stylesheet" href="user-request.css?v=20260828-1">
+    <link rel="stylesheet" href="user-request.css?v=20260828-7">
 </head>
 <body class="public-ticket-body user-request-body">
     <main class="public-ticket-shell user-request-shell">
@@ -21,23 +21,23 @@
             </div>
             <div class="public-ticket-hero__copy">
                 <p>USER REQUEST</p>
-                <h1>IT Service Request</h1>
-                <span>Request on-site support or equipment from IT.</span>
+                <h1>แจ้งขอรับบริการ IT</h1>
+                <span>แจ้งปัญหาหน้างานหรือขอเบิกอุปกรณ์จากฝ่าย IT</span>
             </div>
         </section>
 
-        <section class="public-ticket-choice public-ticket-choice--user" id="userRequestChoice" aria-label="Select request type">
+        <section class="public-ticket-choice public-ticket-choice--user" id="userRequestChoice" aria-label="เลือกประเภทคำขอ">
             <div class="public-ticket-choice__grid">
                 <button class="public-ticket-choice__card public-ticket-choice__card--onsite" type="button" data-requested-service="On-site">
                     <span class="public-ticket-choice__icon"><i class="fa-solid fa-person-walking-arrow-right"></i></span>
-                    <strong>On-site Support</strong>
-                    <small>Request IT support at your location</small>
+                    <strong>แจ้งปัญหาหน้างาน</strong>
+                    <small>แจ้งให้ IT เข้าดำเนินการ ณ จุดที่พบปัญหา</small>
                     <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
                 </button>
                 <button class="public-ticket-choice__card public-ticket-choice__card--equipment" type="button" data-requested-service="Equipment Requisition">
                     <span class="public-ticket-choice__icon"><i class="fa-solid fa-box-open"></i></span>
-                    <strong>Equipment Requisition</strong>
-                    <small>Request an available item from Inventory</small>
+                    <strong>เบิกอุปกรณ์</strong>
+                    <small>แจ้งความต้องการอุปกรณ์จาก Inventory</small>
                     <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
                 </button>
             </div>
@@ -47,57 +47,57 @@
             <div class="public-ticket-card__header">
                 <div class="public-ticket-card__icon"><i class="fa-solid fa-clipboard-list"></i></div>
                 <div>
-                    <p>NEW USER REQUEST</p>
-                    <h2 id="userRequestFormTitle">Request details</h2>
+                    <p>USER REQUEST</p>
+                    <h2 id="userRequestFormTitle">รายละเอียดคำขอ</h2>
                 </div>
-                <button class="public-ticket-back" id="backToRequestTypeButton" type="button" title="Back to request types"><i class="fa-solid fa-arrow-left"></i><span>Back</span></button>
+                <button class="public-ticket-back" id="backToRequestTypeButton" type="button" title="กลับไปเลือกบริการ"><i class="fa-solid fa-arrow-left"></i><span>กลับ</span></button>
             </div>
 
             <form id="userRequestForm" class="public-ticket-form" novalidate>
                 <input id="requestedService" name="requestedService" type="hidden">
                 <div class="public-ticket-form__grid" id="userRequestFormGrid">
                     <label>
-                        <span id="requesterLabel">Requester name <em>*</em></span>
-                        <input id="requester" name="requester" type="text" maxlength="120" autocomplete="name" required placeholder="Enter your name">
+                        <span id="requesterLabel">ชื่อผู้แจ้ง <em>*</em></span>
+                        <input id="requester" name="requester" type="text" maxlength="120" autocomplete="name" required placeholder="ชื่อ - นามสกุล">
                     </label>
                     <label>
-                        <span>Department <em>*</em></span>
+                        <span>แผนก <em>*</em></span>
                         <select id="department" name="department" required>
-                            <option value="">Select department</option>
+                            <option value="">เลือกแผนก</option>
                             <option>PD</option>
                             <option>PC/Warehouse</option>
                             <option>PE/Tooling</option>
                             <option>QA/QC</option>
                             <option>Design</option>
-                            <option>Maintenance</option>
-                            <option>Purchasing</option>
-                            <option>HR</option>
-                            <option>Accounting</option>
+                            <option>ซ่อมบำรุง</option>
+                            <option>จัดซื้อ</option>
+                            <option>บุคคล</option>
+                            <option>บัญชี</option>
                             <option>Safety</option>
                             <option>IT</option>
                         </select>
                     </label>
                     <label>
-                        <span>Contact phone or email</span>
-                        <input id="contact" name="contact" type="text" maxlength="160" autocomplete="tel" placeholder="Phone number or email">
+                        <span>เบอร์ติดต่อหรืออีเมล</span>
+                        <input id="contact" name="contact" type="text" maxlength="160" autocomplete="tel" placeholder="เช่น 081-234-5678 หรือ name@company.com">
                     </label>
                     <label class="hidden public-ticket-equipment-item" id="equipmentItemField">
-                        <span>Inventory item <em>*</em></span>
+                        <span>รายการอุปกรณ์ <em>*</em></span>
                         <div class="public-ticket-combobox">
-                            <input id="equipmentItemSearch" type="search" autocomplete="off" disabled placeholder="Search an inventory item">
+                            <input id="equipmentItemSearch" type="search" autocomplete="off" disabled placeholder="พิมพ์ค้นหารายการอุปกรณ์">
                             <input id="equipmentItemId" name="equipmentItemId" type="hidden" disabled>
                             <div class="public-ticket-combobox__options hidden" id="equipmentItemOptions" role="listbox"></div>
                         </div>
-                        <small id="equipmentItemHint">Search and select an available item.</small>
+                        <small id="equipmentItemHint">ค้นหาและเลือกรายการที่มีในคลัง</small>
                     </label>
                     <label class="hidden" id="equipmentQuantityField">
-                        <span>Quantity <em>*</em></span>
+                        <span>จำนวน <em>*</em></span>
                         <input id="equipmentQuantity" name="equipmentQuantity" type="number" min="1" step="1" inputmode="numeric" disabled placeholder="0">
                     </label>
                     <label id="categoryField">
-                        <span>Issue category <em>*</em></span>
+                        <span>ประเภทปัญหา <em>*</em></span>
                         <select id="category" name="category" required>
-                            <option value="">Select issue category</option>
+                            <option value="">เลือกประเภทปัญหา</option>
                             <option>Hardware</option>
                             <option>Software</option>
                             <option>Printer</option>
@@ -109,38 +109,38 @@
                         </select>
                     </label>
                     <label>
-                        <span>Location / device <em>*</em></span>
-                        <input id="location" name="location" type="text" maxlength="240" required placeholder="Example: Floor 2, QA-04, Line A">
+                        <span>สถานที่ / จุดที่พบปัญหา / เครื่องคอมพิวเตอร์ <em>*</em></span>
+                        <input id="location" name="location" type="text" maxlength="240" required placeholder="เช่น ชั้น 2, Line A, โต๊ะ QA-04">
                     </label>
                     <label class="public-ticket-form__full" id="subjectField">
-                        <span>Request summary <em>*</em></span>
-                        <textarea id="subject" name="subject" rows="2" maxlength="180" required placeholder="Briefly describe the issue or request"></textarea>
+                        <span>สรุปปัญหา <em>*</em></span>
+                        <textarea id="subject" name="subject" rows="2" maxlength="180" required placeholder="เช่น Printer ชั้น 2 พิมพ์ไม่ได้"></textarea>
                     </label>
                 </div>
 
                 <div class="public-ticket-request-signature hidden" id="equipmentSignatureSection">
-                    <div><span>Requester signature</span><em>*</em><button id="clearEquipmentSignature" type="button">Clear</button></div>
-                    <small>Sign to confirm this equipment request.</small>
-                    <canvas id="equipmentSignatureCanvas" aria-label="Requester signature"></canvas>
+                    <div><span>ลายเซ็นผู้เบิก</span><em>*</em><button id="clearEquipmentSignature" type="button">ล้าง</button></div>
+                    <small>ลงลายเซ็นเพื่อยืนยันการเบิกอุปกรณ์</small>
+                    <canvas id="equipmentSignatureCanvas" aria-label="ลายเซ็นผู้เบิก"></canvas>
                 </div>
 
                 <div id="ticketPhotoSection">
                     <label class="public-ticket-photo" for="ticketPhoto">
                         <input id="ticketPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
                         <span class="public-ticket-photo__icon"><i class="fa-solid fa-camera"></i></span>
-                        <span class="public-ticket-photo__copy"><strong>Take or attach a photo</strong><small>Optional. JPG, PNG or WEBP up to 5 MB</small></span>
-                        <span class="public-ticket-photo__action">Choose photo</span>
+                        <span class="public-ticket-photo__copy"><strong>ถ่ายรูปหรือแนบรูป</strong><small>ไม่บังคับ JPG, PNG หรือ WEBP ไม่เกิน 5 MB</small></span>
+                        <span class="public-ticket-photo__action">เลือกรูป</span>
                     </label>
                     <div class="public-ticket-preview hidden" id="photoPreview">
-                        <img id="photoPreviewImage" alt="Selected request photo preview">
-                        <button id="removePhotoButton" type="button" title="Remove photo" aria-label="Remove photo"><i class="fa-solid fa-xmark"></i></button>
+                        <img id="photoPreviewImage" alt="ตัวอย่างรูปที่เลือก">
+                        <button id="removePhotoButton" type="button" title="ลบรูป" aria-label="ลบรูป"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                 </div>
 
                 <input class="public-ticket-honeypot" id="website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
                 <div class="public-ticket-form__footer">
-                    <p><i class="fa-solid fa-circle-info"></i> Your request will be sent to IT with status Open.</p>
-                    <button class="public-ticket-submit" type="submit"><i class="fa-solid fa-paper-plane"></i><span>Submit Request</span></button>
+                    <p><i class="fa-solid fa-circle-info"></i> ระบบจะส่งคำขอให้ฝ่าย IT ดำเนินการ</p>
+                    <button class="public-ticket-submit" type="submit"><i class="fa-solid fa-paper-plane"></i><span>ส่งคำขอ</span></button>
                 </div>
             </form>
         </section>
