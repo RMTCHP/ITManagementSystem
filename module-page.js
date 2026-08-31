@@ -1,6 +1,7 @@
 (function () {
     const moduleKey = document.body.dataset.module || "";
     const moduleConfig = AppShell.getModule(moduleKey);
+    const initialQuery = new URLSearchParams(window.location.search);
     const state = {
         session: null,
         dashboard: null,
@@ -11,14 +12,14 @@
         filters: {
             search: "",
             status: "",
-            summary: "all",
+            summary: initialQuery.get("summary") || "all",
             assetGroup: "all",
             knowledgeCategory: "all",
             knowledgeType: "",
             ticketStartDate: "",
             ticketEndDate: "",
             ticketService: "",
-            ticketStatus: ""
+            ticketStatus: initialQuery.get("ticketStatus") || ""
         },
         sort: {
             key: "",
@@ -1481,6 +1482,10 @@
             </section>`;
     }
 
+    function isCompletedTicket(record) {
+        return ["resolved", "closed", "rejected"].includes(String(record.Status || "Open").toLowerCase());
+    }
+
     function getVisibleTicketRecords() {
         const getTicketSequence = (ticketId) => {
             const match = String(ticketId || "").match(/(\d+)(?!.*\d)/);
@@ -1491,7 +1496,8 @@
             if (state.filters.ticketStartDate && requestDate < state.filters.ticketStartDate) return false;
             if (state.filters.ticketEndDate && requestDate > state.filters.ticketEndDate) return false;
             if (state.filters.ticketService && String(record.RequestedService || "") !== state.filters.ticketService) return false;
-            if (state.filters.ticketStatus && String(record.Status || "") !== state.filters.ticketStatus) return false;
+            if (state.filters.ticketStatus === "active" && isCompletedTicket(record)) return false;
+            if (state.filters.ticketStatus && state.filters.ticketStatus !== "active" && String(record.Status || "") !== state.filters.ticketStatus) return false;
             return true;
         }).sort((left, right) => {
             // Ticket IDs are generated sequentially; newest work should always appear first.
@@ -1502,7 +1508,6 @@
     }
 
     function renderTicketWorkspace() {
-        const isCompleted = (record) => ["resolved", "closed", "rejected"].includes(String(record.Status || "Open").toLowerCase());
         const ticketServices = [...new Set(state.records.map((record) => String(record.RequestedService || "").trim()).filter(Boolean))].sort();
         const ticketStatuses = [...new Set(state.records.map((record) => String(record.Status || "").trim()).filter(Boolean))].sort();
         const visibleRecords = getVisibleTicketRecords();
@@ -1511,11 +1516,11 @@
             open: visibleRecords.filter((record) => String(record.Status || "Open").toLowerCase() === "open").length,
             progress: visibleRecords.filter((record) => ["assigned", "in progress"].includes(String(record.Status || "").toLowerCase())).length,
             pending: visibleRecords.filter((record) => String(record.Status || "").toLowerCase() === "pending").length,
-            completed: visibleRecords.filter(isCompleted).length
+            completed: visibleRecords.filter(isCompletedTicket).length
         };
 
         const rowsMarkup = visibleRecords.map((record) => {
-            const completed = isCompleted(record);
+            const completed = isCompletedTicket(record);
             const isEquipment = String(record.RequestedService || "") === "Equipment Requisition";
             const assigned = String(record.AssignedTo || "").trim();
             const serviceIcon = isEquipment
@@ -1565,7 +1570,7 @@
                     <label><span>Start date</span><input id="ticketStartDateFilter" type="date" value="${UI.escapeHtml(state.filters.ticketStartDate)}"></label>
                     <label><span>End date</span><input id="ticketEndDateFilter" type="date" value="${UI.escapeHtml(state.filters.ticketEndDate)}"></label>
                     <label><span>Service</span><select id="ticketServiceFilter"><option value="">All services</option>${ticketServices.map((service) => `<option value="${UI.escapeHtml(service)}" ${state.filters.ticketService === service ? "selected" : ""}>${UI.escapeHtml(service)}</option>`).join("")}</select></label>
-                    <label><span>Status</span><select id="ticketStatusFilter"><option value="">All statuses</option>${ticketStatuses.map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.ticketStatus === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}</select></label>
+                    <label><span>Status</span><select id="ticketStatusFilter"><option value="">All statuses</option><option value="active" ${state.filters.ticketStatus === "active" ? "selected" : ""}>Active tickets</option>${ticketStatuses.map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.ticketStatus === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}</select></label>
                     <button class="ghost-btn ticket-date-filter__clear" type="button" data-action="clear-ticket-dates" title="Clear date range"><i class="fa-solid fa-rotate-left"></i><span>Clear</span></button>
                 </div>
                 <div class="data-table-wrap ticket-queue-table-wrap">
