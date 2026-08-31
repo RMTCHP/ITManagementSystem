@@ -113,8 +113,9 @@
         box-shadow: 0 8px 18px rgba(30, 67, 102, 0.06);
     }
 
-    .public-ticket-choice__card--equipment {
-        grid-column: 1 / -1;
+    .public-ticket-choice__card--equipment,
+    .public-ticket-choice__card--user-qr {
+        grid-column: auto;
     }
 
     .public-ticket-choice__icon {
@@ -286,7 +287,8 @@
 }
 
 @media (max-width: 640px) {
-    .public-ticket-choice__card--equipment {
+    .public-ticket-choice__card--equipment,
+    .public-ticket-choice__card--user-qr {
         min-height: 158px;
     }
 
@@ -329,11 +331,12 @@
     }
 
     .public-ticket-choice__grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .public-ticket-choice__card,
-    .public-ticket-choice__card--equipment {
+    .public-ticket-choice__card--equipment,
+    .public-ticket-choice__card--user-qr {
         min-height: 118px;
         grid-column: auto;
         padding: 12px;
@@ -349,4 +352,27 @@
     .public-ticket-choice__card small {
         font-size: 0.58rem;
     }
+}
+
+.public-ticket-choice__card--user-qr .public-ticket-choice__icon {
+    background: #fff1d8;
+    color: #c87511;
+}
+
+.ticket-login-qr-modal {
+    max-width: min(92vw, 430px);
+}
+
+.ticket-login-qr-modal .swal2-html-container {
+    margin: 14px 0 0;
+}
+
+.ticket-login-qr-image {
+    display: block;
+    width: min(100%, 320px);
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid #d7e5f0;
+    border-radius: 14px;
+    background: #fff;
 }

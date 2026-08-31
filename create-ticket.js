@@ -38,6 +38,7 @@
     const ticketProfile = document.getElementById("ticketProfile");
     const ticketProfileInitial = document.getElementById("ticketProfileInitial");
     const ticketLogoutButton = document.getElementById("ticketLogoutButton");
+    const userQrCodeButton = document.getElementById("userQrCodeButton");
     let selectedPhoto = null;
     let previewUrl = "";
     let currentTicketJobs = [];
@@ -494,6 +495,15 @@
 
     document.querySelectorAll("[data-requested-service]").forEach((button) => {
         button.addEventListener("click", () => selectService(button.dataset.requestedService));
+    });
+
+    userQrCodeButton.addEventListener("click", () => {
+        Swal.fire({
+            title: "User Request QR Code",
+            html: '<img class="ticket-login-qr-image" src="assets/Userlink.png" alt="User Request QR Code">',
+            confirmButtonText: "Close",
+            customClass: { popup: "ticket-login-qr-modal" }
+        });
     });
 
     equipmentItemSearch.addEventListener("focus", () => {
