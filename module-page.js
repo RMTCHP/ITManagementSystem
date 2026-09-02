@@ -1557,7 +1557,7 @@
                     <td><span class="cell-data">${UI.escapeHtml(assigned || "-")}</span></td>
                     <td><div class="ticket-table__status">${UI.badge(record.Status || "Open")}</div></td>
                     <td><div class="table-actions ticket-table__actions">
-                        <button class="table-action" type="button" data-action="ticket-details" data-id="${UI.escapeHtml(record.TicketID)}" title="View ticket details"><i class="fa-regular fa-eye"></i></button>
+                        <button class="table-action" type="button" data-action="ticket-details" data-id="${UI.escapeHtml(record.TicketID)}" title="View or save work order PDF"><i class="fa-regular fa-file-pdf"></i></button>
                         ${!completed && !assigned ? `<button class="secondary-btn ticket-table__assign" type="button" data-action="assign-ticket" data-id="${UI.escapeHtml(record.TicketID)}" title="Assign to me"><i class="fa-solid fa-hand"></i></button>` : ""}
                         ${primaryAction}
                     </div></td>
@@ -1603,32 +1603,167 @@
     async function openTicketDetailsModal(ticketId) {
         const ticket = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
         if (!ticket) {
-            await UI.alert({ icon: "error", title: "Ticket not found", text: "Refresh the ticket queue and try again." });
+            UI.alert({ icon: "error", title: "Ticket not found", text: "Refresh the ticket queue and try again." });
             return;
         }
-        const rows = [
-            ["Requester", ticket.Requester],
-            ["Department", ticket.Department],
-            ["Contact", ticket.Contact],
-            ["Location", ticket.Location],
-            ["Service", ticket.RequestedService],
-            ["Category", ticket.Category],
-            ["Assigned to", ticket.AssignedTo || "Unassigned"],
-            ["Requested date", formatDateDisplay(ticket.RequestDate)],
-            ["Work started", formatDateDisplay(ticket.WorkStartedAt)],
-            ["Completed", formatDateDisplay(ticket.WorkCompletedAt)]
-        ].filter(([, value]) => value);
-        await Swal.fire({
-            title: ticket.TicketID || "Ticket details",
-            showCloseButton: true,
-            showConfirmButton: false,
-            html: `<div class="ticket-detail-modal">
-                <div class="ticket-detail-modal__headline"><h3>${UI.escapeHtml(ticket.Subject || "No subject provided")}</h3>${UI.badge(ticket.Status || "Open")}</div>
-                ${ticket.Description ? `<p class="ticket-detail-modal__description">${UI.escapeHtml(ticket.Description)}</p>` : ""}
-                <div class="ticket-detail-modal__grid">${rows.map(([label, value]) => `<div><span>${UI.escapeHtml(label)}</span><strong>${UI.escapeHtml(String(value || "-"))}</strong></div>`).join("")}</div>
-                ${ticket.AttachmentUrl ? `<a class="ticket-detail-modal__attachment" href="${UI.escapeHtml(ticket.AttachmentUrl)}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-paperclip"></i>Open request photo</a>` : ""}
-            </div>`
-        });
+        const reportWindow = window.open("", "_blank");
+        if (!reportWindow) {
+            UI.alert({ icon: "warning", title: "Popup blocked", text: "Allow popups for this site, then try again to view the work order." });
+            return;
+        }
+
+        const value = (input) => UI.escapeHtml(String(input || ""));
+        const dateOnly = (input) => input ? formatDateDisplay(input) : "";
+        const timeOnly = (input) => input && /(?:[T\s]\d{1,2}:\d{2}|^\d{1,2}:\d{2})/.test(String(input)) ? formatTimeDisplay(input) : "";
+        const submittedAt = ticket.CreatedAt || ticket.RequestDate;
+        const completedAt = ticket.WorkCompletedAt || ticket.UpdatedAt || ticket.ResolvedDate;
+        const isCategory = (keyword) => String(ticket.Category || "").toLowerCase().includes(keyword);
+        const isService = (name) => String(ticket.RequestedService || "").toLowerCase() === name;
+        const isRemoteSupport = isService("remote support");
+        const workStartedDateValue = isRemoteSupport ? ticket.RequestDate : ticket.WorkStartedAt;
+        const completedDateValue = isRemoteSupport ? ticket.RequestDate : completedAt;
+        const requesterSignatureDateValue = ticket.WorkStartedAt ? workStartedDateValue : submittedAt;
+        const requesterSignatureTimeValue = ticket.WorkStartedAt || submittedAt;
+        const checked = (condition) => condition ? "☒" : "☐";
+        const priority = String(ticket.Priority || "").toLowerCase();
+        const attachment = ticket.AttachmentUrl
+            ? `<a class="attachment" href="${value(ticket.AttachmentUrl)}" target="_blank" rel="noopener noreferrer">Open attached request photo</a>`
+            : "";
+
+        reportWindow.document.write(`<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Computer Work Order - ${value(ticket.TicketID)}</title>
+<style>
+    @page { size: A4 portrait; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #000; background: #f0f2f5; font-family: Tahoma, "Noto Sans Thai", Arial, sans-serif; }
+    .toolbar { display: flex; justify-content: center; gap: 10px; padding: 14px; }
+    .toolbar button { border: 0; border-radius: 6px; padding: 9px 16px; background: #0f6cbd; color: #fff; font: 700 14px inherit; cursor: pointer; }
+    .toolbar button:last-child { background: #637083; }
+    .paper { width: 190mm; min-height: 277mm; margin: 0 auto 20px; padding: 10mm 8mm; background: #fff; font-size: 12px; line-height: 1.25; }
+    .company { margin: 0 0 7mm; text-align: center; font-size: 16px; font-weight: 700; }
+    .doc-code { float: right; border: 1.5px solid #000; padding: 2px 5px; font-size: 12px; }
+    .title { clear: both; border: 1.5px solid #000; padding: 3px; text-align: center; font-size: 16px; font-weight: 700; }
+    .title span { display: block; font-size: 14px; }
+    .section { border: 1.5px solid #000; border-top: 0; }
+    .section-heading { padding: 2px 4px; border-bottom: 1px solid #000; font-size: 13px; font-weight: 700; }
+    .content { padding: 5px; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px 10px; }
+    .field { min-height: 25px; border-bottom: 1px dotted #000; word-break: break-word; }
+    .field b, .line-label { display: block; font-size: 10px; font-weight: 400; }
+    .span-3 { grid-column: span 3; } .span-4 { grid-column: span 4; } .span-6 { grid-column: span 6; } .span-8 { grid-column: span 8; } .span-12 { grid-column: span 12; }
+    .check-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px 16px; padding: 4px 0; }
+    .check { white-space: nowrap; }
+    .check strong { display: inline-block; width: 19px; font-size: 18px; vertical-align: -2px; }
+    .note { min-height: 67px; padding: 3px; border-bottom: 1px dotted #000; white-space: pre-wrap; word-break: break-word; }
+    .work-note { min-height: 61px; padding: 3px; border-bottom: 1px dotted #000; white-space: pre-wrap; word-break: break-word; }
+    .signature-row { display: grid; grid-template-columns: 1fr 110px 110px; gap: 12px; align-items: end; margin-top: 6px; }
+    .signature-box { min-height: 38px; border-bottom: 1px dotted #000; }
+    .signature-image { display: block; max-width: 160px; max-height: 42px; object-fit: contain; object-position: left bottom; }
+    .attachment { display: inline-block; margin-top: 5px; color: #075da8; font-size: 10px; }
+    .muted { color: #444; }
+    @media print { body { background: #fff; } .toolbar { display: none; } .paper { width: auto; min-height: 0; margin: 0; padding: 0; } }
+</style>
+</head>
+<body>
+    <div class="toolbar"><button onclick="window.print()">Print / Save as PDF</button><button onclick="window.close()">Close</button></div>
+    <main class="paper">
+        <div class="doc-code">F-FHD-0004/010920/B</div>
+        <h1 class="company">Resonac Materials (Thailand) Co., Ltd.</h1>
+        <div class="title">COMPUTER WORK ORDER<span>ใบขอซื้อ / แจ้งซ่อม / ติดตั้ง Hardware และ Software</span></div>
+
+        <section class="section">
+            <div class="section-heading">ส่วนที่ 1 กรอกโดยผู้ร้องขอ <span class="muted">No. ${value(ticket.TicketID)}</span></div>
+            <div class="content grid">
+                <div class="field span-6"><b>Computer name / ชื่อคอมพิวเตอร์</b>${value(ticket.AssetName)}</div>
+                <div class="field span-6"><b>Section / แผนก</b>${value(ticket.Department)}</div>
+                <div class="field span-6"><b>Department / ฝ่าย</b>${value(ticket.Department)}</div>
+                <div class="field span-6"><b>Location / จุดที่พบปัญหา</b>${value(ticket.Location)}</div>
+                <div class="field span-6"><b>Request by / ผู้ร้องขอ</b>${value(ticket.Requester)}${ticket.Contact ? ` (${value(ticket.Contact)})` : ""}</div>
+                <div class="field span-3"><b>Date / วันที่</b><span id="ticketRequestDate">${value(dateOnly(submittedAt))}</span></div>
+                <div class="field span-3"><b>Time / เวลา</b><span id="ticketRequestTime">${value(timeOnly(submittedAt))}</span></div>
+                <div class="span-12"><b>DESCRIPTION / ลักษณะของงาน</b>
+                    <div class="check-grid">
+                        <span class="check"><strong>${checked(isCategory("repair") || isService("on-site"))}</strong>ตรวจซ่อมทั่วไป</span>
+                        <span class="check"><strong>${checked(isCategory("hardware") || isService("equipment requisition"))}</strong>การติดตั้ง Hardware</span>
+                        <span class="check"><strong>${checked(isCategory("software"))}</strong>การติดตั้ง Software</span>
+                        <span class="check"><strong>${checked(isCategory("custom") || isCategory("configuration"))}</strong>การปรับแต่ง</span>
+                        <span class="check"><strong>${checked(isCategory("purchase") || isService("equipment requisition"))}</strong>ขอซื้อ / เบิกอุปกรณ์</span>
+                        <span class="check"><strong>${checked(priority === "critical" || priority === "high")}</strong>ด่วน</span>
+                    </div>
+                </div>
+                <div class="span-12"><b>Specific detail problem / Requirement<br>รายงานปัญหาที่เกิดขึ้น / รายละเอียดที่ต้องการ</b><div class="note">${value(ticket.Subject)}${ticket.Description ? `\n${value(ticket.Description)}` : ""}</div>${attachment}</div>
+                <div class="field span-6"><b>Requester signature / ลายเซ็นผู้ร้องขอ</b><img id="ticketRequestSignature" class="signature-image" style="display:none" alt="Requester signature"></div>
+                <div class="field span-3"><b>Date / วันที่</b><span id="ticketRequestSignatureDate">${value(dateOnly(requesterSignatureDateValue))}</span></div><div class="field span-3"><b>Time / เวลา</b><span id="ticketRequestSignatureTime">${value(timeOnly(requesterSignatureTimeValue))}</span></div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-heading">ส่วนที่ 2 กรอกโดยแผนกเทคโนโลยีสารสนเทศ</div>
+            <div class="content grid">
+                <div class="field span-6"><b>Manager acknowledged / ผู้จัดการฝ่าย</b></div>
+                <div class="field span-3"><b>Date / วันที่</b></div><div class="field span-3"><b>Time / เวลา</b></div>
+                <div class="field span-6"><b>Repair schedule &amp; be responsible by / ผู้รับผิดชอบ</b>${value(ticket.AssignedTo)}</div>
+                <div class="field span-3"><b>Date / วันที่</b></div>
+                <div class="field span-3"><b>Time / เวลา</b></div>
+                <div class="span-12"><b>Details of work / รายละเอียดของงานที่ทำ</b><div class="work-note">${value(ticket.ResolutionNote)}</div></div>
+                <div class="field span-6"><b>Finished repair by / ตรวจซ่อมแล้วเสร็จโดย</b>${value(ticket.AssignedTo)}</div>
+                <div class="field span-3"><b>Date / วันที่</b>${value(dateOnly(completedDateValue))}</div>
+                <div class="field span-3"><b>Time / เวลา</b>${value(timeOnly(completedAt))}</div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-heading">ส่วนที่ 3 ส่งมอบงานโดยแผนกที่ร้องขอ : Approve completed job by requester.</div>
+            <div class="content">
+                <div class="signature-row">
+                    <div class="signature-box"><b>Requester approve / ผู้ร้องขอตรวจรับงาน</b><img id="ticketRequesterSignature" class="signature-image" style="display:none" alt="Requester approval signature"></div>
+                    <div class="field"><b>Date / วันที่</b>${value(dateOnly(completedDateValue))}</div>
+                    <div class="field"><b>Time / เวลา</b>${value(timeOnly(completedAt))}</div>
+                </div>
+                <div style="margin-top: 7px"><b>Comment / ความคิดเห็น / ข้อเสนอแนะ</b><div class="work-note"></div></div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>`);
+        reportWindow.document.close();
+
+        try {
+            const signatures = await ApiClient.request("getTicketSignatures", {
+                token: ApiClient.getSessionToken(),
+                ticketId: ticket.TicketID
+            });
+            const requestSignatureData = (signatures.data && signatures.data.requestSignature) || "";
+            const resolutionSignatureData = (signatures.data && signatures.data.resolutionSignature) || "";
+            if (!reportWindow.closed && requestSignatureData) {
+                const requestSignatureImage = reportWindow.document.getElementById("ticketRequestSignature");
+                requestSignatureImage.src = requestSignatureData;
+                requestSignatureImage.style.display = "block";
+            }
+            const requesterApprovalSignatureData = resolutionSignatureData || requestSignatureData;
+            if (!reportWindow.closed && requesterApprovalSignatureData) {
+                const resolutionSignatureImage = reportWindow.document.getElementById("ticketRequesterSignature");
+                resolutionSignatureImage.src = requesterApprovalSignatureData;
+                resolutionSignatureImage.style.display = "block";
+            }
+            if (!reportWindow.closed && signatures.data && signatures.data.createdAt) {
+                reportWindow.document.getElementById("ticketRequestDate").textContent = dateOnly(signatures.data.createdAt);
+                reportWindow.document.getElementById("ticketRequestTime").textContent = timeOnly(signatures.data.createdAt);
+                if (!ticket.WorkStartedAt) {
+                    reportWindow.document.getElementById("ticketRequestSignatureDate").textContent = dateOnly(signatures.data.createdAt);
+                    reportWindow.document.getElementById("ticketRequestSignatureTime").textContent = timeOnly(signatures.data.createdAt);
+                }
+            }
+        } catch (error) {
+            if (!reportWindow.closed) {
+                UI.alert({ icon: "warning", title: "Signature unavailable", text: error.message || "The work order will open without the signature." });
+            }
+        }
+        if (!reportWindow.closed) reportWindow.focus();
     }
 
     async function assignTicketToCurrentUser(ticketId) {
