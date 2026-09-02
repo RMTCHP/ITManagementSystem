@@ -85,7 +85,7 @@
     function getRequestTimeoutMs(action) {
         const timeoutMap = {
             login: 60000,
-            dashboardSummary: 30000,
+            dashboardSummary: 60000,
             listRecords: 30000,
             listKnowledgeCategories: 30000,
             createKnowledgeCategory: 30000,
@@ -95,6 +95,7 @@
             listPublicInventoryItems: 30000,
             listPublicTicketJobs: 30000,
             getPublicTicketJobSummary: 30000,
+            getTicketSignatures: 30000,
             resolveTicket: 60000,
             createRecord: 30000,
             saveRecord: 30000,
