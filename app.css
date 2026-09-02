@@ -855,6 +855,128 @@ button {
     color: #178c60;
 }
 
+.access-request-forms {
+    margin-bottom: 20px;
+    padding: 24px;
+    border: 1px solid rgba(207, 222, 235, 0.9);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 14px 28px rgba(18, 51, 82, 0.07);
+}
+
+.access-request-forms__header {
+    margin-bottom: 18px;
+}
+
+.access-request-forms__header h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 1.15rem;
+}
+
+.access-request-forms__header p:last-child {
+    margin: 6px 0 0;
+    color: var(--text-soft);
+    font-size: 0.84rem;
+}
+
+.access-request-forms__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.access-request-form-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 104px;
+    padding: 15px;
+    border: 1px solid #dce7f0;
+    border-radius: 17px;
+    background: linear-gradient(145deg, #fff, #f7fbff);
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.access-request-form-card:hover {
+    border-color: #8dc4ee;
+    background: #fff;
+    box-shadow: 0 10px 20px rgba(23, 91, 140, 0.12);
+}
+
+.access-request-form-card__icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 13px;
+    background: #e2f0ff;
+    color: #1476c4;
+    font-size: 1.05rem;
+}
+
+.access-request-form-card span:nth-child(2) {
+    display: grid;
+    gap: 3px;
+}
+
+.access-request-form-card strong {
+    font-size: 0.82rem;
+}
+
+.access-request-form-card small {
+    color: var(--text-soft);
+    font-size: 0.68rem;
+    line-height: 1.35;
+}
+
+.access-request-form-card > .fa-arrow-right {
+    color: #7890a8;
+    font-size: 0.74rem;
+}
+
+.access-request-form-card--red .access-request-form-card__icon { background: #fde7e7; color: #d14a4a; }
+.access-request-form-card--amber .access-request-form-card__icon { background: #fff0d8; color: #c77a11; }
+.access-request-form-card--green .access-request-form-card__icon { background: #def4e9; color: #168c5e; }
+.access-request-form-card--violet .access-request-form-card__icon { background: #eee8ff; color: #7656d9; }
+.access-request-form-card--cyan .access-request-form-card__icon { background: #dcf4f5; color: #188b92; }
+.access-request-form-card--slate .access-request-form-card__icon { background: #e7edf3; color: #4e6680; }
+
+.access-request-modal__type {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+    padding: 12px 14px;
+    border: 1px solid #d8e8f5;
+    border-radius: 12px;
+    background: #f3f9fe;
+    color: #52708e;
+    font-size: 0.82rem;
+    text-align: left;
+}
+
+.access-request-modal__type i {
+    color: #1176c8;
+}
+
+@media (max-width: 1280px) {
+    .access-request-forms__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+    .access-request-forms { padding: 18px; border-radius: 19px; }
+    .access-request-forms__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .access-request-form-card { grid-template-columns: 1fr; justify-items: center; min-height: 142px; padding: 14px 10px; text-align: center; }
+    .access-request-form-card span:nth-child(2) { justify-items: center; }
+    .access-request-form-card > .fa-arrow-right { display: none; }
+}
+
 .public-ticket-back {
     display: inline-flex;
     align-items: center;

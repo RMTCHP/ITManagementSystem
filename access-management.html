@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Management | IT Asset Management & Request Job System</title>
+    <title>Access Requests | IT Asset Management & Request Job System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link rel="stylesheet" href="app.css?v=20260815-4">
+    <link rel="stylesheet" href="app.css?v=20260901-1">
 </head>
 <body class="app-body" data-module="accessRequests">
     <div class="app-shell app-shell--standard">
         <aside class="sidebar" id="sidebar"><div class="sidebar__brand"><div class="sidebar__brand-mark">IT</div><div><p class="sidebar__eyebrow">Factory Internal System</p><h1>IT Management</h1></div></div><nav class="sidebar__nav" id="sidebarNav"></nav></aside>
         <div class="app-main">
             <header class="topbar">
-                <div class="topbar__title-group"><p class="topbar__eyebrow" id="pageEyebrow">Module Workspace</p><h2 id="pageTitle">Access Management</h2></div>
+                <div class="topbar__title-group"><p class="topbar__eyebrow" id="pageEyebrow">Module Workspace</p><h2 id="pageTitle">Access Requests</h2></div>
                 <div class="topbar__actions">
-                    <label class="search-box" for="globalSearch"><i class="fa-solid fa-magnifying-glass"></i><input id="globalSearch" type="search" placeholder="Search access management"></label>
+                    <label class="search-box" for="globalSearch"><i class="fa-solid fa-magnifying-glass"></i><input id="globalSearch" type="search" placeholder="Search access requests"></label>
                     <button class="icon-btn" id="refreshButton" aria-label="Refresh data"><i class="fa-solid fa-rotate"></i></button>
                     <button class="icon-btn" id="exportButton" aria-label="Export current view"><i class="fa-solid fa-file-export"></i></button>
                     <div class="user-chip"><div class="user-chip__avatar" id="userAvatar">U</div><div><strong id="userName">User</strong><p id="userRole">Role</p></div></div>
@@ -33,6 +33,6 @@
     <script src="api.js"></script>
     <script src="ui.js"></script>
     <script src="shell.js"></script>
-    <script src="module-page.js"></script>
+    <script src="module-page.js?v=20260901-4"></script>
 </body>
 </html>

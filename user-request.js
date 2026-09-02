@@ -93,39 +93,46 @@
     }
 
     function setupEquipmentSignature() {
-        const rect = equipmentSignatureCanvas.getBoundingClientRect();
         const context = equipmentSignatureCanvas.getContext("2d");
-        equipmentSignatureCanvas.width = Math.max(1, Math.floor(rect.width * window.devicePixelRatio));
-        equipmentSignatureCanvas.height = Math.max(1, Math.floor(rect.height * window.devicePixelRatio));
-        context.scale(window.devicePixelRatio, window.devicePixelRatio);
-        context.lineWidth = 2;
-        context.lineCap = "round";
-        context.strokeStyle = "#17324d";
-        let drawing = false;
-        let previousPoint = null;
-        const getPoint = (event) => ({ x: event.clientX - rect.left, y: event.clientY - rect.top });
-        equipmentSignatureCanvas.onpointerdown = (event) => {
-            drawing = true;
-            previousPoint = getPoint(event);
-            equipmentSignatureCanvas.setPointerCapture(event.pointerId);
+        const resizeCanvas = () => {
+            const rect = equipmentSignatureCanvas.getBoundingClientRect();
+            equipmentSignatureCanvas.width = Math.max(1, Math.floor(rect.width * window.devicePixelRatio));
+            equipmentSignatureCanvas.height = Math.max(1, Math.floor(rect.height * window.devicePixelRatio));
+            context.scale(window.devicePixelRatio, window.devicePixelRatio);
+            context.lineWidth = 2;
+            context.lineCap = "round";
+            context.strokeStyle = "#17324d";
         };
-        equipmentSignatureCanvas.onpointermove = (event) => {
-            if (!drawing || !previousPoint) return;
+        resizeCanvas();
+
+        let isDrawing = false;
+        let lastPoint;
+        const getPoint = (event) => {
+            const rect = equipmentSignatureCanvas.getBoundingClientRect();
+            return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        };
+        equipmentSignatureCanvas.addEventListener("pointerdown", (event) => {
+            isDrawing = true;
+            lastPoint = getPoint(event);
+            equipmentSignatureCanvas.setPointerCapture(event.pointerId);
+        });
+        equipmentSignatureCanvas.addEventListener("pointermove", (event) => {
+            if (!isDrawing) return;
             const point = getPoint(event);
             context.beginPath();
-            context.moveTo(previousPoint.x, previousPoint.y);
+            context.moveTo(lastPoint.x, lastPoint.y);
             context.lineTo(point.x, point.y);
             context.stroke();
-            previousPoint = point;
+            lastPoint = point;
             hasEquipmentSignature = true;
-        };
-        equipmentSignatureCanvas.onpointerup = equipmentSignatureCanvas.onpointercancel = equipmentSignatureCanvas.onpointerleave = () => {
-            drawing = false;
-        };
-        document.getElementById("clearEquipmentSignature").onclick = () => {
+        });
+        ["pointerup", "pointercancel", "pointerleave"].forEach((name) => {
+            equipmentSignatureCanvas.addEventListener(name, () => { isDrawing = false; });
+        });
+        document.getElementById("clearEquipmentSignature").addEventListener("click", () => {
             context.clearRect(0, 0, equipmentSignatureCanvas.width, equipmentSignatureCanvas.height);
             hasEquipmentSignature = false;
-        };
+        });
     }
 
     async function selectService(service) {

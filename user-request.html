@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link rel="stylesheet" href="app.css?v=20260827-1">
-    <link rel="stylesheet" href="user-request.css?v=20260828-7">
+    <link rel="stylesheet" href="app.css?v=20260902-1">
+    <link rel="stylesheet" href="user-request.css?v=20260902-1">
 </head>
 <body class="public-ticket-body user-request-body">
     <main class="public-ticket-shell user-request-shell">
@@ -118,10 +118,10 @@
                     </label>
                 </div>
 
-                <div class="public-ticket-request-signature hidden" id="equipmentSignatureSection">
-                    <div><span>ลายเซ็นผู้เบิก</span><em>*</em><button id="clearEquipmentSignature" type="button">ล้าง</button></div>
-                    <small>ลงลายเซ็นเพื่อยืนยันการเบิกอุปกรณ์</small>
+                <div class="ticket-signature-field hidden" id="equipmentSignatureSection">
+                    <div><span>ลายเซ็นผู้เบิก <em>*</em></span><button id="clearEquipmentSignature" type="button">ล้าง</button></div>
                     <canvas id="equipmentSignatureCanvas" aria-label="ลายเซ็นผู้เบิก"></canvas>
+                    <small>ลงลายเซ็นในช่องนี้ด้วยนิ้ว ปากกา หรือเมาส์</small>
                 </div>
 
                 <div id="ticketPhotoSection">
@@ -150,6 +150,6 @@
     <script src="config.js"></script>
     <script src="api.js"></script>
     <script src="ui.js"></script>
-    <script src="user-request.js?v=20260828-1"></script>
+    <script src="user-request.js?v=20260902-2"></script>
 </body>
 </html>

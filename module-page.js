@@ -56,6 +56,19 @@
         return moduleKey === "tickets";
     }
 
+    function isAccessRequestModule() {
+        return moduleKey === "accessRequests";
+    }
+
+    const accessRequestForms = [
+        { type: "AD Account", label: "บัญชี AD", description: "สร้างหรือปิดใช้งานบัญชีผู้ใช้", icon: "fa-user-gear", tone: "blue", options: ["Create AD User", "Disable AD User"] },
+        { type: "Password Reset", label: "Reset Password", description: "ขอรีเซ็ตรหัสผ่านบัญชีผู้ใช้", icon: "fa-key", tone: "amber" },
+        { type: "Shared Folder Permission", label: "Shared Folder", description: "ขอเพิ่มหรือแก้ไขสิทธิ์โฟลเดอร์", icon: "fa-folder-open", tone: "green" },
+        { type: "Email Group", label: "Email Group", description: "ขอเพิ่มหรือลบสมาชิกกลุ่มอีเมล", icon: "fa-envelope-circle-check", tone: "violet" },
+        { type: "ERP / D365 Permission", label: "ERP / D365", description: "ขอสิทธิ์ใช้งานระบบ ERP หรือ D365", icon: "fa-chart-line", tone: "cyan" },
+        { type: "VPN Permission", label: "VPN", description: "ขอสิทธิ์เชื่อมต่อระบบจากภายนอก", icon: "fa-shield-halved", tone: "slate" }
+    ];
+
     function needsDashboardSummary() {
         return isAssetModule();
     }
@@ -970,7 +983,7 @@
         const heroPanel = document.getElementById("heroPanel");
         heroPanel.className = "hero-panel hero-panel--compact";
         heroPanel.style.display = "";
-        if (isKnowledgeModule()) {
+        if (isKnowledgeModule() || isAccessRequestModule()) {
             heroPanel.innerHTML = "";
             heroPanel.style.display = "none";
             return;
@@ -1847,9 +1860,29 @@
             : [];
 
         const canCreate = AppShell.canDo(moduleConfig, "create", state.session);
-        const createButton = canCreate
-            ? `<button class="primary-btn" id="createRecordButton" title="Add record"><i class="fa-solid fa-plus"></i><span>Add Record</span></button>`
+        const createButton = canCreate && !isAccessRequestModule()
+            ? `<button class="primary-btn" id="createRecordButton" title="Add record"><i class="fa-solid fa-plus"></i><span>${isAccessRequestModule() ? "New Request" : "Add Record"}</span></button>`
             : "";
+
+        const accessRequestCards = isAccessRequestModule() ? `
+            <section class="access-request-forms" aria-labelledby="accessRequestFormsTitle">
+                <div class="access-request-forms__header">
+                    <div>
+                        <p class="section-card__eyebrow">Request Forms</p>
+                        <h3 id="accessRequestFormsTitle">Select Access Request</h3>
+                        <p>Choose the request type to start a new form.</p>
+                    </div>
+                </div>
+                <div class="access-request-forms__grid">
+                    ${accessRequestForms.map((form) => `
+                        <button class="access-request-form-card access-request-form-card--${form.tone}" type="button" data-access-request-type="${UI.escapeHtml(form.type)}" title="Create ${UI.escapeHtml(form.label)} request">
+                            <span class="access-request-form-card__icon"><i class="fa-solid ${form.icon}"></i></span>
+                            <span><strong>${UI.escapeHtml(form.label)}</strong><small>${UI.escapeHtml(form.description)}</small></span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    `).join("")}
+                </div>
+            </section>` : "";
 
         const headerCells = moduleConfig.listFields.map((fieldKey) => `
             <th>
@@ -1900,11 +1933,12 @@
         }).join("");
 
         document.getElementById("viewContainer").innerHTML = `
+            ${accessRequestCards}
             <section class="table-panel">
                 <div class="table-panel__header">
                     <div class="table-panel__header-copy">
-                        <p class="section-card__eyebrow">Module Data</p>
-                        <h3>Records Table</h3>
+                        ${isAccessRequestModule() ? "" : '<p class="section-card__eyebrow">Module Data</p>'}
+                        <h3>${isAccessRequestModule() ? "My Access Requests" : "Records Table"}</h3>
                         <p class="table-panel__subtext">Search, filter, sort and maintain ${UI.escapeHtml(moduleConfig.label.toLowerCase())} records.</p>
                     </div>
                     <div class="table-panel__header-actions">
@@ -2066,9 +2100,70 @@
         }
     }
 
+    function getTodayInputDate() {
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+    }
+
+    async function openAccessRequestModal(requestType) {
+        const user = state.session && state.session.user ? state.session.user : {};
+        const departments = (window.APP_CONFIG.departments || []).map((department) => `<option value="${UI.escapeHtml(department)}" ${department === user.Department ? "selected" : ""}>${UI.escapeHtml(department)}</option>`).join("");
+        const request = accessRequestForms.find((item) => item.type === requestType) || accessRequestForms[0];
+        const result = await Swal.fire({
+            title: request.label,
+            html: `
+                <div class="access-request-modal">
+                    <div class="access-request-modal__type"><i class="fa-solid ${request.icon}"></i><span>${UI.escapeHtml(request.description)}</span></div>
+                    <div class="modal-form">
+                        <label class="modal-form__field"><span class="modal-form__label">Requester <em>*</em></span><input id="accessRequester" type="text" value="${UI.escapeHtml(user.FullName || user.Username || "")}"></label>
+                        <label class="modal-form__field"><span class="modal-form__label">Department <em>*</em></span><select id="accessDepartment"><option value="">Select</option>${departments}</select></label>
+                        ${request.options ? `<label class="modal-form__field"><span class="modal-form__label">Action <em>*</em></span><select id="accessRequestType">${request.options.map((option) => `<option value="${UI.escapeHtml(option)}">${UI.escapeHtml(option)}</option>`).join("")}</select></label>` : ""}
+                        <label class="modal-form__field"><span class="modal-form__label">Target User <em>*</em></span><input id="accessTargetUser" type="text" placeholder="Name or username"></label>
+                        <label class="modal-form__field"><span class="modal-form__label">System / Resource</span><input id="accessSystemName" type="text" placeholder="Folder, email group, ERP role, VPN profile"></label>
+                        <label class="modal-form__field field--full"><span class="modal-form__label">Reason</span><textarea id="accessReason" placeholder="Provide the business reason for this request"></textarea></label>
+                        <label class="modal-form__field field--full"><span class="modal-form__label">Remark</span><textarea id="accessRemark" placeholder="Optional note"></textarea></label>
+                    </div>
+                </div>`,
+            width: "min(760px, calc(100vw - 32px))",
+            customClass: { popup: "swal2-form-popup" },
+            showCancelButton: true,
+            showCloseButton: true,
+            confirmButtonText: "Submit Request",
+            preConfirm: () => {
+                const requester = document.getElementById("accessRequester").value.trim();
+                const department = document.getElementById("accessDepartment").value.trim();
+                const targetUser = document.getElementById("accessTargetUser").value.trim();
+                if (!requester || !department || !targetUser) {
+                    Swal.showValidationMessage("Requester, department and target user are required.");
+                    return false;
+                }
+                return {
+                    RequestDate: getTodayInputDate(),
+                    Requester: requester,
+                    Department: department,
+                    RequestType: request.options ? document.getElementById("accessRequestType").value : request.type,
+                    TargetUser: targetUser,
+                    SystemName: document.getElementById("accessSystemName").value.trim(),
+                    Reason: document.getElementById("accessReason").value.trim(),
+                    Remark: document.getElementById("accessRemark").value.trim(),
+                    Status: "Pending Approval"
+                };
+            }
+        });
+
+        if (result.isConfirmed && result.value) {
+            await saveRecord("create", result.value);
+        }
+    }
+
     async function openRecordModal(mode, recordId = "") {
         if (isKnowledgeModule()) {
             await openKnowledgeModal(mode, recordId);
+            return;
+        }
+        if (isAccessRequestModule() && mode === "create") {
+            await openAccessRequestModal("AD Account");
             return;
         }
         const existing = recordId ? state.records.find((item) => item[moduleConfig.idField] === recordId) : {};
@@ -2404,6 +2499,12 @@
 
             if (event.target.closest("#addKnowledgeCategoryButton")) {
                 await addKnowledgeCategory();
+                return;
+            }
+
+            const accessRequestButton = event.target.closest("[data-access-request-type]");
+            if (accessRequestButton) {
+                await openAccessRequestModal(accessRequestButton.getAttribute("data-access-request-type"));
                 return;
             }
 
