@@ -1622,6 +1622,8 @@
         const isRemoteSupport = isService("remote support");
         const workStartedDateValue = isRemoteSupport ? ticket.RequestDate : ticket.WorkStartedAt;
         const completedDateValue = isRemoteSupport ? ticket.RequestDate : completedAt;
+        const requestSectionDateValue = ticket.WorkStartedAt ? workStartedDateValue : submittedAt;
+        const requestSectionTimeValue = ticket.WorkStartedAt || submittedAt;
         const requesterSignatureDateValue = ticket.WorkStartedAt ? workStartedDateValue : submittedAt;
         const requesterSignatureTimeValue = ticket.WorkStartedAt || submittedAt;
         const checked = (condition) => condition ? "☒" : "☐";
@@ -1683,8 +1685,8 @@
                 <div class="field span-6"><b>Department / ฝ่าย</b>${value(ticket.Department)}</div>
                 <div class="field span-6"><b>Location / จุดที่พบปัญหา</b>${value(ticket.Location)}</div>
                 <div class="field span-6"><b>Request by / ผู้ร้องขอ</b>${value(ticket.Requester)}${ticket.Contact ? ` (${value(ticket.Contact)})` : ""}</div>
-                <div class="field span-3"><b>Date / วันที่</b><span id="ticketRequestDate">${value(dateOnly(submittedAt))}</span></div>
-                <div class="field span-3"><b>Time / เวลา</b><span id="ticketRequestTime">${value(timeOnly(submittedAt))}</span></div>
+                <div class="field span-3"><b>Date / วันที่</b><span id="ticketRequestDate">${value(dateOnly(requestSectionDateValue))}</span></div>
+                <div class="field span-3"><b>Time / เวลา</b><span id="ticketRequestTime">${value(timeOnly(requestSectionTimeValue))}</span></div>
                 <div class="span-12"><b>DESCRIPTION / ลักษณะของงาน</b>
                     <div class="check-grid">
                         <span class="check"><strong>${checked(isCategory("repair") || isService("on-site"))}</strong>ตรวจซ่อมทั่วไป</span>
@@ -1739,9 +1741,10 @@
             });
             const requestSignatureData = (signatures.data && signatures.data.requestSignature) || "";
             const resolutionSignatureData = (signatures.data && signatures.data.resolutionSignature) || "";
-            if (!reportWindow.closed && requestSignatureData) {
+            const requesterSignatureData = requestSignatureData || resolutionSignatureData;
+            if (!reportWindow.closed && requesterSignatureData) {
                 const requestSignatureImage = reportWindow.document.getElementById("ticketRequestSignature");
-                requestSignatureImage.src = requestSignatureData;
+                requestSignatureImage.src = requesterSignatureData;
                 requestSignatureImage.style.display = "block";
             }
             const requesterApprovalSignatureData = resolutionSignatureData || requestSignatureData;
@@ -1751,9 +1754,9 @@
                 resolutionSignatureImage.style.display = "block";
             }
             if (!reportWindow.closed && signatures.data && signatures.data.createdAt) {
-                reportWindow.document.getElementById("ticketRequestDate").textContent = dateOnly(signatures.data.createdAt);
-                reportWindow.document.getElementById("ticketRequestTime").textContent = timeOnly(signatures.data.createdAt);
                 if (!ticket.WorkStartedAt) {
+                    reportWindow.document.getElementById("ticketRequestDate").textContent = dateOnly(signatures.data.createdAt);
+                    reportWindow.document.getElementById("ticketRequestTime").textContent = timeOnly(signatures.data.createdAt);
                     reportWindow.document.getElementById("ticketRequestSignatureDate").textContent = dateOnly(signatures.data.createdAt);
                     reportWindow.document.getElementById("ticketRequestSignatureTime").textContent = timeOnly(signatures.data.createdAt);
                 }
