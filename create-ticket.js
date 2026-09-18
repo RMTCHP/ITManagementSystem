@@ -343,6 +343,40 @@
         });
     }
 
+    async function preparePhotoUpload(file) {
+        const maxDimension = 1600;
+        const quality = 0.82;
+        const image = await new Promise((resolve, reject) => {
+            const source = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            source.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                resolve(source);
+            };
+            source.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error("Unable to process the selected photo"));
+            };
+            source.src = objectUrl;
+        });
+        const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round((image.naturalWidth || 1) * scale));
+        canvas.height = Math.max(1, Math.round((image.naturalHeight || 1) * scale));
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+        if (!blob) {
+            throw new Error("Unable to compress the selected photo");
+        }
+        const baseName = String(file.name || "ticket-photo").replace(/\.[^.]+$/, "");
+        return {
+            name: `${baseName}.jpg`,
+            type: "image/jpeg",
+            size: blob.size,
+            base64: await readFileAsBase64(blob)
+        };
+    }
+
     async function openTicketResolveModal(ticket) {
         const session = getActiveSession();
         if (!session) {
@@ -458,12 +492,7 @@
                         size: Math.ceil(signatureCanvas.toDataURL("image/png").length * 0.75),
                         base64: signatureCanvas.toDataURL("image/png").split(",")[1]
                     },
-                    photo: photo ? {
-                        name: photo.name,
-                        type: photo.type,
-                        size: photo.size,
-                        base64: await readFileAsBase64(photo)
-                    } : null
+                    photo: photo ? await preparePhotoUpload(photo) : null
                 };
             }
         });
@@ -674,12 +703,7 @@
 
         try {
             if (selectedPhoto) {
-                payload.file = {
-                    name: selectedPhoto.name,
-                    type: selectedPhoto.type,
-                    size: selectedPhoto.size,
-                    base64: await readFileAsBase64(selectedPhoto)
-                };
+                payload.file = await preparePhotoUpload(selectedPhoto);
             }
             if (isEquipment) {
                 const signatureData = equipmentSignatureCanvas.toDataURL("image/png");
