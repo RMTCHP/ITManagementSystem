@@ -867,8 +867,8 @@
 
     async function refreshSidebarAlertsInBackground() {
         try {
-            await loadDashboard();
-            syncSidebarAlerts();
+            const result = await ApiClient.request("sidebarAlerts", { token: ApiClient.getSessionToken() });
+            AppShell.updateSidebarAlerts(result.data || {});
         } catch (error) {
         }
     }

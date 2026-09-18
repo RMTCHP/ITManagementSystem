@@ -44,6 +44,7 @@
     let currentTicketJobs = [];
     let hasEquipmentSignature = false;
     let equipmentItems = [];
+    let ticketWorkspaceRequest = null;
 
     const serviceLabels = {
         "On-site": "On-site support details",
@@ -287,10 +288,20 @@
         }).join("");
     }
 
+    async function getMyJobWorkspace() {
+        if (!ticketWorkspaceRequest) {
+            ticketWorkspaceRequest = ApiClient.request("getPublicTicketWorkspace")
+                .finally(() => {
+                    ticketWorkspaceRequest = null;
+                });
+        }
+        return ticketWorkspaceRequest;
+    }
+
     async function loadMyJobs() {
         try {
             UI.loading("Loading My Job", "Retrieving the latest ticket list");
-            const result = await ApiClient.request("listPublicTicketJobs");
+            const result = await getMyJobWorkspace();
             Swal.close();
             renderTicketJobs((result.data && result.data.records) || []);
         } catch (error) {
@@ -302,7 +313,7 @@
 
     async function loadMyJobCount() {
         try {
-            const result = await ApiClient.request("getPublicTicketJobSummary");
+            const result = await getMyJobWorkspace();
             const openCount = Math.max(0, Number(result.data && result.data.openCount) || 0);
             myJobOpenCount.textContent = openCount > 99 ? "99+" : String(openCount);
             myJobOpenCount.classList.toggle("hidden", openCount === 0);
