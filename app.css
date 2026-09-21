@@ -3553,6 +3553,11 @@ button {
     color: var(--primary);
 }
 
+.table-action--primary {
+    background: rgba(24, 151, 103, 0.14);
+    color: #0b8a59;
+}
+
 .badge {
     display: inline-flex;
     align-items: center;
@@ -3629,6 +3634,113 @@ button {
 
 .inventory-history__table {
     max-height: min(58vh, 520px);
+}
+
+.asset-borrowing-menu {
+    display: grid;
+    gap: 16px;
+    text-align: left;
+}
+
+.asset-borrowing-menu > p {
+    margin: 0;
+    color: var(--text-soft);
+}
+
+.asset-borrowing-menu__choices {
+    display: grid;
+    gap: 12px;
+}
+
+.asset-borrowing-menu__choices button {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 16px;
+    border: 1px solid #dce7f0;
+    border-radius: 16px;
+    background: #f8fbfe;
+    color: var(--text);
+    text-align: left;
+    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.asset-borrowing-menu__choices button:hover {
+    border-color: #2789dc;
+    background: #eef7ff;
+    transform: translateY(-1px);
+}
+
+.asset-borrowing-menu__choices button > i:first-child {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    border-radius: 14px;
+    background: #dceeff;
+    color: #0877c9;
+    font-size: 1.2rem;
+}
+
+.asset-borrowing-menu__choices button:nth-child(2) > i:first-child {
+    background: #dff5eb;
+    color: #07875b;
+}
+
+.asset-borrowing-menu__choices span {
+    display: grid;
+    gap: 3px;
+}
+
+.asset-borrowing-menu__choices small {
+    color: var(--text-soft);
+}
+
+.asset-borrowing-menu__history {
+    justify-self: start;
+}
+
+.asset-borrowing-form {
+    display: grid;
+    gap: 14px;
+    text-align: left;
+}
+
+.asset-borrowing-form label {
+    display: grid;
+    gap: 6px;
+    color: var(--text-soft);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.asset-borrowing-form input,
+.asset-borrowing-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #cbdbea;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--text);
+    font: inherit;
+}
+
+.asset-borrowing-form__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.asset-borrowing-form .ticket-signature-field {
+    margin: 0;
+}
+
+@media (max-width: 640px) {
+    .asset-borrowing-form__grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .swal2-popup {
