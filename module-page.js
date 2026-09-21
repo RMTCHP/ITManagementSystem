@@ -60,6 +60,10 @@
         return moduleKey === "accessRequests";
     }
 
+    function isAuditLogModule() {
+        return moduleKey === "auditLogs";
+    }
+
     const accessRequestForms = [
         { type: "AD Account", label: "บัญชี AD", description: "สร้างหรือปิดใช้งานบัญชีผู้ใช้", icon: "fa-user-gear", tone: "blue", options: ["Create AD User", "Disable AD User"] },
         { type: "Password Reset", label: "Reset Password", description: "ขอรีเซ็ตรหัสผ่านบัญชีผู้ใช้", icon: "fa-key", tone: "amber" },
@@ -631,6 +635,10 @@
     }
 
     function getSortValue(record, fieldKey) {
+        if (fieldKey === "Timestamp") {
+            const timestamp = new Date(record.Timestamp || "").getTime();
+            return Number.isFinite(timestamp) ? timestamp : 0;
+        }
         if (fieldKey === "AssetAge") {
             return getAssetAgeMonths(record.DateOfDepreciation);
         }
@@ -953,8 +961,11 @@
         });
         state.records = result.data.records || [];
         state.stockMovements = [];
-        state.sort.key = moduleConfig.listFields[0] || "";
-        state.sort.direction = "asc";
+        state.sort.key = isAuditLogModule() ? "Timestamp" : (moduleConfig.listFields[0] || "");
+        state.sort.direction = isAuditLogModule() ? "desc" : "asc";
+        if (isAuditLogModule()) {
+            state.pageSize = 50;
+        }
         syncSidebarAlerts();
     }
 
@@ -2077,7 +2088,7 @@
                     <div class="table-panel__header-copy">
                         ${isAccessRequestModule() ? "" : '<p class="section-card__eyebrow">Module Data</p>'}
                         <h3>${isAccessRequestModule() ? "My Access Requests" : "Records Table"}</h3>
-                        <p class="table-panel__subtext">Search, filter, sort and maintain ${UI.escapeHtml(moduleConfig.label.toLowerCase())} records.</p>
+                        <p class="table-panel__subtext">${isAuditLogModule() ? "Review sign-ins and data changes across the system." : `Search, filter, sort and maintain ${UI.escapeHtml(moduleConfig.label.toLowerCase())} records.`}</p>
                     </div>
                     <div class="table-panel__header-actions">
                         ${createButton}
@@ -2089,7 +2100,7 @@
                 <div class="toolbar">
                     <div class="toolbar__filters">
                         <select id="statusFilter">
-                            <option value="">All status</option>
+                            <option value="">${isAuditLogModule() ? "All actions" : "All status"}</option>
                             ${statusValues.map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.status === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}
                         </select>
                         <select id="pageSizeSelect">
