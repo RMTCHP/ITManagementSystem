@@ -42,6 +42,11 @@
     margin: 0 auto;
 }
 
+.user-request-body .public-ticket-submit:disabled {
+    cursor: wait;
+    opacity: 0.68;
+}
+
 .user-request-body input,
 .user-request-body select,
 .user-request-body textarea,

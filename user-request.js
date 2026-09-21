@@ -24,10 +24,25 @@
     const photoPreviewImage = document.getElementById("photoPreviewImage");
     const removePhotoButton = document.getElementById("removePhotoButton");
     const backButton = document.getElementById("backToRequestTypeButton");
+    const submitButton = form.querySelector('[type="submit"]');
     let equipmentItems = [];
     let hasEquipmentSignature = false;
     let selectedPhoto = null;
     let previewUrl = "";
+    let isSubmitting = false;
+    let clientRequestId = "";
+
+    function createClientRequestId() {
+        return window.crypto && window.crypto.randomUUID
+            ? window.crypto.randomUUID().replace(/-/g, "")
+            : `${Date.now()}${Math.random().toString(36).slice(2)}`;
+    }
+
+    function setSubmitting(submitting) {
+        isSubmitting = submitting;
+        submitButton.disabled = submitting;
+        submitButton.setAttribute("aria-busy", String(submitting));
+    }
 
     function escapeHtml(value) {
         return String(value || "").replace(/[&<>'"]/g, (character) => ({
@@ -137,6 +152,7 @@
 
     async function selectService(service) {
         const isEquipment = service === "Equipment Requisition";
+        clientRequestId = createClientRequestId();
         requestedServiceInput.value = service;
         formTitle.textContent = isEquipment ? "รายละเอียดการเบิกอุปกรณ์" : "รายละเอียดแจ้งปัญหาหน้างาน";
         requesterLabel.innerHTML = "ชื่อผู้แจ้ง <em>*</em>";
@@ -171,6 +187,8 @@
     }
 
     function resetToChoice() {
+        setSubmitting(false);
+        clientRequestId = "";
         form.reset();
         requestedServiceInput.value = "";
         categoryInput.disabled = false;
@@ -290,6 +308,7 @@
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (isSubmitting) return;
         if (!form.reportValidity()) return;
 
         const isEquipment = requestedServiceInput.value === "Equipment Requisition";
@@ -309,6 +328,8 @@
         });
         if (!confirmation.isConfirmed) return;
 
+        setSubmitting(true);
+
         const values = new FormData(form);
         const payload = {
             requester: values.get("requester"),
@@ -321,7 +342,8 @@
             inventoryItemId: values.get("equipmentItemId"),
             requestedQuantity: values.get("equipmentQuantity"),
             website: values.get("website"),
-            clientId: getClientId()
+            clientId: getClientId(),
+            clientRequestId: clientRequestId || (clientRequestId = createClientRequestId())
         };
 
         try {
@@ -343,6 +365,7 @@
             await UI.alert({ icon: "success", title: "ส่งคำขอเรียบร้อย", text: `เลขที่รายการ ${result.data.TicketID} ฝ่าย IT จะดำเนินการต่อไป` });
             resetToChoice();
         } catch (error) {
+            setSubmitting(false);
             Swal.close();
             await UI.alert({ icon: "error", title: "ไม่สามารถส่งคำขอได้", text: error.message || "กรุณาลองใหม่อีกครั้ง" });
         }
