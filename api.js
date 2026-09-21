@@ -97,6 +97,7 @@
             listPublicTicketJobs: 30000,
             getPublicTicketJobSummary: 30000,
             getTicketSignatures: 30000,
+            listAssetAssignmentHistory: 30000,
             resolveTicket: 60000,
             createRecord: 30000,
             saveRecord: 30000,

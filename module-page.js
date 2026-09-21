@@ -841,6 +841,66 @@
         });
     }
 
+    async function openAssetAssignmentHistory(recordId) {
+        const asset = state.records.find((item) => String(item.AssetID || "") === String(recordId || ""));
+        UI.loading("Loading asset history", "Fetching assignment changes");
+        let records = [];
+        try {
+            const result = await ApiClient.request("listAssetAssignmentHistory", {
+                token: ApiClient.getSessionToken(),
+                assetId: recordId
+            });
+            records = (result.data && result.data.records) || [];
+        } finally {
+            Swal.close();
+        }
+
+        const assignmentValue = (value) => UI.escapeHtml(value || "Unassigned");
+        const rowsMarkup = records.map((item) => `
+            <tr>
+                <td>${UI.escapeHtml(formatDateDisplay(item.ChangedAt))}</td>
+                <td>${UI.escapeHtml(item.ChangeType || "Assignment Updated")}</td>
+                <td>${assignmentValue(item.PreviousUser)}</td>
+                <td>${assignmentValue(item.NewUser)}</td>
+                <td>${assignmentValue(item.PreviousLocation)}</td>
+                <td>${assignmentValue(item.NewLocation)}</td>
+                <td>${UI.escapeHtml(item.ChangedBy || "-")}</td>
+            </tr>
+        `).join("");
+
+        await Swal.fire({
+            title: "Asset Assignment History",
+            html: `
+                <div class="inventory-history">
+                    <div class="inventory-history__header">
+                        <strong>${UI.escapeHtml(asset ? asset.AssetName || recordId : recordId)}</strong>
+                        <span>${UI.escapeHtml(asset ? asset.FixedAssetNo || recordId : recordId)}</span>
+                    </div>
+                    <div class="data-table-wrap inventory-history__table">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Changed At</th>
+                                    <th>Type</th>
+                                    <th>Previous User</th>
+                                    <th>New User</th>
+                                    <th>Previous Location</th>
+                                    <th>New Location</th>
+                                    <th>Changed By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsMarkup || `<tr><td colspan="7">${UI.emptyState("No assignment history", "Changes to User or Location will appear here.")}</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `,
+            width: "min(1180px, calc(100vw - 32px))",
+            confirmButtonText: "Close"
+        });
+    }
+
     function getCellClass(fieldKey) {
         const field = getFieldConfig(fieldKey);
         const classNames = ["cell-data"];
@@ -2065,7 +2125,9 @@
                 : "";
             const historyButton = isInventoryModule()
                 ? `<button class="table-action table-action--info" data-action="history" data-id="${UI.escapeHtml(record[moduleConfig.idField])}" title="View history"><i class="fa-solid fa-clock-rotate-left"></i></button>`
-                : "";
+                : (isAssetModule()
+                    ? `<button class="table-action table-action--info" data-action="asset-history" data-id="${UI.escapeHtml(record[moduleConfig.idField])}" title="View assignment history"><i class="fa-solid fa-clock-rotate-left"></i></button>`
+                    : "");
 
             return `
                 <tr>
@@ -2680,6 +2742,8 @@
                 const id = actionButton.getAttribute("data-id");
                 if (action === "history") {
                     await openInventoryHistory(id);
+                } else if (action === "asset-history") {
+                    await openAssetAssignmentHistory(id);
                 } else if (action === "preview") {
                     await openKnowledgePreview(id);
                 } else if (action === "ticket-details") {
