@@ -39,12 +39,27 @@
     const ticketProfileInitial = document.getElementById("ticketProfileInitial");
     const ticketLogoutButton = document.getElementById("ticketLogoutButton");
     const userQrCodeButton = document.getElementById("userQrCodeButton");
+    const submitButton = form.querySelector('[type="submit"]');
     let selectedPhoto = null;
     let previewUrl = "";
     let currentTicketJobs = [];
     let hasEquipmentSignature = false;
     let equipmentItems = [];
     let ticketWorkspaceRequest = null;
+    let isSubmitting = false;
+    let clientRequestId = "";
+
+    function createClientRequestId() {
+        return window.crypto && window.crypto.randomUUID
+            ? window.crypto.randomUUID().replace(/-/g, "")
+            : `${Date.now()}${Math.random().toString(36).slice(2)}`;
+    }
+
+    function setSubmitting(submitting) {
+        isSubmitting = submitting;
+        submitButton.disabled = submitting;
+        submitButton.setAttribute("aria-busy", String(submitting));
+    }
 
     const serviceLabels = {
         "On-site": "On-site support details",
@@ -150,6 +165,7 @@
     }
 
     async function selectService(service) {
+        clientRequestId = createClientRequestId();
         requestedServiceInput.value = service;
         formTitle.textContent = serviceLabels[service] || "Issue details";
         const isEquipment = service === "Equipment Requisition";
@@ -642,6 +658,9 @@
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (isSubmitting) {
+            return;
+        }
         if (!form.reportValidity()) {
             return;
         }
@@ -680,6 +699,7 @@
         if (!confirmation.isConfirmed) {
             return;
         }
+        setSubmitting(true);
 
         const values = new FormData(form);
         const payload = {
@@ -698,7 +718,8 @@
             inventoryItemId: values.get("equipmentItemId"),
             requestedQuantity: values.get("equipmentQuantity"),
             website: values.get("website"),
-            clientId: getClientId()
+            clientId: getClientId(),
+            clientRequestId: clientRequestId || (clientRequestId = createClientRequestId())
         };
 
         try {
@@ -717,6 +738,8 @@
                 title: "Ticket submitted",
                 text: `Your Ticket ID is ${result.data.TicketID}. Please keep this ID for follow-up.`
             });
+            setSubmitting(false);
+            clientRequestId = "";
             form.reset();
             clearSelectedPhoto();
             formCard.classList.add("hidden");
@@ -725,6 +748,7 @@
             loadMyJobCount();
             window.scrollTo({ top: 0, behavior: "smooth" });
         } catch (error) {
+            setSubmitting(false);
             Swal.close();
             await UI.alert({ icon: "error", title: "Unable to submit ticket", text: error.message || "Please try again." });
         }

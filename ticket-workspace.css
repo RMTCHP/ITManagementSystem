@@ -376,3 +376,8 @@
     border-radius: 14px;
     background: #fff;
 }
+
+.public-ticket-submit:disabled {
+    cursor: wait;
+    opacity: 0.68;
+}
