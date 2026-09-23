@@ -58,9 +58,9 @@ window.APP_CONFIG = {
         { group: "Asset & Inventory", items: [
             { key: "assets", label: "Asset Management", icon: "fa-laptop-file", description: "Asset register and lifecycle" },
             { key: "licenses", label: "License Management", icon: "fa-id-card-clip", description: "Software license tracking" },
-            { key: "maintenanceAgreements", label: "MA & Renewal", icon: "fa-file-signature", description: "Maintenance contracts and renewal alerts" },
             { key: "stockItems", label: "Inventory", icon: "fa-boxes-stacked", description: "Stock and movements" },
-            { key: "stockMovements", label: "Stock Movement", icon: "fa-arrow-right-arrow-left", description: "Inbound, outbound and adjustment logs" }
+            { key: "stockMovements", label: "Stock Movement", icon: "fa-arrow-right-arrow-left", description: "Inbound, outbound and adjustment logs" },
+            { key: "maintenanceAgreements", label: "MA & Renewal", icon: "fa-file-signature", description: "Maintenance contracts and renewal alerts" }
         ]},
         { group: "IT Service Desk", items: [
             { key: "tickets", label: "Tickets & Requests", icon: "fa-screwdriver-wrench", description: "IT incidents and service requests" },
