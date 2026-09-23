@@ -103,6 +103,7 @@
             returnComputerBorrowing: 60000,
             getComputerBorrowingPdfData: 30000,
             resolveTicket: 60000,
+            renewMaintenanceAgreement: 60000,
             createRecord: 30000,
             saveRecord: 30000,
             importRecords: 45000

@@ -1,7 +1,7 @@
 window.APP_CONFIG = {
     appName: "IT Asset Management & Request Job System",
     projectProfile: "Enterprise Clean",
-    webAppUrl: "https://script.google.com/macros/s/AKfycbxNH5_veOmZEjLfoxdJRtWIQnoykyR_Lfcs_l_I-gknqsy-MWEwcyXNA4xPMpL2tdQ/exec",
+    webAppUrl: "https://script.google.com/macros/s/AKfycbyaVMRI-LjvuBC44I7rVBJszSigLh2ayrXBYY6kcl0YsX8nuiKrhW4NlndYsBqnBUc/exec",
     sessionStorageKey: "itms_session",
     sessionHours: 12,
     pageRoutes: {
@@ -35,6 +35,7 @@ window.APP_CONFIG = {
         "Low Stock": "warning",
         Expiring: "warning",
         "Renewal In Progress": "info",
+        Renewed: "neutral",
         Inbound: "success",
         Outbound: "danger",
         Adjustment: "info",
@@ -242,7 +243,7 @@ window.APP_CONFIG = {
                 { key: "RenewalNoticeDays", label: "Notify Before Expiry (Days)", type: "number", required: true, default: "60", hint: "Recommended: 90, 60 or 30 days" },
                 { key: "AmountBaht", label: "Contract Value (Baht)", type: "number" },
                 { key: "Owner", label: "Owner / Responsible", type: "text", required: true },
-                { key: "Status", label: "Status", type: "select", default: "Active", options: ["Active", "Renewal In Progress", "Expiring", "Expired", "Cancelled"] },
+                { key: "Status", label: "Status", type: "select", default: "Active", options: ["Active", "Renewal In Progress", "Expiring", "Expired", "Renewed", "Cancelled"] },
                 { key: "DocumentURL", label: "Contract Document Link", type: "url", full: true },
                 { key: "Remark", label: "Remark", type: "textarea", full: true }
             ]

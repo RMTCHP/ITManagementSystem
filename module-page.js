@@ -2464,6 +2464,15 @@
             const borrowingButton = isAssetModule() && isBorrowableComputerAsset(record)
                 ? `<button class="table-action table-action--primary" data-action="asset-borrowing" data-id="${UI.escapeHtml(record[moduleConfig.idField])}" title="Borrow or return computer"><i class="fa-solid fa-hand-holding-hand"></i></button>`
                 : "";
+            const maintenanceHistoryButton = isMaintenanceAgreementModule()
+                ? `<button class="table-action table-action--info" data-action="maintenance-history" data-id="${UI.escapeHtml(record.AgreementID)}" title="View renewal history"><i class="fa-solid fa-clock-rotate-left"></i></button>`
+                : "";
+            const maintenanceDocumentButton = isMaintenanceAgreementModule() && record.DocumentURL
+                ? `<button class="table-action" data-action="maintenance-document" data-id="${UI.escapeHtml(record.AgreementID)}" title="Open contract document"><i class="fa-solid fa-file-arrow-up"></i></button>`
+                : "";
+            const maintenanceRenewButton = isMaintenanceAgreementModule() && AppShell.canDo(moduleConfig, "create", state.session) && !["Renewed", "Cancelled"].includes(String(record.Status || ""))
+                ? `<button class="table-action table-action--primary" data-action="renew-maintenance" data-id="${UI.escapeHtml(record.AgreementID)}" title="Renew contract"><i class="fa-solid fa-arrows-rotate"></i></button>`
+                : "";
 
             return `
                 <tr>
@@ -2472,6 +2481,9 @@
                         <div class="table-actions">
                             ${historyButton}
                             ${borrowingButton}
+                            ${maintenanceHistoryButton}
+                            ${maintenanceDocumentButton}
+                            ${maintenanceRenewButton}
                             ${editButton}
                             ${deleteButton}
                         </div>
@@ -2732,6 +2744,145 @@
             await saveRecord(mode, values);
         } catch (error) {
         }
+    }
+
+    async function openMaintenanceRenewalModal(agreementId) {
+        const agreement = state.records.find((record) => String(record.AgreementID || "") === String(agreementId || ""));
+        if (!agreement) {
+            await UI.alert({ icon: "error", title: "Agreement not found", text: "Refresh the list and try again." });
+            return;
+        }
+        const categoryField = getFieldConfig("Category") || { options: [] };
+        const categoryOptions = (categoryField.options || []).map((option) => `<option value="${UI.escapeHtml(option)}" ${option === agreement.Category ? "selected" : ""}>${UI.escapeHtml(option)}</option>`).join("");
+        const result = await Swal.fire({
+            title: `Renew ${UI.escapeHtml(agreement.AgreementID)}`,
+            html: `<div class="modal-form modal-form--maintenanceAgreements">
+                <div class="knowledge-form__intro"><i class="fa-solid fa-arrows-rotate"></i><span>A new agreement record will be created and the current agreement will be retained as renewal history.</span></div>
+                <label class="modal-form__field field--full"><span class="modal-form__label">Agreement / Service Name <em>*</em></span><input id="renewAgreementName" value="${UI.escapeHtml(agreement.AgreementName || "")}"></label>
+                <label class="modal-form__field"><span class="modal-form__label">Category</span><select id="renewCategory"><option value="">Select</option>${categoryOptions}</select></label>
+                <label class="modal-form__field"><span class="modal-form__label">Covered Asset / Service <em>*</em></span><input id="renewCoveredAsset" value="${UI.escapeHtml(agreement.CoveredAsset || "")}"></label>
+                <label class="modal-form__field"><span class="modal-form__label">Vendor / Provider <em>*</em></span><input id="renewVendor" value="${UI.escapeHtml(agreement.Vendor || "")}"></label>
+                <label class="modal-form__field"><span class="modal-form__label">New Contract No.</span><input id="renewContractNo" value=""></label>
+                <label class="modal-form__field"><span class="modal-form__label">New Start Date <em>*</em></span><input id="renewStartDate" type="date" value="${UI.escapeHtml(String(agreement.EndDate || "").slice(0, 10))}"></label>
+                <label class="modal-form__field"><span class="modal-form__label">New End Date <em>*</em></span><input id="renewEndDate" type="date"></label>
+                <label class="modal-form__field"><span class="modal-form__label">Notify Before Expiry (Days) <em>*</em></span><input id="renewNoticeDays" type="number" min="0" value="${UI.escapeHtml(String(agreement.RenewalNoticeDays || 60))}"></label>
+                <label class="modal-form__field"><span class="modal-form__label">New Contract Value (Baht)</span><input id="renewAmountBaht" type="number" min="0" value="${UI.escapeHtml(String(agreement.AmountBaht || ""))}"></label>
+                <label class="modal-form__field"><span class="modal-form__label">Owner / Responsible <em>*</em></span><input id="renewOwner" value="${UI.escapeHtml(agreement.Owner || "")}"></label>
+                <label class="modal-form__field field--full"><span class="modal-form__label">New Contract Document <em>*</em></span><input id="renewContractFile" type="file" accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><div class="form-hint">PDF, DOCX or XLSX, maximum 10 MB.</div></label>
+                <label class="modal-form__field field--full"><span class="modal-form__label">Renewal Remark</span><textarea id="renewRemark" placeholder="PO, quotation, scope change, or renewal note"></textarea></label>
+            </div>`,
+            width: "min(920px, calc(100vw - 32px))",
+            customClass: { popup: "swal2-form-popup" },
+            showCancelButton: true,
+            showCloseButton: true,
+            confirmButtonText: "Create Renewed Contract",
+            preConfirm: () => {
+                const renewal = {
+                    AgreementName: document.getElementById("renewAgreementName").value.trim(),
+                    Category: document.getElementById("renewCategory").value.trim(),
+                    CoveredAsset: document.getElementById("renewCoveredAsset").value.trim(),
+                    Vendor: document.getElementById("renewVendor").value.trim(),
+                    ContractNo: document.getElementById("renewContractNo").value.trim(),
+                    StartDate: document.getElementById("renewStartDate").value,
+                    EndDate: document.getElementById("renewEndDate").value,
+                    RenewalNoticeDays: document.getElementById("renewNoticeDays").value.trim(),
+                    AmountBaht: document.getElementById("renewAmountBaht").value.trim(),
+                    Owner: document.getElementById("renewOwner").value.trim(),
+                    Remark: document.getElementById("renewRemark").value.trim()
+                };
+                const file = document.getElementById("renewContractFile").files[0];
+                if (!renewal.AgreementName || !renewal.CoveredAsset || !renewal.Vendor || !renewal.StartDate || !renewal.EndDate || !renewal.RenewalNoticeDays || !renewal.Owner || !file) {
+                    Swal.showValidationMessage("Please complete all required fields.");
+                    return false;
+                }
+                if (!/\.(pdf|docx|xlsx)$/i.test(file.name || "") || file.size > 10 * 1024 * 1024) {
+                    Swal.showValidationMessage("Upload a PDF, DOCX or XLSX file no larger than 10 MB.");
+                    return false;
+                }
+                if (new Date(renewal.EndDate).getTime() < new Date(renewal.StartDate).getTime()) {
+                    Swal.showValidationMessage("New end date must be after the start date.");
+                    return false;
+                }
+                return { renewal, file };
+            }
+        });
+        if (!result.isConfirmed || !result.value) {
+            return;
+        }
+
+        const actionKey = `renew-agreement:${agreementId}`;
+        if (!beginAction(actionKey)) {
+            return;
+        }
+        UI.loading("Renewing contract", "Creating the new agreement and retaining the previous record");
+        try {
+            const response = await ApiClient.request("renewMaintenanceAgreement", {
+                token: ApiClient.getSessionToken(),
+                agreementId,
+                renewal: result.value.renewal,
+                file: {
+                    name: result.value.file.name,
+                    type: result.value.file.type,
+                    size: result.value.file.size,
+                    base64: await readKnowledgeFile(result.value.file)
+                }
+            });
+            const data = response.data || {};
+            upsertStateRecord(data.previous, "edit");
+            upsertStateRecord(data.record, "create");
+            state.filters.summary = "all";
+            syncSidebarAlerts();
+            renderHero();
+            renderTable();
+            Swal.close();
+            await UI.alert({ icon: "success", title: "Contract renewed", text: `${data.record && data.record.AgreementID || "New agreement"} has been created.` });
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to renew contract", text: error.message || "Please try again." });
+        } finally {
+            endAction(actionKey);
+        }
+    }
+
+    async function openMaintenanceRenewalHistory(agreementId) {
+        const selected = state.records.find((record) => String(record.AgreementID || "") === String(agreementId || ""));
+        if (!selected) return;
+        let rootId = String(selected.AgreementID || "");
+        let parentId = String(selected.RenewalOfAgreementID || "");
+        const seen = new Set([rootId]);
+        while (parentId && !seen.has(parentId)) {
+            seen.add(parentId);
+            rootId = parentId;
+            const parent = state.records.find((record) => String(record.AgreementID || "") === parentId);
+            parentId = parent ? String(parent.RenewalOfAgreementID || "") : "";
+        }
+        const history = state.records
+            .filter((record) => {
+                let current = record;
+                const visited = new Set();
+                while (current && current.RenewalOfAgreementID && !visited.has(current.AgreementID)) {
+                    visited.add(current.AgreementID);
+                    current = state.records.find((item) => String(item.AgreementID || "") === String(current.RenewalOfAgreementID || ""));
+                }
+                return String(current && current.AgreementID || record.AgreementID || "") === rootId;
+            })
+            .sort((left, right) => String(left.StartDate || "").localeCompare(String(right.StartDate || "")));
+        await Swal.fire({
+            title: "Renewal History",
+            width: "min(960px, calc(100vw - 32px))",
+            showCloseButton: true,
+            confirmButtonText: "Close",
+            html: `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Agreement ID</th><th>Contract No.</th><th>Start</th><th>End</th><th>Vendor</th><th>Status</th></tr></thead><tbody>${history.map((record) => `<tr><td>${UI.escapeHtml(record.AgreementID || "-")}</td><td>${UI.escapeHtml(record.ContractNo || "-")}</td><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td><td>${UI.escapeHtml(record.Vendor || "-")}</td><td>${UI.badge(record.Status || "-")}</td></tr>`).join("")}</tbody></table></div>`
+        });
+    }
+
+    async function openMaintenanceDocument(agreementId) {
+        const agreement = state.records.find((record) => String(record.AgreementID || "") === String(agreementId || ""));
+        if (!agreement || !agreement.DocumentURL) {
+            await UI.alert({ icon: "info", title: "No contract document", text: "Attach a contract document link when creating or renewing this agreement." });
+            return;
+        }
+        window.open(agreement.DocumentURL, "_blank", "noopener");
     }
 
     function readKnowledgeFile(file) {
@@ -3099,6 +3250,12 @@
                     await openAssetAssignmentHistory(id);
                 } else if (action === "asset-borrowing") {
                     await openAssetBorrowingMenu(id);
+                } else if (action === "maintenance-history") {
+                    await openMaintenanceRenewalHistory(id);
+                } else if (action === "maintenance-document") {
+                    await openMaintenanceDocument(id);
+                } else if (action === "renew-maintenance") {
+                    await openMaintenanceRenewalModal(id);
                 } else if (action === "preview") {
                     await openKnowledgePreview(id);
                 } else if (action === "ticket-details") {
