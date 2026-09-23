@@ -2466,7 +2466,7 @@
                     ? `<button class="table-action table-action--info" data-action="asset-history" data-id="${UI.escapeHtml(record[moduleConfig.idField])}" title="View assignment history"><i class="fa-solid fa-clock-rotate-left"></i></button>`
                     : "");
             const borrowingButton = isAssetModule() && isBorrowableComputerAsset(record)
-                ? `<button class="table-action table-action--primary" data-action="asset-borrowing" data-id="${UI.escapeHtml(record[moduleConfig.idField])}" title="Borrow or return computer"><i class="fa-solid fa-hand-holding-hand"></i></button>`
+                ? `<button class="table-action table-action--primary" data-action="asset-borrowing" data-id="${UI.escapeHtml(record[moduleConfig.idField])}" title="Borrow or return computer"><i class="fa-solid fa-file-signature"></i></button>`
                 : "";
             const maintenanceHistoryButton = isMaintenanceAgreementModule()
                 ? `<button class="table-action table-action--info" data-action="maintenance-history" data-id="${UI.escapeHtml(record.AgreementID)}" title="View renewal history"><i class="fa-solid fa-clock-rotate-left"></i></button>`
