@@ -1069,9 +1069,9 @@
                     <div class="asset-borrowing-form__grid">
                         <label>Model / Description <input id="borrowModel" value="${UI.escapeHtml(asset.AssetName || "")}"></label>
                         <label>Serial Number <input id="borrowSerial" value="${UI.escapeHtml(asset.SerialNumber || "")}"></label>
-                        <label>CPU <input id="borrowCpu"></label>
-                        <label>Storage <input id="borrowStorage"></label>
-                        <label>RAM <input id="borrowRam"></label>
+                        <label>CPU <input id="borrowCpu" value="${UI.escapeHtml(asset.CPU || "")}" required></label>
+                        <label>Storage <input id="borrowStorage" value="${UI.escapeHtml(asset.Storage || "")}" required></label>
+                        <label>RAM <input id="borrowRam" value="${UI.escapeHtml(asset.RAM || "")}" required></label>
                     </div>
                     <label>Accessories <input id="borrowAccessories" placeholder="Power Adapter, Bag, Mouse"></label>
                     <label>Software / License <textarea id="borrowSoftware" rows="3" placeholder="Windows, Office, or software information"></textarea></label>
@@ -1087,14 +1087,17 @@
             preConfirm: () => {
                 const borrower = document.getElementById("borrowerName").value.trim();
                 const department = document.getElementById("borrowerDepartment").value.trim();
-                if (!borrower || !department || !signature.hasSignature()) {
-                    Swal.showValidationMessage("Enter borrower, department, and borrower signature.");
+                const cpu = document.getElementById("borrowCpu").value.trim();
+                const storage = document.getElementById("borrowStorage").value.trim();
+                const ram = document.getElementById("borrowRam").value.trim();
+                if (!borrower || !department || !cpu || !storage || !ram || !signature.hasSignature()) {
+                    Swal.showValidationMessage("Enter borrower, department, CPU, storage, RAM, and borrower signature.");
                     return false;
                 }
                 return {
                     assetId: asset.AssetID, borrower, department,
                     modelDescription: document.getElementById("borrowModel").value.trim(), serialNumber: document.getElementById("borrowSerial").value.trim(),
-                    cpu: document.getElementById("borrowCpu").value.trim(), storage: document.getElementById("borrowStorage").value.trim(), ram: document.getElementById("borrowRam").value.trim(),
+                    cpu, storage, ram,
                     accessories: document.getElementById("borrowAccessories").value.trim(), softwareInfo: document.getElementById("borrowSoftware").value.trim(),
                     signature: signature.payload(`${asset.AssetID}-borrower-signature.png`)
                 };

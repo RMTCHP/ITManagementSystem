@@ -1,7 +1,7 @@
 window.APP_CONFIG = {
     appName: "IT Asset Management & Request Job System",
     projectProfile: "Enterprise Clean",
-    webAppUrl: "https://script.google.com/macros/s/AKfycbwQZeW3bXWevwQ5xWazb7mBpuvgr4jUG7ooW0nhrlHouhbhqR_RYIvxQOwcJVzJRw/exec",
+    webAppUrl: "https://script.google.com/macros/s/AKfycbwBubSBBX410JhFA1CHByFPl7rOjz8_bVNoMt12l357UfhsGOUvg6Unrixl__l48ZI/exec",
     sessionStorageKey: "itms_session",
     sessionHours: 12,
     pageRoutes: {
@@ -100,6 +100,9 @@ window.APP_CONFIG = {
                 { key: "Group", label: "Group", type: "select", options: ["Computer", "Software", "Office Equiment"] },
                 { key: "AssetName", label: "Asset Name", type: "text", required: true },
                 { key: "SerialNumber", label: "Serial Number", type: "text", hint: "Device serial number, especially for computers and notebooks." },
+                { key: "CPU", label: "CPU", type: "text", hint: "Computer specification; reused for the same Asset Name." },
+                { key: "Storage", label: "Storage", type: "text", hint: "Example: 512 GB SSD" },
+                { key: "RAM", label: "RAM", type: "text", hint: "Example: 16 GB" },
                 { key: "DateOfDepreciation", label: "Date of Depreciation", type: "date" },
                 { key: "PONo", label: "PO No.", type: "text" },
                 { key: "Quantity", label: "Quantity", type: "number", required: true },
