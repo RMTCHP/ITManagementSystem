@@ -101,6 +101,7 @@
             listAssetAssignmentHistory: 30000,
             listComputerBorrowings: 30000,
             createComputerBorrowing: 60000,
+            createComputerReturn: 60000,
             returnComputerBorrowing: 60000,
             getComputerBorrowingPdfData: 30000,
             resolveTicket: 60000,

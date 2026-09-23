@@ -1122,28 +1122,30 @@
     async function openComputerReturnForm(asset) {
         const recordsResult = await ApiClient.request("listComputerBorrowings", { token: ApiClient.getSessionToken(), assetId: asset.AssetID });
         const borrowing = ((recordsResult.data && recordsResult.data.records) || []).find((item) => String(item.Status || "") === "Borrowed");
-        if (!borrowing) {
-            await UI.alert({ icon: "info", title: "No open borrowing", text: "This computer does not have an active borrowing record." });
-            return;
-        }
+        const isStandaloneReturn = !borrowing;
         let signature;
         const result = await Swal.fire({
             title: "Return Computer",
-            html: `<div class="asset-borrowing-form"><div class="inventory-history__header"><strong>${UI.escapeHtml(asset.AssetName || asset.AssetID)}</strong><span>Borrower: ${UI.escapeHtml(borrowing.Borrower || "-")}</span></div><label>Returned by <input id="returnedBy" value="${UI.escapeHtml(borrowing.Borrower || "")}" maxlength="120" required></label><label>Condition / Remark <textarea id="returnRemark" rows="3" placeholder="Condition, missing accessories, or notes"></textarea></label><div class="ticket-signature-field"><div><span>Returner signature</span><em>Required</em><button type="button" id="clearReturnSignature">Clear</button></div><canvas id="returnSignatureCanvas"></canvas></div></div>`,
+            html: `<div class="asset-borrowing-form"><div class="inventory-history__header"><strong>${UI.escapeHtml(asset.AssetName || asset.AssetID)}</strong><span>${isStandaloneReturn ? "No active borrowing - return only" : `Borrower: ${UI.escapeHtml(borrowing.Borrower || "-")}`}</span></div><label>Returned by <input id="returnedBy" value="${UI.escapeHtml(borrowing ? borrowing.Borrower || "" : asset.User || "")}" maxlength="120" required></label><label>Condition / Remark <textarea id="returnRemark" rows="3" placeholder="Condition, missing accessories, or notes"></textarea></label><div class="ticket-signature-field"><div><span>Returner signature</span><em>Required</em><button type="button" id="clearReturnSignature">Clear</button></div><canvas id="returnSignatureCanvas"></canvas></div></div>`,
             showCancelButton: true, showCloseButton: true, confirmButtonText: "Save return", cancelButtonText: "Cancel", width: "min(680px, calc(100vw - 28px))",
             didOpen: () => { signature = setupBorrowingSignature(document.getElementById("returnSignatureCanvas"), document.getElementById("clearReturnSignature")); },
             preConfirm: () => {
                 const returnedBy = document.getElementById("returnedBy").value.trim();
                 if (!returnedBy || !signature.hasSignature()) { Swal.showValidationMessage("Enter returned by and provide a signature."); return false; }
-                return { borrowingId: borrowing.BorrowingID, returnedBy, remark: document.getElementById("returnRemark").value.trim(), signature: signature.payload(`${asset.AssetID}-return-signature.png`) };
+                return {
+                    ...(isStandaloneReturn ? { assetId: asset.AssetID } : { borrowingId: borrowing.BorrowingID }),
+                    returnedBy,
+                    remark: document.getElementById("returnRemark").value.trim(),
+                    signature: signature.payload(`${asset.AssetID}-return-signature.png`)
+                };
             }
         });
         if (!result.isConfirmed) return;
-        const confirmation = await UI.confirm({ title: "Confirm computer return?", text: "This will close the borrowing record and clear the current asset user.", confirmButtonText: "Confirm return" });
+        const confirmation = await UI.confirm({ title: "Confirm computer return?", text: isStandaloneReturn ? "This will create a return-only record and clear the current asset user." : "This will close the borrowing record and clear the current asset user.", confirmButtonText: "Confirm return" });
         if (!confirmation.isConfirmed) return;
         try {
             UI.loading("Saving return", "Recording return and signature");
-            await ApiClient.request("returnComputerBorrowing", { token: ApiClient.getSessionToken(), ...result.value });
+            await ApiClient.request(isStandaloneReturn ? "createComputerReturn" : "returnComputerBorrowing", { token: ApiClient.getSessionToken(), ...result.value });
             Swal.close();
             await UI.alert({ icon: "success", title: "Computer returned", text: "The signed return record has been saved." });
             await loadModuleData();
@@ -1165,15 +1167,15 @@
         }
         const rows = records.map((item) => `
             <tr>
-                <td>${UI.escapeHtml(formatDateDisplay(item.BorrowedAt))}</td>
-                <td>${UI.escapeHtml(item.Borrower || "-")}</td>
+                <td>${UI.escapeHtml(formatDateDisplay(item.BorrowedAt || item.ReturnedAt))}</td>
+                <td>${UI.escapeHtml(item.Borrower || item.ReturnedBy || "-")}</td>
                 <td>${UI.escapeHtml(item.BorrowerDepartment || "-")}</td>
                 <td>${UI.badge(item.Status || "-")}</td>
                 <td><button class="table-action table-action--info" data-borrowing-pdf="${UI.escapeHtml(item.BorrowingID)}" title="View PDF"><i class="fa-solid fa-file-pdf"></i></button></td>
             </tr>`).join("");
         await Swal.fire({
             title: "Computer Borrowing History",
-            html: `<div class="inventory-history"><div class="inventory-history__header"><strong>${UI.escapeHtml(asset.AssetName || asset.AssetID)}</strong><span>${UI.escapeHtml(asset.FixedAssetNo || asset.AssetID)}</span></div><div class="data-table-wrap inventory-history__table"><table class="data-table"><thead><tr><th>Borrowed At</th><th>Borrower</th><th>Department</th><th>Status</th><th>PDF</th></tr></thead><tbody>${rows || `<tr><td colspan="5">${UI.emptyState("No borrowing history", "Signed borrowing records will appear here.")}</td></tr>`}</tbody></table></div></div>`,
+            html: `<div class="inventory-history"><div class="inventory-history__header"><strong>${UI.escapeHtml(asset.AssetName || asset.AssetID)}</strong><span>${UI.escapeHtml(asset.FixedAssetNo || asset.AssetID)}</span></div><div class="data-table-wrap inventory-history__table"><table class="data-table"><thead><tr><th>Date</th><th>Borrower / Returner</th><th>Department</th><th>Status</th><th>PDF</th></tr></thead><tbody>${rows || `<tr><td colspan="5">${UI.emptyState("No borrowing history", "Signed borrowing records will appear here.")}</td></tr>`}</tbody></table></div></div>`,
             showCloseButton: true, confirmButtonText: "Close", width: "min(940px, calc(100vw - 32px))",
             didOpen: () => {
                 document.querySelectorAll("[data-borrowing-pdf]").forEach((button) => {
