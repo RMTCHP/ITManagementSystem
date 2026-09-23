@@ -186,6 +186,11 @@
                                             <span class="nav-link__badge nav-link__badge--warning hidden" data-nav-badge="stockItems-low"></span>
                                             <span class="nav-link__badge nav-link__badge--danger hidden" data-nav-badge="stockItems-out"></span>
                                         </span>
+                                    ` : item.key === "maintenanceAgreements" ? `
+                                        <span class="nav-link__badges">
+                                            <span class="nav-link__badge nav-link__badge--warning hidden" data-nav-badge="maintenance-expiring"></span>
+                                            <span class="nav-link__badge nav-link__badge--danger hidden" data-nav-badge="maintenance-expired"></span>
+                                        </span>
                                     ` : `<span class="nav-link__badges"></span>`}
                                 </span>
                             </a>
@@ -204,7 +209,9 @@
         const accessPendingBadge = document.querySelector('[data-nav-badge="accessRequests-pending"]');
         const lowBadge = document.querySelector('[data-nav-badge="stockItems-low"]');
         const outBadge = document.querySelector('[data-nav-badge="stockItems-out"]');
-        if (!assetExpiringBadge || !assetExpiredBadge || !accessPendingBadge || !lowBadge || !outBadge) {
+        const maintenanceExpiringBadge = document.querySelector('[data-nav-badge="maintenance-expiring"]');
+        const maintenanceExpiredBadge = document.querySelector('[data-nav-badge="maintenance-expired"]');
+        if (!assetExpiringBadge || !assetExpiredBadge || !accessPendingBadge || !lowBadge || !outBadge || !maintenanceExpiringBadge || !maintenanceExpiredBadge) {
             return;
         }
 
@@ -224,7 +231,13 @@
                 : Number(previousState.lowStock || 0),
             outOfStock: Object.prototype.hasOwnProperty.call(summary || {}, "outOfStock")
                 ? Number(summary.outOfStock || 0)
-                : Number(previousState.outOfStock || 0)
+                : Number(previousState.outOfStock || 0),
+            maintenanceExpiring: Object.prototype.hasOwnProperty.call(summary || {}, "maintenanceExpiring")
+                ? Number(summary.maintenanceExpiring || 0)
+                : Number(previousState.maintenanceExpiring || 0),
+            maintenanceExpired: Object.prototype.hasOwnProperty.call(summary || {}, "maintenanceExpired")
+                ? Number(summary.maintenanceExpired || 0)
+                : Number(previousState.maintenanceExpired || 0)
         };
         setSidebarAlertsState(nextState);
 
@@ -233,6 +246,8 @@
         const pendingAccessCount = nextState.pendingAccessRequests;
         const lowStockCount = nextState.lowStock;
         const outOfStockCount = nextState.outOfStock;
+        const maintenanceExpiringCount = nextState.maintenanceExpiring;
+        const maintenanceExpiredCount = nextState.maintenanceExpired;
 
         if (expiringSoonCount > 0) {
             assetExpiringBadge.textContent = String(expiringSoonCount);
@@ -272,6 +287,22 @@
         } else {
             outBadge.textContent = "";
             outBadge.classList.add("hidden");
+        }
+
+        if (maintenanceExpiringCount > 0) {
+            maintenanceExpiringBadge.textContent = String(maintenanceExpiringCount);
+            maintenanceExpiringBadge.classList.remove("hidden");
+        } else {
+            maintenanceExpiringBadge.textContent = "";
+            maintenanceExpiringBadge.classList.add("hidden");
+        }
+
+        if (maintenanceExpiredCount > 0) {
+            maintenanceExpiredBadge.textContent = String(maintenanceExpiredCount);
+            maintenanceExpiredBadge.classList.remove("hidden");
+        } else {
+            maintenanceExpiredBadge.textContent = "";
+            maintenanceExpiredBadge.classList.add("hidden");
         }
     }
 

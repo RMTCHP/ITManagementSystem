@@ -77,6 +77,10 @@
         return moduleKey === "auditLogs";
     }
 
+    function isMaintenanceAgreementModule() {
+        return moduleKey === "maintenanceAgreements";
+    }
+
     function isBorrowableComputerAsset(record) {
         const label = `${record && record.Group || ""} ${record && record.AssetName || ""}`.toLowerCase();
         return /computer|notebook|laptop/.test(label);
@@ -531,6 +535,20 @@
         return summary;
     }
 
+    function getMaintenanceAgreementSummaryStats() {
+        return state.records.reduce((summary, record) => {
+            const status = String(record.Status || "Active");
+            const value = Number(String(record.AmountBaht || "").replace(/,/g, ""));
+            summary.total += 1;
+            if (status === "Expiring") summary.expiring += 1;
+            else if (status === "Expired") summary.expired += 1;
+            else if (status === "Renewal In Progress") summary.renewing += 1;
+            else if (status === "Active") summary.active += 1;
+            if (Number.isFinite(value)) summary.totalValue += value;
+            return summary;
+        }, { total: 0, active: 0, expiring: 0, expired: 0, renewing: 0, totalValue: 0 });
+    }
+
     function syncSidebarAlerts() {
         if (isAssetModule()) {
             const assetSummary = getAssetSummaryStats();
@@ -563,6 +581,15 @@
             AppShell.updateSidebarAlerts({
                 lowStock: inventorySummary.lowStockItems,
                 outOfStock: inventorySummary.outOfStockItems
+            });
+            return;
+        }
+
+        if (isMaintenanceAgreementModule()) {
+            const summary = getMaintenanceAgreementSummaryStats();
+            AppShell.updateSidebarAlerts({
+                maintenanceExpiring: summary.expiring,
+                maintenanceExpired: summary.expired
             });
             return;
         }
@@ -607,6 +634,11 @@
             }
 
             return true;
+        }
+
+        if (isMaintenanceAgreementModule()) {
+            const summaryFilter = state.filters.summary || "all";
+            return summaryFilter === "all" || String(record.Status || "") === summaryFilter;
         }
 
         if (!isAssetModule()) {
@@ -1439,6 +1471,25 @@
         if (isStockMovementModule()) {
             heroPanel.innerHTML = "";
             heroPanel.style.display = "none";
+            return;
+        }
+
+        if (isMaintenanceAgreementModule()) {
+            const summary = getMaintenanceAgreementSummaryStats();
+            const cards = [
+                { key: "all", label: "Total Agreements", value: summary.total, icon: "fa-file-signature" },
+                { key: "Active", label: "Active", value: summary.active, icon: "fa-circle-check" },
+                { key: "Renewal In Progress", label: "Renewal In Progress", value: summary.renewing, icon: "fa-arrows-rotate" },
+                { key: "Expiring", label: "Expiring", value: summary.expiring, icon: "fa-hourglass-half" },
+                { key: "Expired", label: "Expired", value: summary.expired, icon: "fa-file-circle-xmark" }
+            ];
+            heroPanel.innerHTML = `<div class="hero-panel__stats hero-panel__stats--asset">${cards.map((card) => `
+                <button class="hero-stat hero-stat--button hero-stat--summary ${state.filters.summary === card.key ? "is-active" : ""}" type="button" data-summary-filter="${UI.escapeHtml(card.key)}">
+                    <p><i class="fa-solid ${card.icon}"></i> ${UI.escapeHtml(card.label)}</p>
+                    <strong>${UI.escapeHtml(String(card.value))}</strong>
+                </button>`).join("")}
+                <div class="hero-stat hero-stat--summary hero-stat--value"><p>Contract Value (Baht)</p><strong>${UI.escapeHtml(summary.totalValue.toLocaleString("en-US"))}</strong></div>
+            </div>`;
             return;
         }
 

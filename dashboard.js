@@ -33,6 +33,8 @@
             { label: "Expiring Soon", value: summary.expiringSoonAssets || 0, icon: "fa-hourglass-half", note: "Within 6 months", route: "assets.html?summary=expiringSoon" },
             { label: "Low Stock", value: summary.lowStock || 0, icon: "fa-box-open", note: "At minimum level", route: "inventory.html?summary=lowStock" },
             { label: "Out Of Stock", value: summary.outOfStock || 0, icon: "fa-ban", note: "Replenishment needed", route: "inventory.html?summary=outOfStock" },
+            { label: "MA Expiring", value: summary.maintenanceExpiring || 0, icon: "fa-file-signature", note: "Renewal notice period", route: "ma-renewal.html" },
+            { label: "MA Expired", value: summary.maintenanceExpired || 0, icon: "fa-file-circle-xmark", note: "Contract requires action", route: "ma-renewal.html" },
             { label: "Open Tickets", value: summary.openTickets || 0, icon: "fa-ticket", note: "Unresolved IT work", route: "tickets.html?ticketStatus=active" }
         ]);
 

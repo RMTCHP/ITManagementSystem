@@ -189,6 +189,8 @@
                 ? "date"
                 : field.type === "datetime-local"
                     ? "datetime-local"
+                    : field.type === "url"
+                        ? "url"
                     : field.type === "password"
                         ? "password"
                         : "text";
@@ -205,7 +207,7 @@
     async function openFormModal(module, initialValues = {}, mode = "create") {
         const html = `
             <div class="modal-form modal-form--${escapeHtml(module.key || "generic")}">
-                ${module.fields.map((field) => fieldMarkup(field, initialValues[field.key])).join("")}
+                ${module.fields.map((field) => fieldMarkup(field, Object.prototype.hasOwnProperty.call(initialValues, field.key) ? initialValues[field.key] : (mode === "create" ? field.default : ""))).join("")}
             </div>
         `;
 
