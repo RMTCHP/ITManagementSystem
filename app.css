@@ -4209,6 +4209,33 @@ button {
     text-align: left;
 }
 
+.knowledge-category-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.knowledge-category-row .knowledge-category {
+    flex: 1;
+}
+
+.knowledge-category-edit {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.knowledge-category-edit:hover {
+    background: var(--primary-soft);
+    color: var(--primary-strong);
+}
+
 .knowledge-category span {
     min-width: 0;
     display: inline-flex;

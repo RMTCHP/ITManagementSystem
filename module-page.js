@@ -1822,6 +1822,7 @@
         const page = Math.min(state.page, totalPages);
         const cards = filtered.slice((page - 1) * pageSize, page * pageSize);
         const canCreate = AppShell.canDo(moduleConfig, "create", state.session);
+        const canEditCategories = AppShell.canDo(moduleConfig, "edit", state.session);
         const documentTypes = [...new Set(state.records.map((record) => record.DocumentType).filter(Boolean))].sort();
 
         const cardsMarkup = cards.map((record) => {
@@ -1862,9 +1863,12 @@
                         <span><i class="fa-solid fa-layer-group"></i>All knowledge</span><b>${state.records.length}</b>
                     </button>
                     ${categories.map((category) => `
-                        <button class="knowledge-category ${state.filters.knowledgeCategory === category ? "is-active" : ""}" type="button" data-knowledge-category="${UI.escapeHtml(category)}">
-                            <span><i class="fa-solid fa-book-bookmark"></i>${UI.escapeHtml(category)}</span><b>${state.records.filter((record) => String(record.Category || "") === category).length}</b>
-                        </button>`).join("")}
+                        <div class="knowledge-category-row">
+                            <button class="knowledge-category ${state.filters.knowledgeCategory === category ? "is-active" : ""}" type="button" data-knowledge-category="${UI.escapeHtml(category)}">
+                                <span><i class="fa-solid fa-book-bookmark"></i>${UI.escapeHtml(category)}</span><b>${state.records.filter((record) => String(record.Category || "") === category).length}</b>
+                            </button>
+                            ${canEditCategories ? `<button class="knowledge-category-edit" type="button" data-edit-knowledge-category="${UI.escapeHtml(category)}" title="Edit category" aria-label="Edit ${UI.escapeHtml(category)}"><i class="fa-solid fa-pen"></i></button>` : ""}
+                        </div>`).join("")}
                 </aside>
                 <div class="knowledge-library">
                     <div class="knowledge-library__header">
@@ -3044,6 +3048,55 @@
         }
     }
 
+    async function editKnowledgeCategory(previousName) {
+        const result = await Swal.fire({
+            title: "Edit knowledge category",
+            input: "text",
+            inputLabel: "Category name",
+            inputValue: previousName,
+            showCancelButton: true,
+            confirmButtonText: "Save category",
+            inputValidator(value) {
+                return String(value || "").trim() ? undefined : "Please enter a category name.";
+            }
+        });
+        if (!result.isConfirmed) {
+            return;
+        }
+        const nextName = String(result.value || "").trim();
+        if (nextName === previousName) {
+            return;
+        }
+        UI.loading("Updating category", "Updating linked knowledge documents");
+        try {
+            const response = await ApiClient.request("renameKnowledgeCategory", {
+                token: ApiClient.getSessionToken(),
+                previousName,
+                nextName
+            });
+            const data = response.data || {};
+            state.knowledgeCategories = data.categories || state.knowledgeCategories;
+            state.records.forEach((record) => {
+                if (String(record.Category || "") === previousName) {
+                    record.Category = nextName;
+                }
+            });
+            if (state.filters.knowledgeCategory === previousName) {
+                state.filters.knowledgeCategory = nextName;
+            }
+            const categoryField = getFieldConfig("Category");
+            if (categoryField) {
+                categoryField.options = state.knowledgeCategories;
+            }
+            Swal.close();
+            renderTable();
+            await UI.alert({ icon: "success", title: "Category updated", text: `${data.updatedDocuments || 0} linked document(s) updated.` });
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to update category", text: error.message || "Please try again." });
+        }
+    }
+
     async function deleteRecord(recordId) {
         const confirmation = await UI.confirm({
             title: "Delete selected record?",
@@ -3153,6 +3206,12 @@
                 state.filters.knowledgeCategory = knowledgeCategoryButton.getAttribute("data-knowledge-category") || "all";
                 state.page = 1;
                 renderTable();
+                return;
+            }
+
+            const editKnowledgeCategoryButton = event.target.closest("[data-edit-knowledge-category]");
+            if (editKnowledgeCategoryButton) {
+                await editKnowledgeCategory(editKnowledgeCategoryButton.getAttribute("data-edit-knowledge-category") || "");
                 return;
             }
 

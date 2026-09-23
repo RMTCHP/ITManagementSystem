@@ -90,6 +90,7 @@
             listRecords: 30000,
             listKnowledgeCategories: 30000,
             createKnowledgeCategory: 30000,
+            renameKnowledgeCategory: 30000,
             saveKnowledgeDocument: 90000,
             createPublicTicket: 60000,
             createUserRequest: 60000,
