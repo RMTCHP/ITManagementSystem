@@ -33,8 +33,21 @@
         movementDrafts: {
             outbound: {},
             inbound: {}
-        }
+        },
+        pendingActions: new Set()
     };
+
+    function beginAction(actionKey) {
+        if (state.pendingActions.has(actionKey)) {
+            return false;
+        }
+        state.pendingActions.add(actionKey);
+        return true;
+    }
+
+    function endAction(actionKey) {
+        state.pendingActions.delete(actionKey);
+    }
 
     function isAssetModule() {
         return moduleKey === "assets";
@@ -1023,7 +1036,7 @@
                     <label>Department <input id="borrowerDepartment" maxlength="120" required></label>
                     <div class="asset-borrowing-form__grid">
                         <label>Model / Description <input id="borrowModel" value="${UI.escapeHtml(asset.AssetName || "")}"></label>
-                        <label>Serial Number <input id="borrowSerial"></label>
+                        <label>Serial Number <input id="borrowSerial" value="${UI.escapeHtml(asset.SerialNumber || "")}"></label>
                         <label>CPU <input id="borrowCpu"></label>
                         <label>Storage <input id="borrowStorage"></label>
                         <label>RAM <input id="borrowRam"></label>
@@ -2149,6 +2162,8 @@
                 confirmButtonText: "Issue equipment"
             });
             if (!confirmation.isConfirmed) return;
+            const actionKey = `resolve-ticket:${ticketId}`;
+            if (!beginAction(actionKey)) return;
             UI.loading("Issuing equipment", "Reducing inventory and closing ticket");
             try {
                 const response = await ApiClient.request("resolveTicket", {
@@ -2163,6 +2178,8 @@
             } catch (error) {
                 Swal.close();
                 await UI.alert({ icon: "error", title: "Unable to issue equipment", text: error.message || "Please try again." });
+            } finally {
+                endAction(actionKey);
             }
             return;
         }
@@ -2286,6 +2303,11 @@
             return;
         }
 
+        const actionKey = `resolve-ticket:${ticketId}`;
+        if (!beginAction(actionKey)) {
+            return;
+        }
+
         UI.loading("Resolving ticket", "Saving signature and completion details");
         try {
             const response = await ApiClient.request("resolveTicket", {
@@ -2299,6 +2321,8 @@
         } catch (error) {
             Swal.close();
             await UI.alert({ icon: "error", title: "Unable to resolve ticket", text: error.message || "Please try again." });
+        } finally {
+            endAction(actionKey);
         }
     }
 
@@ -2542,6 +2566,11 @@
             return;
         }
 
+        const actionKey = `save:${moduleKey}:${mode}:${record[moduleConfig.idField] || "new"}`;
+        if (!beginAction(actionKey)) {
+            return;
+        }
+
         UI.loading(
             mode === "create" ? "Creating record" : "Updating record",
             `${mode === "create" ? "Saving" : "Updating"} ${moduleConfig.label.toLowerCase()} data`
@@ -2570,6 +2599,8 @@
                 text: error.message || "Unexpected error"
             });
             throw error;
+        } finally {
+            endAction(actionKey);
         }
     }
 
@@ -2822,22 +2853,31 @@
             return;
         }
 
-        UI.loading("Deleting record", "Please wait while data is being removed");
-        await ApiClient.request("deleteRecord", {
-            token: ApiClient.getSessionToken(),
-            module: moduleKey,
-            recordId
-        });
-        if (isStockMovementModule()) {
-            await renderPage();
-            Swal.close();
+        const actionKey = `delete:${moduleKey}:${recordId}`;
+        if (!beginAction(actionKey)) {
             return;
         }
-        state.records = state.records.filter((item) => item[moduleConfig.idField] !== recordId);
-        syncSidebarAlerts();
-        renderHero();
-        renderTable();
-        Swal.close();
+
+        UI.loading("Deleting record", "Please wait while data is being removed");
+        try {
+            await ApiClient.request("deleteRecord", {
+                token: ApiClient.getSessionToken(),
+                module: moduleKey,
+                recordId
+            });
+            if (isStockMovementModule()) {
+                await renderPage();
+                Swal.close();
+                return;
+            }
+            state.records = state.records.filter((item) => item[moduleConfig.idField] !== recordId);
+            syncSidebarAlerts();
+            renderHero();
+            renderTable();
+            Swal.close();
+        } finally {
+            endAction(actionKey);
+        }
     }
 
     function attachEvents() {

@@ -518,7 +518,13 @@
         configureTopbarButtons(elements, options, context);
 
         if (typeof options.onRefresh === "function") {
+            let isRefreshing = false;
             elements.refreshButton.addEventListener("click", async () => {
+                if (isRefreshing) {
+                    return;
+                }
+                isRefreshing = true;
+                elements.refreshButton.disabled = true;
                 try {
                     UI.loading("Refreshing data", "Loading the latest information");
                     await options.onRefresh(context);
@@ -533,6 +539,9 @@
                         title: "Refresh failed",
                         text: error.message || "Unexpected error"
                     });
+                } finally {
+                    isRefreshing = false;
+                    elements.refreshButton.disabled = false;
                 }
             });
         }
