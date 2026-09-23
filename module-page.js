@@ -2471,7 +2471,7 @@
                 ? `<button class="table-action" data-action="maintenance-document" data-id="${UI.escapeHtml(record.AgreementID)}" title="Open contract document"><i class="fa-solid fa-file-arrow-up"></i></button>`
                 : "";
             const maintenanceRenewButton = isMaintenanceAgreementModule() && AppShell.canDo(moduleConfig, "create", state.session) && !["Renewed", "Cancelled"].includes(String(record.Status || ""))
-                ? `<button class="table-action table-action--primary" data-action="renew-maintenance" data-id="${UI.escapeHtml(record.AgreementID)}" title="Renew contract"><i class="fa-solid fa-arrows-rotate"></i></button>`
+                ? `<button class="table-action table-action--primary" data-action="renew-maintenance" data-id="${UI.escapeHtml(record.AgreementID)}" title="Renew contract"><i class="fa-solid fa-file-circle-plus"></i></button>`
                 : "";
 
             return `
