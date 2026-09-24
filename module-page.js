@@ -1198,10 +1198,30 @@
             const record = data.record || {};
             const value = (key) => UI.escapeHtml(record[key] || "-");
             const signature = (url) => url ? `<img src="${url}" alt="Signature">` : "-";
+            const formatBorrowingDateTime = (input) => {
+                const raw = String(input || "").trim();
+                if (!raw) return "-";
+                const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+                const date = new Date(normalized);
+                if (!Number.isNaN(date.getTime())) {
+                    return `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+                }
+                const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+                return match ? `${match[3]}-${match[2]}-${match[1]} ${match[4]}:${match[5]}` : raw;
+            };
+            const reportValue = (key) => key === "BorrowedAt" || key === "ReturnedAt"
+                ? UI.escapeHtml(formatBorrowingDateTime(record[key]))
+                : value(key);
             printWindow.document.open();
-            printWindow.document.write(`<!doctype html><html><head><title>Computer Borrowing Form ${value("BorrowingID")}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:18px;font-size:11px}.head{display:flex;justify-content:space-between;align-items:flex-start}.brand{font-size:26px;font-weight:bold;color:#079db4}.title{text-align:center;font-size:15px;font-weight:bold;margin:8px 0 2px}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #111;padding:5px;vertical-align:top}th{background:#f2f2f2}.section{font-weight:bold;background:#f2f2f2}.sign{height:54px}.sign img{max-height:46px;max-width:180px}.small{font-size:10px}@media print{body{margin:10mm}}</style></head><body><div class="head"><div class="brand">RESONAC</div><div class="small">Computer Borrowing Form<br>${value("BorrowingID")}</div></div><div class="title">COMPUTER BORROWING FORM</div><table><tr><th>Model/Description</th><th>Fixed Asset Tag</th><th>CPU</th><th>Storage</th><th>RAM</th><th>S/N</th></tr><tr><td>${value("ModelDescription")}</td><td>${value("FixedAssetNo")}</td><td>${value("CPU")}</td><td>${value("Storage")}</td><td>${value("RAM")}</td><td>${value("SerialNumber")}</td></tr><tr><td colspan="6"><b>Accessories:</b> ${value("Accessories")}</td></tr></table><table><tr><td><b>Handover by:</b> ${value("HandoverBy")}</td><td><b>Date:</b> ${value("BorrowedAt")}</td></tr><tr><td><b>Receive by:</b> ${value("Borrower")}</td><td><b>Department:</b> ${value("BorrowerDepartment")}</td></tr><tr><td colspan="2" class="sign"><b>Borrower signature:</b><br>${signature(data.borrowerSignature)}</td></tr></table><table><tr><td class="section">Part 2: Information for IT</td></tr><tr><td><b>Software Installation / IT Maintenance</b><br>${value("SoftwareInfo")}</td></tr></table><table><tr><td class="section" colspan="2">Part 3: Return Equipment</td></tr><tr><td><b>Returned by:</b> ${value("ReturnedBy")}</td><td><b>Date:</b> ${value("ReturnedAt")}</td></tr><tr><td><b>Received by:</b> ${value("ReturnReceivedBy")}</td><td><b>Condition / Remark:</b> ${value("ReturnRemark")}</td></tr><tr><td colspan="2" class="sign"><b>Return signature:</b><br>${signature(data.returnSignature)}</td></tr></table></body></html>`);
+            printWindow.document.write(`<!doctype html><html><head><title>Computer Borrowing Form ${value("BorrowingID")}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:18px;font-size:11px}.head{display:flex;justify-content:space-between;align-items:flex-start}.brand{font-size:26px;font-weight:bold;color:#079db4}.title{text-align:center;font-size:15px;font-weight:bold;margin:8px 0 2px}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #111;padding:5px;vertical-align:top}th{background:#f2f2f2}.section{font-weight:bold;background:#f2f2f2}.sign{height:54px}.sign img{max-height:46px;max-width:180px}.small{font-size:10px}@media print{body{margin:10mm}}</style></head><body><div class="head"><div class="brand">RESONAC</div><div class="small">Computer Borrowing Form<br>${value("BorrowingID")}</div></div><div class="title">COMPUTER BORROWING FORM</div><table><tr><th>Model/Description</th><th>Fixed Asset Tag</th><th>CPU</th><th>Storage</th><th>RAM</th><th>S/N</th></tr><tr><td>${value("ModelDescription")}</td><td>${value("FixedAssetNo")}</td><td>${value("CPU")}</td><td>${value("Storage")}</td><td>${value("RAM")}</td><td>${value("SerialNumber")}</td></tr><tr><td colspan="6"><b>Accessories:</b> ${value("Accessories")}</td></tr></table><table><tr><td><b>Handover by:</b> ${value("HandoverBy")}</td><td><b>Date:</b> ${reportValue("BorrowedAt")}</td></tr><tr><td><b>Receive by:</b> ${value("Borrower")}</td><td><b>Department:</b> ${value("BorrowerDepartment")}</td></tr><tr><td colspan="2" class="sign"><b>Borrower signature:</b><br>${signature(data.borrowerSignature)}</td></tr></table><table><tr><td class="section">Part 2: Information for IT</td></tr><tr><td><b>Software Installation / IT Maintenance</b><br>${value("SoftwareInfo")}</td></tr></table><table><tr><td class="section" colspan="2">Part 3: Return Equipment</td></tr><tr><td><b>Returned by:</b> ${value("ReturnedBy")}</td><td><b>Date:</b> ${reportValue("ReturnedAt")}</td></tr><tr><td><b>Received by:</b> ${value("ReturnReceivedBy")}</td><td><b>Condition / Remark:</b> ${value("ReturnRemark")}</td></tr><tr><td colspan="2" class="sign"><b>Return signature:</b><br>${signature(data.returnSignature)}</td></tr></table></body></html>`);
             printWindow.document.close();
             printWindow.focus();
+            // Base64 image decoding is asynchronous in a new window.  Printing
+            // immediately could capture an empty signature area.
+            const signatureImages = Array.from(printWindow.document.images);
+            await Promise.all(signatureImages.map((image) => image.complete
+                ? Promise.resolve()
+                : new Promise((resolve) => { image.onload = image.onerror = resolve; })));
             printWindow.print();
         } catch (error) {
             printWindow.close();
