@@ -846,11 +846,17 @@
 
         const movementRows = (state.stockMovements || [])
             .filter((item) => String(item.ItemID || "") === String(recordId || ""))
-            .sort((left, right) => String(right.MovementDate || "").localeCompare(String(left.MovementDate || "")));
+            .sort((left, right) => {
+                const timestamp = (item) => {
+                    const parsed = new Date(String(item.MovementDate || "").replace(" ", "T"));
+                    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+                };
+                return timestamp(right) - timestamp(left) || String(right.MovementID || "").localeCompare(String(left.MovementID || ""));
+            });
 
         const rowsMarkup = movementRows.map((item) => `
             <tr>
-                <td>${UI.escapeHtml(formatDateDisplay(item.MovementDate))}</td>
+                <td>${UI.escapeHtml(`${formatDateDisplay(item.MovementDate)} ${formatTimeDisplay(item.MovementDate)}`)}</td>
                 <td>${UI.badge(item.MovementType || "-")}</td>
                 <td>${UI.escapeHtml(String(item.Quantity || "-"))}</td>
                 <td>${UI.escapeHtml(item.PerformedBy || "-")}</td>
@@ -1169,12 +1175,19 @@
         try {
             const result = await ApiClient.request("listComputerBorrowings", { token: ApiClient.getSessionToken(), assetId: asset.AssetID });
             records = (result.data && result.data.records) || [];
+            records.sort((left, right) => {
+                const timestamp = (item) => {
+                    const parsed = new Date(String(item.BorrowedAt || item.ReturnedAt || item.CreatedAt || "").replace(" ", "T"));
+                    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+                };
+                return timestamp(right) - timestamp(left) || String(right.BorrowingID || "").localeCompare(String(left.BorrowingID || ""));
+            });
         } finally {
             Swal.close();
         }
         const rows = records.map((item) => `
             <tr>
-                <td>${UI.escapeHtml(formatDateDisplay(item.BorrowedAt || item.ReturnedAt))}</td>
+                <td>${UI.escapeHtml(`${formatDateDisplay(item.BorrowedAt || item.ReturnedAt || item.CreatedAt)} ${formatTimeDisplay(item.BorrowedAt || item.ReturnedAt || item.CreatedAt)}`)}</td>
                 <td>${UI.escapeHtml(item.Borrower || item.ReturnedBy || "-")}</td>
                 <td>${UI.escapeHtml(item.BorrowerDepartment || "-")}</td>
                 <td>${UI.badge(item.Status || "-")}</td>
@@ -1182,7 +1195,7 @@
             </tr>`).join("");
         await Swal.fire({
             title: "Computer Borrowing History",
-            html: `<div class="inventory-history"><div class="inventory-history__header"><strong>${UI.escapeHtml(asset.AssetName || asset.AssetID)}</strong><span>${UI.escapeHtml(asset.FixedAssetNo || asset.AssetID)}</span></div><div class="data-table-wrap inventory-history__table"><table class="data-table"><thead><tr><th>Date</th><th>Borrower / Returner</th><th>Department</th><th>Status</th><th>PDF</th></tr></thead><tbody>${rows || `<tr><td colspan="5">${UI.emptyState("No borrowing history", "Signed borrowing records will appear here.")}</td></tr>`}</tbody></table></div></div>`,
+            html: `<div class="inventory-history"><div class="inventory-history__header"><strong>${UI.escapeHtml(asset.AssetName || asset.AssetID)}</strong><span>${UI.escapeHtml(asset.FixedAssetNo || asset.AssetID)}</span></div><div class="data-table-wrap inventory-history__table"><table class="data-table"><thead><tr><th>Date / Time</th><th>Borrower / Returner</th><th>Department</th><th>Status</th><th>PDF</th></tr></thead><tbody>${rows || `<tr><td colspan="5">${UI.emptyState("No borrowing history", "Signed borrowing records will appear here.")}</td></tr>`}</tbody></table></div></div>`,
             showCloseButton: true, confirmButtonText: "Close", width: "min(940px, calc(100vw - 32px))",
             didOpen: () => {
                 document.querySelectorAll("[data-borrowing-pdf]").forEach((button) => {
@@ -2937,7 +2950,7 @@
                 }
                 return String(current && current.AgreementID || record.AgreementID || "") === rootId;
             })
-            .sort((left, right) => String(left.StartDate || "").localeCompare(String(right.StartDate || "")));
+            .sort((left, right) => String(right.StartDate || "").localeCompare(String(left.StartDate || "")));
         await Swal.fire({
             title: "Renewal History",
             width: "min(960px, calc(100vw - 32px))",
