@@ -871,7 +871,7 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
+                                    <th>Date / Time</th>
                                     <th>Type</th>
                                     <th>Qty</th>
                                     <th>Performed By</th>
@@ -901,6 +901,13 @@
                 assetId: recordId
             });
             records = (result.data && result.data.records) || [];
+            records.sort((left, right) => {
+                const timestamp = (item) => {
+                    const parsed = new Date(String(item.ChangedAt || "").replace(" ", "T"));
+                    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+                };
+                return timestamp(right) - timestamp(left) || String(right.HistoryID || "").localeCompare(String(left.HistoryID || ""));
+            });
         } finally {
             Swal.close();
         }
@@ -908,7 +915,7 @@
         const assignmentValue = (value) => UI.escapeHtml(value || "Unassigned");
         const rowsMarkup = records.map((item) => `
             <tr>
-                <td>${UI.escapeHtml(formatDateDisplay(item.ChangedAt))}</td>
+                <td>${UI.escapeHtml(`${formatDateDisplay(item.ChangedAt)} ${formatTimeDisplay(item.ChangedAt)}`)}</td>
                 <td>${UI.escapeHtml(item.ChangeType || "Assignment Updated")}</td>
                 <td>${assignmentValue(item.PreviousUser)}</td>
                 <td>${assignmentValue(item.NewUser)}</td>
@@ -1234,6 +1241,7 @@
                 return items.length ? items.map((item, index) => `<tr><td>${index + 1}</td><td>${UI.escapeHtml(item)}</td></tr>`).join("") : `<tr><td colspan="2" class="empty">${emptyText}</td></tr>`;
             };
             const status = record.ReturnedAt ? "RETURNED" : "BORROWED";
+            const part2Accessories = String(record.Accessories || "Power Adapter, Bag, Mouse").split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
             const part2Software = String(record.SoftwareInfo || "Windows, Office").split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
             const part2Rows = Array.from({ length: Math.max(6, part2Software.length) }, (_, index) => `<tr><td style="width:34px;text-align:center">${part2Software[index] ? index + 1 : ""}</td><td>${UI.escapeHtml(part2Software[index] || "")}</td><td></td><td></td></tr>`).join("");
             printWindow.document.open();
@@ -1241,17 +1249,14 @@
             printWindow.document.close();
             const part2 = printWindow.document.createElement("section");
             part2.className = "section";
-            part2.innerHTML = `<div class="head">Part 2: Information for IT <small>Software Installation / IT Maintenance</small></div><table><tr><th style="width:34px">No</th><th>Description</th><th>Serial / Product Key</th><th>Remark</th></tr>${part2Rows}</table>`;
+            part2.innerHTML = `<div class="head">Part 2: Information for IT <small>Accessories and Software / License</small></div><table><tr><th style="width:150px">Accessories / อุปกรณ์ประกอบ</th><td>${UI.escapeHtml(part2Accessories.join(", ") || "-")}</td></tr></table><table><tr><th style="width:34px">No</th><th>Description</th><th>Serial / Product Key</th><th>Remark</th></tr>${part2Rows}</table>`;
             const reportSections = printWindow.document.querySelectorAll("section.section");
             const returnSection = reportSections[2];
             if (returnSection) {
                 returnSection.parentNode.insertBefore(part2, returnSection);
             }
-            const accessorySoftwareLists = printWindow.document.querySelectorAll(".lists .list");
-            if (accessorySoftwareLists[1]) {
-                accessorySoftwareLists[1].remove();
-                printWindow.document.querySelector(".lists").style.gridTemplateColumns = "1fr";
-            }
+            const borrowingLists = printWindow.document.querySelector(".lists");
+            if (borrowingLists) borrowingLists.remove();
             printWindow.focus();
             // Base64 image decoding is asynchronous in a new window.  Printing
             // immediately could capture an empty signature area.
