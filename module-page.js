@@ -3624,6 +3624,12 @@
                     await openRecordModal("create");
                 }
                 AppShell.removeActionQuery();
+            } else if (action === "asset-borrowing" && moduleKey === "assets") {
+                const assetId = new URL(window.location.href).searchParams.get("assetId");
+                if (assetId) {
+                    await openAssetBorrowingMenu(assetId);
+                }
+                AppShell.removeActionQuery();
             }
         } catch (error) {
             Swal.close();

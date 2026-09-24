@@ -39,6 +39,12 @@
     const ticketProfileInitial = document.getElementById("ticketProfileInitial");
     const ticketLogoutButton = document.getElementById("ticketLogoutButton");
     const userQrCodeButton = document.getElementById("userQrCodeButton");
+    const requestFormButton = document.getElementById("requestFormButton");
+    const requestFormCard = document.getElementById("requestFormCard");
+    const requestFormChoices = document.getElementById("requestFormChoices");
+    const requestComputerSearch = document.getElementById("requestComputerSearch");
+    const requestComputerSearchInput = document.getElementById("requestComputerSearchInput");
+    const requestComputerResults = document.getElementById("requestComputerResults");
     const submitButton = form.querySelector('[type="submit"]');
     let selectedPhoto = null;
     let previewUrl = "";
@@ -47,6 +53,10 @@
     let equipmentItems = [];
     let ticketWorkspaceRequest = null;
     let isSubmitting = false;
+    let requestComputerAssets = [];
+    let isOpeningComputerBorrowing = false;
+    let selectedBorrowAsset = null;
+    let selectedReturnBorrowing = null;
     let clientRequestId = "";
 
     function createClientRequestId() {
@@ -64,7 +74,8 @@
     const serviceLabels = {
         "On-site": "On-site support details",
         "Remote Support": "Remote support details",
-        "Equipment Requisition": "Equipment requisition details"
+        "Equipment Requisition": "Equipment requisition details",
+        "Email": "Email request details"
     };
 
     function getLocalTimeValue(date = new Date()) {
@@ -561,6 +572,170 @@
             customClass: { popup: "ticket-login-qr-modal" }
         });
     });
+
+    requestFormButton.addEventListener("click", () => { serviceChoice.classList.add("hidden"); requestFormCard.classList.remove("hidden"); });
+    document.getElementById("backToRequestMenuButton").addEventListener("click", () => {
+        if (!requestComputerSearch.classList.contains("hidden")) {
+            requestComputerSearch.classList.add("hidden");
+            requestFormChoices.classList.remove("hidden");
+            requestComputerResults.innerHTML = "";
+            return;
+        }
+        requestFormCard.classList.add("hidden");
+        serviceChoice.classList.remove("hidden");
+    });
+    document.getElementById("requestEmailButton").addEventListener("click", () => { requestFormCard.classList.add("hidden"); selectService("Email"); });
+    document.getElementById("requestComputerButton").addEventListener("click", () => { requestFormChoices.classList.add("hidden"); requestComputerSearch.classList.remove("hidden"); requestComputerSearchInput.focus(); });
+    document.getElementById("requestComputerSearchForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+            const session = getActiveSession();
+            if (!session) throw new Error("Please login again.");
+            UI.loading("Searching computers", "Looking up matching assets");
+            const result = await ApiClient.request("listRecords", { token: session.token, module: "assets" });
+            const query = requestComputerSearchInput.value.trim().toLowerCase();
+            const matches = ((result.data && result.data.records) || []).filter((asset) => [asset.AssetName, asset.FixedAssetNo, asset.SerialNumber, asset.AssetID, asset.Location].some((value) => String(value || "").toLowerCase().includes(query))).slice(0, 20);
+            requestComputerAssets = matches;
+            Swal.close();
+            if (!matches.length) {
+                requestComputerResults.innerHTML = "";
+                await UI.alert({ icon: "warning", title: "No computer found", text: "Try searching by computer name, Asset Tag, Serial Number, Asset ID, or Location." });
+                return;
+            }
+            // Asset tag, serial number and location are normally unique. Open
+            // the first match directly so the user can continue in one step.
+            isOpeningComputerBorrowing = true;
+            requestComputerResults.innerHTML = "";
+            try {
+                await openComputerBorrowingSwal(matches[0]);
+            } finally {
+                isOpeningComputerBorrowing = false;
+            }
+        } catch (error) { Swal.close(); await UI.alert({ icon: "error", title: "Search failed", text: error.message || "Unable to search computers." }); }
+    });
+    requestComputerResults.addEventListener("click", async (event) => {
+        const result = event.target.closest("[data-request-asset]");
+        if (!result || isOpeningComputerBorrowing) return;
+        const asset = requestComputerAssets.find((item) => String(item.AssetID || "") === String(result.dataset.requestAsset || ""));
+        if (!asset) { await UI.alert({ icon: "warning", title: "Computer not found", text: "Search again and select the computer." }); return; }
+        isOpeningComputerBorrowing = true;
+        result.disabled = true;
+        try {
+            await openComputerBorrowingSwal(asset);
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to open computer", text: error.message || "Please try again." });
+        } finally {
+            isOpeningComputerBorrowing = false;
+            result.disabled = false;
+        }
+    });
+
+    function setupBorrowingCanvas(canvas) {
+        if (canvas.id === "requestBorrowSignature") arrangeBorrowComputerForm();
+        if (canvas.id === "requestReturnSignature") arrangeReturnComputerForm();
+        const context = canvas.getContext("2d");
+        const ratio = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+        canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+        context.scale(ratio, ratio); context.lineWidth = 2; context.lineCap = "round"; context.strokeStyle = "#17324d";
+        let drawing = false; let previous; let signed = false;
+        const point = (event) => { const box = canvas.getBoundingClientRect(); return { x: event.clientX - box.left, y: event.clientY - box.top }; };
+        canvas.onpointerdown = (event) => { drawing = true; previous = point(event); canvas.setPointerCapture(event.pointerId); };
+        canvas.onpointermove = (event) => { if (!drawing) return; const next = point(event); context.beginPath(); context.moveTo(previous.x, previous.y); context.lineTo(next.x, next.y); context.stroke(); previous = next; signed = true; };
+        canvas.onpointerup = canvas.onpointercancel = canvas.onpointerleave = () => { drawing = false; };
+        return { signed: () => signed, clear: () => { context.clearRect(0, 0, canvas.width, canvas.height); signed = false; }, payload: (name) => { const data = canvas.toDataURL("image/png"); return { name, type: "image/png", size: Math.ceil(data.length * .75), base64: data.split(",")[1] }; } };
+    }
+
+    function arrangeBorrowComputerForm() {
+        const borrowForm = document.querySelector(".asset-borrowing-form");
+        if (!borrowForm || borrowForm.dataset.arranged === "true") return;
+        borrowForm.dataset.arranged = "true";
+        borrowForm.classList.add("request-borrow-form");
+        const borrowerField = document.getElementById("requestBorrower").closest("label");
+        const departmentField = document.getElementById("requestDepartment").closest("label");
+        const departmentInput = document.getElementById("requestDepartment");
+        const departmentSelect = document.createElement("select");
+        departmentSelect.id = "requestDepartment";
+        departmentSelect.required = true;
+        departmentSelect.innerHTML = '<option value="">Select department</option>' + ["IT", "PD", "PC/Warehouse", "PE/Tooling", "QA/QC", "Design", "Maintenance", "Purchasing", "HR", "Accounting", "Safety"].map((name) => `<option>${name}</option>`).join("");
+        departmentInput.replaceWith(departmentSelect);
+        const peopleRow = document.createElement("div");
+        peopleRow.className = "request-borrow-row request-borrow-row--people";
+        borrowForm.insertBefore(peopleRow, borrowerField);
+        peopleRow.append(borrowerField, departmentField);
+        const specifications = borrowForm.querySelector(".asset-borrowing-form__grid");
+        const assetRow = document.createElement("div");
+        assetRow.className = "request-borrow-row request-borrow-row--asset";
+        const asset = selectedBorrowAsset || {};
+        assetRow.innerHTML = `<label>Model / Description <input value="${escapeHtml(asset.AssetName || "-")}" readonly></label><label>Fixed Asset Tag <input value="${escapeHtml(asset.FixedAssetNo || "-")}" readonly></label><label>Serial Number <input value="${escapeHtml(asset.SerialNumber || "-")}" readonly></label>`;
+        borrowForm.insertBefore(assetRow, specifications);
+        specifications.classList.add("request-borrow-specifications");
+        const accessoriesField = document.getElementById("requestAccessories").closest("label");
+        const softwareField = document.getElementById("requestSoftware").closest("label");
+        const informationRow = document.createElement("div");
+        informationRow.className = "request-borrow-row request-borrow-row--information";
+        borrowForm.insertBefore(informationRow, accessoriesField);
+        informationRow.append(accessoriesField, softwareField);
+    }
+
+    function arrangeReturnComputerForm() {
+        const returnForm = document.querySelector(".asset-borrowing-form");
+        if (!returnForm || returnForm.dataset.arranged === "true") return;
+        returnForm.dataset.arranged = "true";
+        returnForm.classList.add("request-borrow-form", "request-return-form");
+        const asset = selectedBorrowAsset || {};
+        const returnedByField = document.getElementById("requestReturnedBy").closest("label");
+        const assetRow = document.createElement("div");
+        assetRow.className = "request-borrow-row request-borrow-row--asset";
+        assetRow.innerHTML = `<label>Model / Description <input value="${escapeHtml(asset.AssetName || "-")}" readonly></label><label>Fixed Asset Tag <input value="${escapeHtml(asset.FixedAssetNo || "-")}" readonly></label><label>Serial Number <input value="${escapeHtml(asset.SerialNumber || "-")}" readonly></label>`;
+        const specificationRow = document.createElement("div");
+        specificationRow.className = "request-borrow-row request-borrow-specifications";
+        specificationRow.innerHTML = `<label>CPU <input value="${escapeHtml(asset.CPU || "-")}" readonly></label><label>Storage <input value="${escapeHtml(asset.Storage || "-")}" readonly></label><label>RAM <input value="${escapeHtml(asset.RAM || "-")}" readonly></label>`;
+        const returnRecord = selectedReturnBorrowing || {};
+        const informationRow = document.createElement("div");
+        informationRow.className = "request-borrow-row request-borrow-row--information";
+        informationRow.innerHTML = `<label>Accessories <input value="${escapeHtml(returnRecord.Accessories || "Power Adapter, Bag, Mouse")}" readonly></label><label>Software / License <textarea readonly>${escapeHtml(returnRecord.SoftwareInfo || "Windows, Office 365, Basic software")}</textarea></label>`;
+        returnForm.insertBefore(assetRow, returnedByField);
+        returnForm.insertBefore(specificationRow, returnedByField);
+        returnForm.insertBefore(informationRow, returnedByField);
+    }
+
+    async function openComputerBorrowingSwal(asset) {
+        const session = getActiveSession();
+        UI.loading("Loading computer", "Checking borrowing status");
+        let recordResult;
+        try {
+            recordResult = await ApiClient.request("listComputerBorrowings", { token: session.token, assetId: asset.AssetID });
+        } finally {
+            Swal.close();
+        }
+        const activeBorrowing = ((recordResult.data && recordResult.data.records) || []).find((item) => item.Status === "Borrowed");
+        let selectedAction = "";
+        await Swal.fire({ title: "Computer Borrowing", html: `<div class="asset-borrowing-menu"><div class="inventory-history__header"><strong>${escapeHtml(asset.AssetName || asset.AssetID)}</strong><span>${escapeHtml(asset.FixedAssetNo || asset.AssetID)}</span></div><div class="asset-borrowing-menu__choices"><button type="button" data-computer-action="borrow"><i class="fa-solid fa-hand-holding-hand"></i><span><strong>Borrow Computer</strong><small>Hand over this computer to a user.</small></span></button><button type="button" data-computer-action="return"><i class="fa-solid fa-rotate-left"></i><span><strong>Return Computer</strong><small>Receive this computer and its accessories.</small></span></button></div></div>`, showConfirmButton: false, showCloseButton: true, didOpen: () => document.querySelectorAll("[data-computer-action]").forEach((button) => button.onclick = () => { selectedAction = button.dataset.computerAction; Swal.close(); }) });
+        if (selectedAction === "borrow") await openBorrowComputerForm(asset, session);
+        if (selectedAction === "return") await openReturnComputerForm(asset, activeBorrowing, session);
+    }
+
+    async function openBorrowComputerForm(asset, session) {
+        selectedBorrowAsset = asset;
+        let signature;
+        const result = await Swal.fire({ title: "Borrow Computer", showCancelButton: true, confirmButtonText: "Save borrowing", html: `<div class="asset-borrowing-form"><label>Borrower <input id="requestBorrower" required></label><label>Department <input id="requestDepartment" required></label><div class="asset-borrowing-form__grid"><label>CPU <input id="requestCpu" value="${escapeHtml(asset.CPU || "")}" required></label><label>Storage <input id="requestStorage" value="${escapeHtml(asset.Storage || "")}" required></label><label>RAM <input id="requestRam" value="${escapeHtml(asset.RAM || "")}" required></label></div><label>Accessories <input id="requestAccessories" value="Power Adapter, Bag, Mouse"></label><label>Software / License <textarea id="requestSoftware">Windows, Office 365, Basic software</textarea></label><div class="ticket-signature-field"><div><span>Borrower signature</span><button id="clearRequestBorrowSignature" type="button">Clear</button></div><canvas id="requestBorrowSignature" style="width:100%;height:130px;border:1px solid #cbdde8"></canvas></div></div>`, didOpen: () => { signature = setupBorrowingCanvas(document.getElementById("requestBorrowSignature")); document.getElementById("clearRequestBorrowSignature").onclick = signature.clear; }, preConfirm: () => { const borrower = document.getElementById("requestBorrower").value.trim(), department = document.getElementById("requestDepartment").value.trim(), cpu = document.getElementById("requestCpu").value.trim(), storage = document.getElementById("requestStorage").value.trim(), ram = document.getElementById("requestRam").value.trim(); if (!borrower || !department || !cpu || !storage || !ram || !signature.signed()) { Swal.showValidationMessage("Complete all fields and provide borrower signature."); return false; } return { assetId: asset.AssetID, borrower, department, cpu, storage, ram, modelDescription: asset.AssetName || "", serialNumber: asset.SerialNumber || "", accessories: document.getElementById("requestAccessories").value.trim(), softwareInfo: document.getElementById("requestSoftware").value.trim(), signature: signature.payload(`${asset.AssetID}-borrower-signature.png`) }; } });
+        if (!result.isConfirmed) return;
+        const confirmed = await UI.confirm({ title: "Confirm computer borrowing?", text: "This will save the signed borrowing record.", confirmButtonText: "Confirm borrowing" }); if (!confirmed.isConfirmed) return;
+        try { UI.loading("Saving borrowing", "Recording handover and signature"); await ApiClient.request("createComputerBorrowing", { token: session.token, ...result.value }); Swal.close(); await UI.alert({ icon: "success", title: "Computer borrowed", text: "The signed record has been saved." }); } catch (error) { Swal.close(); await UI.alert({ icon: "error", title: "Unable to save borrowing", text: error.message || "Please try again." }); }
+    }
+
+    async function openReturnComputerForm(asset, borrowing, session) {
+        selectedBorrowAsset = asset;
+        selectedReturnBorrowing = borrowing || null;
+        let signature;
+        const result = await Swal.fire({ title: "Return Computer", showCancelButton: true, confirmButtonText: "Save return", html: `<div class="asset-borrowing-form"><label>Returned by <input id="requestReturnedBy" value="${escapeHtml(borrowing ? borrowing.Borrower || "" : asset.User || "")}" required></label><label>Condition / Remark <textarea id="requestReturnRemark"></textarea></label><div class="ticket-signature-field"><div><span>Returner signature</span><button id="clearRequestReturnSignature" type="button">Clear</button></div><canvas id="requestReturnSignature" style="width:100%;height:130px;border:1px solid #cbdde8"></canvas></div></div>`, didOpen: () => { signature = setupBorrowingCanvas(document.getElementById("requestReturnSignature")); document.getElementById("clearRequestReturnSignature").onclick = signature.clear; }, preConfirm: () => { const returnedBy = document.getElementById("requestReturnedBy").value.trim(); if (!returnedBy || !signature.signed()) { Swal.showValidationMessage("Enter returned by and provide signature."); return false; } return { returnedBy, remark: document.getElementById("requestReturnRemark").value.trim(), signature: signature.payload(`${asset.AssetID}-return-signature.png`) }; } });
+        if (!result.isConfirmed) return;
+        const confirmed = await UI.confirm({ title: "Confirm computer return?", text: "This will save the signed return record.", confirmButtonText: "Confirm return" }); if (!confirmed.isConfirmed) return;
+        try { UI.loading("Saving return", "Recording return and signature"); const payload = borrowing ? { borrowingId: borrowing.BorrowingID, ...result.value } : { assetId: asset.AssetID, ...result.value }; await ApiClient.request(borrowing ? "returnComputerBorrowing" : "createComputerReturn", { token: session.token, ...payload }); Swal.close(); await UI.alert({ icon: "success", title: "Computer returned", text: "The signed record has been saved." }); } catch (error) { Swal.close(); await UI.alert({ icon: "error", title: "Unable to save return", text: error.message || "Please try again." }); }
+    }
 
     equipmentItemSearch.addEventListener("focus", () => {
         if (!equipmentItemSearch.disabled) {

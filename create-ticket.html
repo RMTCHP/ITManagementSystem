@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link rel="stylesheet" href="app.css?v=20260815-4">
+    <link rel="stylesheet" href="app.css?v=20260924-9">
     <link rel="stylesheet" href="ticket-workspace.css?v=20260922-1">
     <script>
         if (window.matchMedia("(max-width: 767px)").matches) {
@@ -70,6 +70,29 @@
                     <small>QR Code สำหรับผู้ใช้งานทั่วไป</small>
                     <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
                 </button>
+                <button class="public-ticket-choice__card public-ticket-choice__card--request" id="requestFormButton" type="button" title="Open Request Form">
+                    <span class="public-ticket-choice__icon"><i class="fa-solid fa-clipboard-list"></i></span>
+                    <strong>Request Form</strong>
+                    <small>Create an Email request or search a computer to borrow or return</small>
+                    <i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i>
+                </button>
+            </div>
+        </section>
+
+        <section class="public-ticket-card hidden" id="requestFormCard" aria-labelledby="requestFormTitle">
+            <div class="public-ticket-card__header">
+                <div class="public-ticket-card__icon"><i class="fa-solid fa-clipboard-list"></i></div>
+                <div><p>NEW REQUEST</p><h2 id="requestFormTitle">Request Form</h2></div>
+                <button class="public-ticket-back" id="backToRequestMenuButton" type="button" title="Back to service menu"><i class="fa-solid fa-arrow-left"></i><span>Back</span></button>
+            </div>
+            <div id="requestFormChoices" class="public-ticket-choice__grid public-ticket-request-form__grid">
+                <button class="public-ticket-choice__card public-ticket-choice__card--email" id="requestEmailButton" type="button"><span class="public-ticket-choice__icon"><i class="fa-solid fa-envelope"></i></span><strong>Email</strong><small>Create an Email / Microsoft 365 request</small><i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i></button>
+                <button class="public-ticket-choice__card public-ticket-choice__card--computer" id="requestComputerButton" type="button"><span class="public-ticket-choice__icon"><i class="fa-solid fa-laptop"></i></span><strong>Computer</strong><small>Search a computer to borrow or return</small><i class="fa-solid fa-arrow-right public-ticket-choice__arrow"></i></button>
+            </div>
+            <div id="requestComputerSearch" class="hidden public-ticket-request-search">
+                <p>COMPUTER REQUEST</p><h3>Find a computer</h3><small>Search by computer name, Fixed Asset Tag, Serial Number, or Asset ID.</small>
+                <form id="requestComputerSearchForm"><input id="requestComputerSearchInput" type="search" required placeholder="Search computer"><button type="submit"><i class="fa-solid fa-magnifying-glass"></i><span>Search</span></button></form>
+                <div id="requestComputerResults"></div>
             </div>
         </section>
 
@@ -201,6 +224,6 @@
     <script src="api.js?v=20260918-1"></script>
     <script src="ui.js"></script>
     <script src="mobile-ticket-auth.js"></script>
-    <script src="create-ticket.js?v=20260922-1"></script>
+    <script src="create-ticket.js?v=20260924-9"></script>
 </body>
 </html>

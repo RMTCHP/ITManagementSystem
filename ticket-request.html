@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Form | IT Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="ticket-request.css?v=1">
+</head>
+<body>
+    <main class="request-shell">
+        <header><a href="create-ticket.html"><i class="fa-solid fa-arrow-left"></i> Ticket Workspace</a><div class="brand">IT Management</div></header>
+        <section id="requestChoice"><p class="eyebrow">REQUEST FORM</p><h1>Select a request</h1><p class="intro">Choose the service you need to continue.</p><div class="choice-grid"><button data-request="email"><i class="fa-solid fa-envelope"></i><strong>Email</strong><small>Create an IT request for Email / Microsoft 365</small><span>→</span></button><button data-request="computer"><i class="fa-solid fa-laptop"></i><strong>Computer</strong><small>Search a computer to borrow or return</small><span>→</span></button></div></section>
+        <section id="computerSearch" class="hidden"><button id="backButton" class="back" type="button"><i class="fa-solid fa-arrow-left"></i> Back</button><p class="eyebrow">COMPUTER REQUEST</p><h1>Find a computer</h1><p class="intro">Enter an asset name, fixed asset tag, or serial number.</p><form id="computerSearchForm"><input id="computerSearchInput" type="search" required placeholder="Search computer"><button type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button></form><div id="computerResults"></div></section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="config-loader.js"></script><script src="api.js"></script><script src="ui.js"></script><script src="ticket-request.js?v=1"></script>
+</body>
+</html>
