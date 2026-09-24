@@ -592,9 +592,8 @@
             const session = getActiveSession();
             if (!session) throw new Error("Please login again.");
             UI.loading("Searching computers", "Looking up matching assets");
-            const result = await ApiClient.request("listRecords", { token: session.token, module: "assets" });
-            const query = requestComputerSearchInput.value.trim().toLowerCase();
-            const matches = ((result.data && result.data.records) || []).filter((asset) => [asset.AssetName, asset.FixedAssetNo, asset.SerialNumber, asset.AssetID, asset.Location].some((value) => String(value || "").toLowerCase().includes(query))).slice(0, 20);
+            const result = await ApiClient.request("searchAssets", { token: session.token, query: requestComputerSearchInput.value.trim() });
+            const matches = (result.data && result.data.records) || [];
             requestComputerAssets = matches;
             Swal.close();
             if (!matches.length) {
