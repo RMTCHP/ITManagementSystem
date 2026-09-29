@@ -41,7 +41,7 @@ This folder contains the flat deployment package for the web frontend and Google
 6. Deploy the Apps Script project as a Web App, with `Execute as: Me`.
 7. Paste the Web App URL into `config.js` at `webAppUrl`.
    Current deployment URL:
-   `https://script.google.com/macros/s/AKfycbyaVMRI-LjvuBC44I7rVBJszSigLh2ayrXBYY6kcl0YsX8nuiKrhW4NlndYsBqnBUc/exec`
+   `https://script.google.com/macros/s/AKfycbwuKN9BqXR3PaQceUCIw-4Y2WAYd4uLe8HTcmLyyT6TarCzcG2pPO30di39HgjlG5s/exec`
 8. Hard refresh the browser after updating the Web App deployment URL or Apps Script logic.
 
 ## Notes
