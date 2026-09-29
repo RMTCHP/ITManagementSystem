@@ -88,6 +88,8 @@
             dashboardSummary: 60000,
             sidebarAlerts: 30000,
             listRecords: 30000,
+            listTicketWorkspace: 60000,
+            getTicketRecord: 30000,
             listKnowledgeCategories: 30000,
             createKnowledgeCategory: 30000,
             renameKnowledgeCategory: 30000,
@@ -350,7 +352,7 @@
             body: body.toString(),
             signal: controller.signal
         };
-        const retryableActions = new Set(["login", "checkSession", "dashboardSummary", "sidebarAlerts", "listRecords", "listKnowledgeCategories"]);
+        const retryableActions = new Set(["login", "checkSession", "dashboardSummary", "sidebarAlerts", "listRecords", "listTicketWorkspace", "listKnowledgeCategories"]);
 
         try {
             response = await fetch(config.webAppUrl, requestOptions);

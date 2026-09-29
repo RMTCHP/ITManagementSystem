@@ -1363,6 +1363,18 @@
     }
 
     async function loadModuleData() {
+        if (isTicketModule()) {
+            const ticketResult = await ApiClient.request("listTicketWorkspace", {
+                token: ApiClient.getSessionToken(),
+                module: "tickets"
+            });
+            state.records = ticketResult.data.records || [];
+            state.stockMovements = [];
+            state.sort.key = moduleConfig.listFields[0] || "";
+            state.sort.direction = "desc";
+            return;
+        }
+
         if (isStockMovementModule()) {
             const inventoryResult = await ApiClient.request("listRecords", {
                 token: ApiClient.getSessionToken(),
@@ -2090,10 +2102,40 @@
         return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
     }
 
+    async function loadTicketDetails(ticketId) {
+        const existing = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
+        if (!existing) {
+            throw new Error("Ticket not found");
+        }
+        if (existing.__detailsLoaded) {
+            return existing;
+        }
+
+        UI.loading("Loading ticket", "Fetching ticket details");
+        try {
+            const result = await ApiClient.request("getTicketRecord", {
+                token: ApiClient.getSessionToken(),
+                ticketId
+            });
+            const ticket = { ...(result.data.record || {}), __detailsLoaded: true };
+            const index = state.records.findIndex((record) => String(record.TicketID || "") === String(ticketId || ""));
+            if (index !== -1) state.records[index] = ticket;
+            return ticket;
+        } finally {
+            Swal.close();
+        }
+    }
+
     async function openTicketDetailsModal(ticketId) {
-        const ticket = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
+        let ticket = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
         if (!ticket) {
             UI.alert({ icon: "error", title: "Ticket not found", text: "Refresh the ticket queue and try again." });
+            return;
+        }
+        try {
+            ticket = await loadTicketDetails(ticketId);
+        } catch (error) {
+            await UI.alert({ icon: "error", title: "Unable to load ticket", text: error.message || "Please try again." });
             return;
         }
         const reportWindow = window.open("", "_blank");
@@ -2830,7 +2872,15 @@
             await openAccessRequestModal("AD Account");
             return;
         }
-        const existing = recordId ? state.records.find((item) => item[moduleConfig.idField] === recordId) : {};
+        let existing = recordId ? state.records.find((item) => item[moduleConfig.idField] === recordId) : {};
+        if (isTicketModule() && recordId) {
+            try {
+                existing = await loadTicketDetails(recordId);
+            } catch (error) {
+                await UI.alert({ icon: "error", title: "Unable to load ticket", text: error.message || "Please try again." });
+                return;
+            }
+        }
         const result = await UI.openFormModal(moduleConfig, existing, mode);
         if (!result.isConfirmed || !result.value) {
             return;
