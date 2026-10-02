@@ -3019,7 +3019,12 @@
             width: "min(960px, calc(100vw - 32px))",
             showCloseButton: true,
             confirmButtonText: "Close",
-            html: `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Agreement ID</th><th>Contract No.</th><th>Start</th><th>End</th><th>Vendor</th><th>Status</th></tr></thead><tbody>${history.map((record) => `<tr><td>${UI.escapeHtml(record.AgreementID || "-")}</td><td>${UI.escapeHtml(record.ContractNo || "-")}</td><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td><td>${UI.escapeHtml(record.Vendor || "-")}</td><td>${UI.badge(record.Status || "-")}</td></tr>`).join("")}</tbody></table></div>`
+            html: `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Agreement ID</th><th>Contract No.</th><th>Start</th><th>End</th><th>Vendor</th><th>Document</th><th>Status</th></tr></thead><tbody>${history.map((record) => {
+                const documentLink = record.DocumentURL
+                    ? `<a class="table-action table-action--info" href="${UI.escapeHtml(record.DocumentURL)}" target="_blank" rel="noopener noreferrer" title="Open contract document"><i class="fa-solid fa-file-lines"></i></a>`
+                    : "-";
+                return `<tr><td>${UI.escapeHtml(record.AgreementID || "-")}</td><td>${UI.escapeHtml(record.ContractNo || "-")}</td><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td><td>${UI.escapeHtml(record.Vendor || "-")}</td><td>${documentLink}</td><td>${UI.badge(record.Status || "-")}</td></tr>`;
+            }).join("")}</tbody></table></div>`
         });
     }
 
