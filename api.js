@@ -88,6 +88,8 @@
             dashboardSummary: 60000,
             sidebarAlerts: 30000,
             listRecords: 30000,
+            searchAssets: 30000,
+            getPublicTicketWorkspace: 30000,
             listTicketWorkspace: 60000,
             getTicketRecord: 30000,
             listKnowledgeCategories: 30000,

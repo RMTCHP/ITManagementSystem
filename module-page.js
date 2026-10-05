@@ -96,7 +96,7 @@
     ];
 
     function needsDashboardSummary() {
-        return isAssetModule();
+        return false;
     }
 
     function getSortIndicator(fieldKey) {
