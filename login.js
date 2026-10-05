@@ -90,6 +90,7 @@
             }
 
             ApiClient.saveSession(session);
+            ApiClient.fireAndForget("recordLoginActivity", { token: session.token });
             if (rememberCheckbox.checked) {
                 localStorage.setItem("itms_remember_username", username);
             } else {

@@ -3,7 +3,7 @@
     const computer = document.getElementById("computerSearch");
     const results = document.getElementById("computerResults");
     const input = document.getElementById("computerSearchInput");
-    const session = ApiClient.getSession();
+    const session = ApiClient.getSavedSession();
     if (!session || !session.token) { window.location.replace("ticket-login.html"); return; }
     document.querySelectorAll("[data-request]").forEach((button) => button.addEventListener("click", () => {
         if (button.dataset.request === "email") { window.location.href = "create-ticket.html"; return; }

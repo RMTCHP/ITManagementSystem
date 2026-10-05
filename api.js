@@ -85,6 +85,7 @@
     function getRequestTimeoutMs(action) {
         const timeoutMap = {
             login: 60000,
+            recordLoginActivity: 30000,
             dashboardSummary: 60000,
             sidebarAlerts: 30000,
             listRecords: 30000,
@@ -357,10 +358,15 @@
         const retryableActions = new Set(["login", "checkSession", "dashboardSummary", "sidebarAlerts", "listRecords", "listTicketWorkspace", "listKnowledgeCategories"]);
 
         try {
-            response = await fetch(config.webAppUrl, requestOptions);
-            if (response.status === 404 && retryableActions.has(action)) {
-                await new Promise((resolve) => window.setTimeout(resolve, 700));
+            const retryDelays = [0, 800, 1800];
+            for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+                if (retryDelays[attempt]) {
+                    await new Promise((resolve) => window.setTimeout(resolve, retryDelays[attempt]));
+                }
                 response = await fetch(config.webAppUrl, requestOptions);
+                if (response.status !== 404 || !retryableActions.has(action)) {
+                    break;
+                }
             }
         } catch (error) {
             if (error && error.name === "AbortError") {
@@ -373,7 +379,7 @@
 
         if (!response.ok) {
             if (response.status === 404) {
-                throw new Error(`Apps Script Web App URL returned 404. Update webAppUrl in config.js and redeploy the latest code.gs.`);
+                throw new Error(`Apps Script Web App URL returned 404. The deployed URL may be inactive, or this page may still be using an older config.js.`);
             }
             throw new Error(`API request failed with status ${response.status}`);
         }

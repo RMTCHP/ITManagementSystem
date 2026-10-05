@@ -37,6 +37,7 @@
                 user: loginData.user
             };
             ApiClient.saveSession(session);
+            ApiClient.fireAndForget("recordLoginActivity", { token: session.token });
             sessionStorage.setItem(ticketMobileAccessKey, "granted");
             Swal.close();
             window.location.replace("create-ticket.html");
