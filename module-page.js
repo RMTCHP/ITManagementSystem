@@ -3141,70 +3141,86 @@
 
     async function openKnowledgePreview(recordId) {
         const record = state.records.find((item) => item.DocumentID === recordId);
-        if (!record || (!record.LinkURL && !record.DriveFileId)) {
+        if (!record || !record.DriveFileId) {
             await UI.alert({ icon: "info", title: "Preview unavailable", text: "No document file or link has been attached." });
             return;
         }
-        let previewUrl = record.LinkURL;
-        let downloadUrl = record.LinkURL;
-        let previewMimeType = "";
-        let previewFileName = record.FileName || record.Title || "knowledge-document";
-        let objectUrl = "";
 
+        // Do not embed a drive.google.com URL here.  Some corporate networks
+        // block Drive in the browser, whereas the authenticated Apps Script API
+        // can safely return the file bytes for this authorised user.
+        Swal.fire({
+            title: "Preparing preview",
+            text: "Loading the document securely...",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        let objectUrl = "";
         try {
-            if (record.DriveFileId) {
-                UI.loading("Preparing preview", "Loading the secured document through IT Management");
-                const response = await ApiClient.request("getKnowledgePreviewData", {
-                    token: ApiClient.getSessionToken(),
-                    documentId: record.DocumentID
-                });
-                const previewData = response.data || {};
-                const binary = window.atob(String(previewData.base64 || ""));
-                const bytes = new Uint8Array(binary.length);
-                for (let index = 0; index < binary.length; index += 1) {
-                    bytes[index] = binary.charCodeAt(index);
-                }
-                previewMimeType = String(previewData.mimeType || "application/octet-stream");
-                previewFileName = previewData.fileName || previewFileName;
-                objectUrl = URL.createObjectURL(new Blob([bytes], { type: previewMimeType }));
-                previewUrl = objectUrl;
-                downloadUrl = objectUrl;
-                Swal.close();
+            const response = await ApiClient.request("getKnowledgePreviewData", {
+                token: ApiClient.getSessionToken(),
+                documentId: record.DocumentID
+            });
+            const preview = response && response.data;
+            if (!preview || !preview.base64 || !preview.mimeType) {
+                throw new Error("The preview file could not be prepared.");
             }
 
-            const isImage = previewMimeType.startsWith("image/");
-            const previewMarkup = isImage
-                ? `<div class="knowledge-preview"><img src="${UI.escapeHtml(previewUrl)}" alt="${UI.escapeHtml(record.Title || "Document preview")}"></div>`
-                : `<div class="knowledge-preview"><iframe src="${UI.escapeHtml(previewUrl)}" title="${UI.escapeHtml(record.Title || "Document preview")}" loading="lazy"></iframe></div>`;
+            const binary = window.atob(preview.base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let index = 0; index < binary.length; index += 1) {
+                bytes[index] = binary.charCodeAt(index);
+            }
+            const blob = new Blob([bytes], { type: preview.mimeType });
+            objectUrl = URL.createObjectURL(blob);
+            const isPdf = preview.mimeType === "application/pdf";
+            const isImage = /^image\//i.test(preview.mimeType);
+            if (!isPdf && !isImage) {
+                throw new Error("This file type cannot be displayed in the preview window.");
+            }
+
+            Swal.close();
+            const displayName = preview.fileName || record.Title || "document";
             await Swal.fire({
                 title: record.Title || "Document Preview",
                 width: "min(1100px, calc(100vw - 32px))",
                 showCloseButton: true,
-                showConfirmButton: true,
-                confirmButtonText: record.DriveFileId ? "Download file" : "Open document",
-                html: previewMarkup,
+                showCancelButton: true,
+                cancelButtonText: "Close",
+                confirmButtonText: "Download preview",
+                html: isPdf
+                    ? `<div class="knowledge-preview"><iframe src="${objectUrl}" title="${UI.escapeHtml(displayName)}"></iframe></div>`
+                    : `<div class="knowledge-preview"><img src="${objectUrl}" alt="${UI.escapeHtml(displayName)}"></div>`,
                 preConfirm: () => {
-                    if (record.DriveFileId) {
-                        const link = document.createElement("a");
-                        link.href = downloadUrl;
-                        link.download = previewFileName;
-                        link.click();
-                    } else {
-                        window.open(downloadUrl, "_blank", "noopener");
-                    }
+                    const link = document.createElement("a");
+                    link.href = objectUrl;
+                    link.download = displayName;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    // Keep the preview open and its object URL alive until the
+                    // user closes the dialog, so the downloaded blob is stable.
+                    return false;
                 },
-                willClose: () => {
+                didDestroy: () => {
                     if (objectUrl) {
                         URL.revokeObjectURL(objectUrl);
+                        objectUrl = "";
                     }
                 }
             });
         } catch (error) {
-            Swal.close();
             if (objectUrl) {
                 URL.revokeObjectURL(objectUrl);
             }
-            await UI.alert({ icon: "error", title: "Preview unavailable", text: error.message || "Unable to load this document preview." });
+            Swal.close();
+            await UI.alert({
+                icon: "error",
+                title: "Preview unavailable",
+                text: error.message || "Unable to load this document preview."
+            });
         }
     }
 
