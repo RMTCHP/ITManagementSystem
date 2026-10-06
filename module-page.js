@@ -3141,12 +3141,17 @@
 
     async function openKnowledgePreview(recordId) {
         const record = state.records.find((item) => item.DocumentID === recordId);
-        if (!record || !record.LinkURL) {
+        if (!record || (!record.LinkURL && !record.DriveFileId)) {
             await UI.alert({ icon: "info", title: "Preview unavailable", text: "No document file or link has been attached." });
             return;
         }
+        // Google Drive only permits its intended embed endpoint in an iframe.
+        // The standard /preview URL can be blocked when opened inside a modal.
         const previewUrl = record.DriveFileId
-            ? `https://drive.google.com/file/d/${encodeURIComponent(record.DriveFileId)}/preview`
+            ? `https://drive.google.com/file/d/${encodeURIComponent(record.DriveFileId)}/preview?embedded=true`
+            : record.LinkURL;
+        const openUrl = record.DriveFileId
+            ? `https://drive.google.com/open?id=${encodeURIComponent(record.DriveFileId)}`
             : record.LinkURL;
         await Swal.fire({
             title: record.Title || "Document Preview",
@@ -3156,7 +3161,7 @@
             confirmButtonText: "Open document",
             html: `<div class="knowledge-preview"><iframe src="${UI.escapeHtml(previewUrl)}" title="${UI.escapeHtml(record.Title || "Document preview")}" loading="lazy"></iframe></div>`,
             preConfirm: () => {
-                window.open(record.LinkURL, "_blank", "noopener");
+                window.open(openUrl, "_blank", "noopener");
             }
         });
     }
