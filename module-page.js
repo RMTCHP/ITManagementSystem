@@ -9,6 +9,9 @@
         stockItems: [],
         stockMovements: [],
         knowledgeCategories: [],
+        knowledgeCategoryVersion: 0,
+        knowledgeUploadFiles: [],
+        knowledgeUploading: false,
         filters: {
             search: "",
             status: "",
@@ -1341,14 +1344,14 @@
         if (!isKnowledgeModule()) {
             return;
         }
+        const version = state.knowledgeCategoryVersion;
         try {
             const result = await ApiClient.request("listKnowledgeCategories", {
                 token: ApiClient.getSessionToken()
             });
-            const configuredCategories = (getFieldConfig("Category") || {}).options || [];
+            if (version !== state.knowledgeCategoryVersion) return;
             const recordCategories = state.records.map((record) => String(record.Category || "").trim()).filter(Boolean);
             state.knowledgeCategories = [...new Set([
-                ...configuredCategories,
                 ...(result.data.categories || []),
                 ...recordCategories
             ])];
@@ -1410,7 +1413,7 @@
             });
             state.records = documentResult.data.records || [];
             state.knowledgeCategories = [...new Set([
-                ...((getFieldConfig("Category") || {}).options || []),
+                ...state.knowledgeCategories,
                 ...state.records.map((record) => String(record.Category || "").trim()).filter(Boolean)
             ])];
             const categoryField = getFieldConfig("Category");
@@ -1913,10 +1916,10 @@
     }
 
     function renderKnowledgeCenter() {
-        const categoryField = getFieldConfig("Category");
-        const configuredCategories = (categoryField && categoryField.options) || [];
         const existingCategories = state.records.map((record) => String(record.Category || "").trim()).filter(Boolean);
-        const categories = [...new Set([...configuredCategories, ...existingCategories])];
+        const categories = [...new Set([...state.knowledgeCategories, ...existingCategories])].filter(Boolean).sort((a, b) => a.localeCompare(b));
+        const currentFolder = state.filters.knowledgeCategory;
+        const isFolderOpen = currentFolder !== "all";
         const filtered = getFilteredRecords().sort((left, right) => {
             const leftDate = String(left.ReviewDate || "9999-12-31");
             const rightDate = String(right.ReviewDate || "9999-12-31");
@@ -1928,6 +1931,7 @@
         const cards = filtered.slice((page - 1) * pageSize, page * pageSize);
         const canCreate = AppShell.canDo(moduleConfig, "create", state.session);
         const canEditCategories = AppShell.canDo(moduleConfig, "edit", state.session);
+        const canDeleteCategories = AppShell.canDo(moduleConfig, "delete", state.session);
         const documentTypes = [...new Set(state.records.map((record) => record.DocumentType).filter(Boolean))].sort();
 
         const cardsMarkup = cards.map((record) => {
@@ -1949,7 +1953,7 @@
                         <span><i class="fa-solid fa-code-branch"></i>v${UI.escapeHtml(record.Version || "1")}</span>
                     </div>
                     <div class="knowledge-card__actions">
-                        ${record.LinkURL ? `<button class="knowledge-card__open" type="button" data-action="preview" data-id="${UI.escapeHtml(record.DocumentID)}" title="Preview document"><i class="fa-regular fa-eye"></i><span>Preview</span></button>` : ""}
+                        ${record.DriveFileId ? `<button class="knowledge-card__open" type="button" data-action="preview" data-id="${UI.escapeHtml(record.DocumentID)}" title="Preview document"><i class="fa-regular fa-eye"></i><span>Preview</span></button>` : ""}
                         ${record.DriveFileId ? `<a class="knowledge-card__download" href="https://drive.google.com/uc?export=download&id=${encodeURIComponent(record.DriveFileId)}" target="_blank" rel="noopener noreferrer" title="Download document"><i class="fa-solid fa-download"></i></a>` : ""}
                         ${canEdit ? `<button class="table-action" data-action="edit" data-id="${UI.escapeHtml(record.DocumentID)}" title="Edit document"><i class="fa-solid fa-pen"></i></button>` : ""}
                         ${canDelete ? `<button class="table-action table-action--danger" data-action="delete" data-id="${UI.escapeHtml(record.DocumentID)}" title="Delete document"><i class="fa-solid fa-trash"></i></button>` : ""}
@@ -1957,43 +1961,39 @@
                 </article>`;
         }).join("");
 
+        const matchingFolders = categories.filter((category) => !state.filters.search || category.toLowerCase().includes(state.filters.search.toLowerCase()) || state.records.some((record) => String(record.Category || "") === category && Object.values(record).some((value) => String(value || "").toLowerCase().includes(state.filters.search.toLowerCase()))));
         document.getElementById("viewContainer").innerHTML = `
-            <section class="knowledge-layout">
-                <aside class="knowledge-categories" aria-label="Knowledge categories">
-                    <div class="knowledge-categories__header">
-                        <div><p>Browse knowledge</p><strong>Categories</strong></div>
-                        ${canCreate ? `<button class="knowledge-category-add" id="addKnowledgeCategoryButton" type="button" title="Add category" aria-label="Add category"><i class="fa-solid fa-plus"></i></button>` : ""}
+            <section class="knowledge-library knowledge-library--folders">
+                <div class="knowledge-library__header">
+                    <div>
+                        ${isFolderOpen ? `<button class="knowledge-breadcrumb" type="button" data-knowledge-category="all"><i class="fa-solid fa-arrow-left"></i> All folders</button>` : `<p class="section-card__eyebrow">Knowledge Library</p>`}
+                        <h3>${UI.escapeHtml(isFolderOpen ? currentFolder : "IT Knowledge Center")}</h3>
+                        <p>${isFolderOpen ? `${state.records.filter((record) => String(record.Category || "") === currentFolder).length} files in this folder` : `${categories.length} folders | ${state.records.length} files`}</p>
                     </div>
-                    <button class="knowledge-category ${state.filters.knowledgeCategory === "all" ? "is-active" : ""}" type="button" data-knowledge-category="all">
-                        <span><i class="fa-solid fa-layer-group"></i>All knowledge</span><b>${state.records.length}</b>
-                    </button>
-                    ${categories.map((category) => `
-                        <div class="knowledge-category-row">
-                            <button class="knowledge-category ${state.filters.knowledgeCategory === category ? "is-active" : ""}" type="button" data-knowledge-category="${UI.escapeHtml(category)}">
-                                <span><i class="fa-solid fa-book-bookmark"></i>${UI.escapeHtml(category)}</span><b>${state.records.filter((record) => String(record.Category || "") === category).length}</b>
-                            </button>
-                            ${canEditCategories ? `<button class="knowledge-category-edit" type="button" data-edit-knowledge-category="${UI.escapeHtml(category)}" title="Edit category" aria-label="Edit ${UI.escapeHtml(category)}"><i class="fa-solid fa-pen"></i></button>` : ""}
-                        </div>`).join("")}
-                </aside>
-                <div class="knowledge-library">
-                    <div class="knowledge-library__header">
-                        <div>
-                            <p class="section-card__eyebrow">Knowledge Library</p>
-                            <h3>IT Knowledge Center</h3>
-                            <p>Find operational guides, diagrams, recovery plans and technical references.</p>
-                        </div>
-                        ${canCreate ? `<button class="primary-btn" id="createRecordButton" title="Add knowledge"><i class="fa-solid fa-plus"></i><span>Add Knowledge</span></button>` : ""}
-                    </div>
+                    ${canCreate && !isFolderOpen ? `<button class="primary-btn" id="addKnowledgeCategoryButton" type="button"><i class="fa-solid fa-folder-plus"></i><span>Add folder</span></button>` : ""}
+                </div>
+                ${isFolderOpen ? `
+                    ${canCreate ? `<div class="knowledge-upload">
+                        <input id="knowledgeMultiFileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp" multiple hidden>
+                        <button class="knowledge-dropzone" id="knowledgeDropzone" type="button" ${state.knowledgeUploading ? "disabled" : ""}>
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <strong>Drop files here or click to browse</strong>
+                            <span>PDF, PNG, JPG or WEBP | up to 10 MB each | select multiple files</span>
+                        </button>
+                        ${state.knowledgeUploadFiles.length ? `<div class="knowledge-upload__queue"><strong>${state.knowledgeUploadFiles.length} file${state.knowledgeUploadFiles.length === 1 ? "" : "s"} ready</strong><span>${state.knowledgeUploadFiles.map((file) => UI.escapeHtml(file.name)).join(" | ")}</span><button class="primary-btn" id="uploadKnowledgeFilesButton" type="button" ${state.knowledgeUploading ? "disabled" : ""}>Upload ${state.knowledgeUploadFiles.length} file${state.knowledgeUploadFiles.length === 1 ? "" : "s"}</button><button class="ghost-btn" id="clearKnowledgeFilesButton" type="button" ${state.knowledgeUploading ? "disabled" : ""}>Clear</button></div>` : ""}
+                    </div>` : ""}
+                    ${canEditCategories || canDeleteCategories ? `<div class="knowledge-folder-actions">
+                        ${canEditCategories ? `<button class="knowledge-folder-edit" type="button" data-edit-knowledge-category="${UI.escapeHtml(currentFolder)}"><i class="fa-solid fa-pen"></i> Rename folder</button>` : ""}
+                        ${canDeleteCategories ? `<button class="knowledge-folder-edit knowledge-folder-edit--danger" type="button" data-delete-knowledge-category="${UI.escapeHtml(currentFolder)}"><i class="fa-solid fa-trash"></i> Delete folder</button>` : ""}
+                    </div>` : ""}
                     <div class="knowledge-filters">
                         <label><span>Document type</span><select id="knowledgeTypeFilter"><option value="">All types</option>${documentTypes.map((type) => `<option value="${UI.escapeHtml(type)}" ${state.filters.knowledgeType === type ? "selected" : ""}>${UI.escapeHtml(type)}</option>`).join("")}</select></label>
                         <label><span>Status</span><select id="statusFilter"><option value="">All status</option>${[...new Set(state.records.map((record) => record.Status).filter(Boolean))].map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.status === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}</select></label>
-                        <span class="knowledge-filters__count">${filtered.length} knowledge item${filtered.length === 1 ? "" : "s"}</span>
+                        <span class="knowledge-filters__count">${filtered.length} file${filtered.length === 1 ? "" : "s"}</span>
                     </div>
-                    <div class="knowledge-card-grid">
-                        ${cardsMarkup || `<div class="knowledge-empty-state">${UI.emptyState("No knowledge found", "Try a different category or search phrase.")}</div>`}
-                    </div>
+                    <div class="knowledge-card-grid">${cardsMarkup || `<div class="knowledge-empty-state">${UI.emptyState("No files in this folder", "Drop PDF or image files above to add them.")}</div>`}</div>
                     ${totalPages > 1 ? `<div class="knowledge-pagination"><button class="ghost-btn" id="prevPageButton" ${page <= 1 ? "disabled" : ""}>Previous</button><span>Page ${page} of ${totalPages}</span><button class="ghost-btn" id="nextPageButton" ${page >= totalPages ? "disabled" : ""}>Next</button></div>` : ""}
-                </div>
+                ` : `<div class="knowledge-folder-grid">${matchingFolders.map((category) => `<button class="knowledge-folder" type="button" data-knowledge-category="${UI.escapeHtml(category)}"><span class="knowledge-folder__icon"><i class="fa-solid fa-folder"></i></span><strong>${UI.escapeHtml(category)}</strong><span>${state.records.filter((record) => String(record.Category || "") === category).length} files</span><i class="fa-solid fa-arrow-right knowledge-folder__arrow"></i></button>`).join("") || `<div class="knowledge-empty-state">${UI.emptyState("No folders found", "Create a folder to start adding files.")}</div>`}</div>`}
             </section>`;
     }
 
@@ -3049,6 +3049,74 @@
         });
     }
 
+    function queueKnowledgeFiles(files) {
+        const incoming = Array.from(files || []);
+        if (!incoming.length || state.knowledgeUploading) return;
+        const mimeByExtension = { pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
+        const invalid = incoming.find((file) => {
+            const extension = String(file.name || "").split(".").pop().toLowerCase();
+            return !mimeByExtension[extension] || file.type.toLowerCase() !== mimeByExtension[extension] || file.size <= 0 || file.size > 10 * 1024 * 1024;
+        });
+        if (invalid) {
+            UI.alert({ icon: "warning", title: "File not supported", text: `${invalid.name}: choose a PDF, PNG, JPG or WEBP file up to 10 MB.` });
+            return;
+        }
+        const queued = new Map(state.knowledgeUploadFiles.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file]));
+        incoming.forEach((file) => queued.set(`${file.name}:${file.size}:${file.lastModified}`, file));
+        state.knowledgeUploadFiles = [...queued.values()];
+        renderKnowledgeCenter();
+    }
+
+    async function uploadKnowledgeFiles() {
+        const files = [...state.knowledgeUploadFiles];
+        const folder = state.filters.knowledgeCategory;
+        if (!files.length || folder === "all" || state.knowledgeUploading) return;
+        const confirmation = await UI.confirm({
+            title: `Upload ${files.length} file${files.length === 1 ? "" : "s"}?`,
+            text: `Save these files in ${folder}.`,
+            confirmButtonText: "Upload"
+        });
+        if (!confirmation.isConfirmed) return;
+
+        state.knowledgeUploading = true;
+        const uploaded = [];
+        const failed = [];
+        try {
+            for (let index = 0; index < files.length; index += 1) {
+                const file = files[index];
+                UI.loading(`Uploading ${index + 1} of ${files.length}`, file.name);
+                try {
+                    const response = await ApiClient.request("saveKnowledgeDocument", {
+                        token: ApiClient.getSessionToken(),
+                        mode: "create",
+                        record: {
+                            Category: folder,
+                            Title: file.name.replace(/\.[^.]+$/, ""),
+                            Status: "Active",
+                            OwnerDepartment: "IT",
+                            Version: "1"
+                        },
+                        file: { name: file.name, type: file.type, size: file.size, base64: await readKnowledgeFile(file) }
+                    });
+                    upsertStateRecord(response.data.record, "create");
+                    uploaded.push(file);
+                } catch (error) {
+                    failed.push({ file, message: error.message || "Upload failed" });
+                }
+            }
+        } finally {
+            state.knowledgeUploading = false;
+            state.knowledgeUploadFiles = failed.map((item) => item.file);
+            Swal.close();
+            renderKnowledgeCenter();
+        }
+        await UI.alert({
+            icon: failed.length ? "warning" : "success",
+            title: failed.length ? `${uploaded.length} uploaded, ${failed.length} failed` : `${uploaded.length} file${uploaded.length === 1 ? "" : "s"} uploaded`,
+            text: failed.length ? `${failed[0].file.name}: ${failed[0].message}. Failed files remain selected for retry.` : `Files are ready in ${folder}.`
+        });
+    }
+
     async function openKnowledgeModal(mode, recordId = "") {
         const existing = recordId ? state.records.find((item) => item.DocumentID === recordId) || {} : {};
         const categoryOptions = state.knowledgeCategories.map((item) => `<option value="${UI.escapeHtml(item)}" ${existing.Category === item ? "selected" : ""}>${UI.escapeHtml(item)}</option>`).join("");
@@ -3063,11 +3131,11 @@
             confirmButtonText: mode === "create" ? "Save Knowledge" : "Update Knowledge",
             html: `
                 <div class="knowledge-form">
-                    <div class="knowledge-form__intro"><i class="fa-solid fa-cloud-arrow-up"></i><span>Upload a supported file or paste an existing Google Drive link.</span></div>
+                    <div class="knowledge-form__intro"><i class="fa-solid fa-cloud-arrow-up"></i><span>Upload a preview-ready PDF or image, or paste an existing Google Drive link.</span></div>
                     <label><span>Knowledge Category <em>*</em></span><select data-knowledge-field="Category"><option value="">Select category</option>${categoryOptions}</select></label>
                     <label class="knowledge-form__full"><span>Title <em>*</em></span><input data-knowledge-field="Title" value="${UI.escapeHtml(existing.Title || "")}" placeholder="Example: Firewall backup and restore procedure"></label>
-                    <label class="knowledge-form__full"><span>Upload File</span><input type="file" data-knowledge-file accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg"><small>PDF, DOCX, XLSX, PPTX, PNG, JPG or JPEG. Maximum 10 MB.</small></label>
-                    <label class="knowledge-form__full"><span>Google Drive Link</span><input type="url" data-knowledge-field="LinkURL" value="${UI.escapeHtml(existing.LinkURL || "")}" placeholder="https://drive.google.com/... "><small>Use this when the file already exists in Google Drive.</small></label>
+                    <label class="knowledge-form__full"><span>Upload File</span><input type="file" data-knowledge-file accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp"><small>PDF, PNG, JPG or WEBP only. Maximum 10 MB. All uploaded files can be previewed.</small></label>
+                    <label class="knowledge-form__full"><span>Google Drive Link</span><input type="url" data-knowledge-field="LinkURL" value="${UI.escapeHtml(existing.LinkURL || "")}" placeholder="https://drive.google.com/... "><small>Optional. Upload a PDF or image when an in-system preview is required.</small></label>
                     <label class="knowledge-form__full"><span>Description</span><textarea data-knowledge-field="Remark" placeholder="Explain when and how this knowledge should be used.">${UI.escapeHtml(existing.Remark || "")}</textarea></label>
                     <details class="knowledge-form__details knowledge-form__full">
                         <summary>Additional details <span>Optional</span></summary>
@@ -3094,6 +3162,15 @@
                 if (file && file.size > 10 * 1024 * 1024) {
                     Swal.showValidationMessage("The selected file must not exceed 10 MB.");
                     return false;
+                }
+                if (file) {
+                    const extension = String(file.name || "").split(".").pop().toLowerCase();
+                    const previewExtensions = ["pdf", "png", "jpg", "jpeg", "webp"];
+                    const previewTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+                    if (!previewExtensions.includes(extension) || (file.type && !previewTypes.includes(file.type.toLowerCase()))) {
+                        Swal.showValidationMessage("Upload PDF, PNG, JPG or WEBP only so this document can be previewed.");
+                        return false;
+                    }
                 }
                 if (values.Status !== "Draft" && !file && !values.LinkURL) {
                     Swal.showValidationMessage("Upload a file or provide a Google Drive link before publishing.");
@@ -3226,21 +3303,31 @@
 
     async function addKnowledgeCategory() {
         const result = await Swal.fire({
-            title: "Add knowledge category",
+            title: "Add folder",
             input: "text",
-            inputLabel: "Category name",
+            inputLabel: "Folder name",
             inputPlaceholder: "Example: Security Operations",
             showCancelButton: true,
-            confirmButtonText: "Add category",
+            showCloseButton: true,
+            confirmButtonText: "Create folder",
             inputValidator(value) {
-                return String(value || "").trim() ? undefined : "Please enter a category name.";
+                const name = String(value || "").trim();
+                return name && name.length <= 80 && name.toLowerCase() !== "all" ? undefined : "Enter a folder name up to 80 characters, other than All.";
             }
         });
         if (!result.isConfirmed) {
             return;
         }
 
-        UI.loading("Adding category", "Saving knowledge category");
+        const confirmation = await UI.confirm({
+            title: "Create this folder?",
+            text: String(result.value || "").trim(),
+            confirmButtonText: "Create folder"
+        });
+        if (!confirmation.isConfirmed) return;
+
+        state.knowledgeCategoryVersion += 1;
+        UI.loading("Creating folder", "Saving folder");
         try {
             const response = await ApiClient.request("createKnowledgeCategory", {
                 token: ApiClient.getSessionToken(),
@@ -3252,23 +3339,29 @@
                 categoryField.options = state.knowledgeCategories;
             }
             Swal.close();
+            state.filters.knowledgeCategory = String(result.value || "").trim();
+            state.page = 1;
             renderTable();
+            refreshKnowledgeCategoriesInBackground();
+            await UI.alert({ icon: "success", title: "Folder created", text: `${state.filters.knowledgeCategory} is ready for files.` });
         } catch (error) {
             Swal.close();
-            await UI.alert({ icon: "error", title: "Unable to add category", text: error.message || "Unexpected error" });
+            await UI.alert({ icon: "error", title: "Unable to create folder", text: error.message || "Unexpected error" });
         }
     }
 
     async function editKnowledgeCategory(previousName) {
         const result = await Swal.fire({
-            title: "Edit knowledge category",
+            title: "Rename folder",
             input: "text",
-            inputLabel: "Category name",
+            inputLabel: "Folder name",
             inputValue: previousName,
             showCancelButton: true,
-            confirmButtonText: "Save category",
+            showCloseButton: true,
+            confirmButtonText: "Save folder",
             inputValidator(value) {
-                return String(value || "").trim() ? undefined : "Please enter a category name.";
+                const name = String(value || "").trim();
+                return name && name.length <= 80 && name.toLowerCase() !== "all" ? undefined : "Enter a folder name up to 80 characters, other than All.";
             }
         });
         if (!result.isConfirmed) {
@@ -3278,7 +3371,10 @@
         if (nextName === previousName) {
             return;
         }
-        UI.loading("Updating category", "Updating linked knowledge documents");
+        const confirmation = await UI.confirm({ title: "Rename this folder?", text: `${previousName} to ${nextName}`, confirmButtonText: "Rename" });
+        if (!confirmation.isConfirmed) return;
+        state.knowledgeCategoryVersion += 1;
+        UI.loading("Renaming folder", "Updating linked knowledge documents");
         try {
             const response = await ApiClient.request("renameKnowledgeCategory", {
                 token: ApiClient.getSessionToken(),
@@ -3301,10 +3397,71 @@
             }
             Swal.close();
             renderTable();
-            await UI.alert({ icon: "success", title: "Category updated", text: `${data.updatedDocuments || 0} linked document(s) updated.` });
+            refreshKnowledgeCategoriesInBackground();
+            await UI.alert({ icon: "success", title: "Folder renamed", text: `${data.updatedDocuments || 0} linked file(s) updated.` });
         } catch (error) {
             Swal.close();
-            await UI.alert({ icon: "error", title: "Unable to update category", text: error.message || "Please try again." });
+            await UI.alert({ icon: "error", title: "Unable to rename folder", text: error.message || "Please try again." });
+        }
+    }
+
+    async function deleteKnowledgeCategory(folderName) {
+        if (!folderName || folderName === "all" || state.knowledgeUploading) return;
+        const documentIds = state.records
+            .filter((record) => String(record.Category || "").trim() === folderName)
+            .map((record) => String(record.DocumentID || ""))
+            .sort();
+        const fileCount = documentIds.length;
+        const confirmation = await Swal.fire({
+            title: "Delete folder and all files?",
+            text: `${folderName} contains ${fileCount} file${fileCount === 1 ? "" : "s"}. Type delete to remove this folder and all its records.`,
+            icon: "warning",
+            input: "text",
+            inputLabel: "Type delete to confirm",
+            inputPlaceholder: "delete",
+            showCancelButton: true,
+            showCloseButton: true,
+            confirmButtonText: "Delete folder",
+            confirmButtonColor: "#d94c4c",
+            inputValidator(value) {
+                return value === "delete" ? undefined : "Type delete exactly to continue.";
+            }
+        });
+        if (!confirmation.isConfirmed) return;
+
+        const actionKey = `delete-folder:${folderName}`;
+        if (!beginAction(actionKey)) return;
+        state.knowledgeCategoryVersion += 1;
+        UI.loading("Deleting folder", `Removing ${folderName} and its files`);
+        try {
+            const response = await ApiClient.request("deleteKnowledgeCategory", {
+                token: ApiClient.getSessionToken(),
+                name: folderName,
+                confirmation: "delete",
+                documentIds
+            });
+            state.records = state.records.filter((record) => String(record.Category || "").trim() !== folderName);
+            state.knowledgeCategories = state.knowledgeCategories.filter((category) => category !== folderName);
+            state.knowledgeUploadFiles = [];
+            state.filters.knowledgeCategory = "all";
+            state.filters.knowledgeType = "";
+            state.filters.status = "";
+            state.page = 1;
+            const categoryField = getFieldConfig("Category");
+            if (categoryField) categoryField.options = state.knowledgeCategories;
+            Swal.close();
+            renderTable();
+            refreshKnowledgeCategoriesInBackground();
+            await UI.alert({
+                icon: "success",
+                title: "Folder deleted",
+                text: `${response.data.deletedDocuments || 0} record(s) removed from ${folderName}; ${response.data.trashedFiles || 0} uploaded file(s) moved to Drive Trash.`
+            });
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to delete folder", text: error.message || "Please try again." });
+        } finally {
+            endAction(actionKey);
         }
     }
 
@@ -3415,14 +3572,35 @@
             const knowledgeCategoryButton = event.target.closest("[data-knowledge-category]");
             if (knowledgeCategoryButton) {
                 state.filters.knowledgeCategory = knowledgeCategoryButton.getAttribute("data-knowledge-category") || "all";
+                state.knowledgeUploadFiles = [];
                 state.page = 1;
                 renderTable();
+                return;
+            }
+
+            if (event.target.closest("#knowledgeDropzone")) {
+                document.getElementById("knowledgeMultiFileInput")?.click();
+                return;
+            }
+            if (event.target.closest("#uploadKnowledgeFilesButton")) {
+                await uploadKnowledgeFiles();
+                return;
+            }
+            if (event.target.closest("#clearKnowledgeFilesButton")) {
+                state.knowledgeUploadFiles = [];
+                renderKnowledgeCenter();
                 return;
             }
 
             const editKnowledgeCategoryButton = event.target.closest("[data-edit-knowledge-category]");
             if (editKnowledgeCategoryButton) {
                 await editKnowledgeCategory(editKnowledgeCategoryButton.getAttribute("data-edit-knowledge-category") || "");
+                return;
+            }
+
+            const deleteKnowledgeCategoryButton = event.target.closest("[data-delete-knowledge-category]");
+            if (deleteKnowledgeCategoryButton) {
+                await deleteKnowledgeCategory(deleteKnowledgeCategoryButton.getAttribute("data-delete-knowledge-category") || "");
                 return;
             }
 
@@ -3555,7 +3733,31 @@
             }
         });
 
-        document.getElementById("viewContainer").addEventListener("change", async (event) => {
+        const viewContainer = document.getElementById("viewContainer");
+        viewContainer.addEventListener("dragover", (event) => {
+            const dropzone = event.target.closest("#knowledgeDropzone");
+            if (!dropzone || state.knowledgeUploading) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+            dropzone.classList.add("is-dragging");
+        });
+        viewContainer.addEventListener("dragleave", (event) => {
+            const dropzone = event.target.closest("#knowledgeDropzone");
+            if (dropzone && !dropzone.contains(event.relatedTarget)) dropzone.classList.remove("is-dragging");
+        });
+        viewContainer.addEventListener("drop", (event) => {
+            const dropzone = event.target.closest("#knowledgeDropzone");
+            if (!dropzone || state.knowledgeUploading) return;
+            event.preventDefault();
+            dropzone.classList.remove("is-dragging");
+            queueKnowledgeFiles(event.dataTransfer.files);
+        });
+
+        viewContainer.addEventListener("change", async (event) => {
+            if (event.target.id === "knowledgeMultiFileInput") {
+                queueKnowledgeFiles(event.target.files);
+                return;
+            }
             if (["ticketStartDateFilter", "ticketEndDateFilter", "ticketServiceFilter", "ticketStatusFilter"].includes(event.target.id)) {
                 state.filters.ticketStartDate = document.getElementById("ticketStartDateFilter").value;
                 state.filters.ticketEndDate = document.getElementById("ticketEndDateFilter").value;
@@ -3738,6 +3940,8 @@
                     if (target) {
                         target.scrollIntoView({ behavior: "smooth", block: "start" });
                     }
+                } else if (isKnowledgeModule()) {
+                    await addKnowledgeCategory();
                 } else {
                     await openRecordModal("create");
                 }

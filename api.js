@@ -96,6 +96,7 @@
             listKnowledgeCategories: 30000,
             createKnowledgeCategory: 30000,
             renameKnowledgeCategory: 30000,
+            deleteKnowledgeCategory: 120000,
             saveKnowledgeDocument: 90000,
             getKnowledgePreviewData: 60000,
             createPublicTicket: 60000,
