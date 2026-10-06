@@ -97,6 +97,7 @@
             createKnowledgeCategory: 30000,
             renameKnowledgeCategory: 30000,
             saveKnowledgeDocument: 90000,
+            getKnowledgePreviewData: 60000,
             createPublicTicket: 60000,
             createUserRequest: 60000,
             listPublicInventoryItems: 30000,

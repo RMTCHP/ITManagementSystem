@@ -3145,25 +3145,67 @@
             await UI.alert({ icon: "info", title: "Preview unavailable", text: "No document file or link has been attached." });
             return;
         }
-        // Google Drive only permits its intended embed endpoint in an iframe.
-        // The standard /preview URL can be blocked when opened inside a modal.
-        const previewUrl = record.DriveFileId
-            ? `https://drive.google.com/file/d/${encodeURIComponent(record.DriveFileId)}/preview?embedded=true`
-            : record.LinkURL;
-        const openUrl = record.DriveFileId
-            ? `https://drive.google.com/open?id=${encodeURIComponent(record.DriveFileId)}`
-            : record.LinkURL;
-        await Swal.fire({
-            title: record.Title || "Document Preview",
-            width: "min(1100px, calc(100vw - 32px))",
-            showCloseButton: true,
-            showConfirmButton: true,
-            confirmButtonText: "Open document",
-            html: `<div class="knowledge-preview"><iframe src="${UI.escapeHtml(previewUrl)}" title="${UI.escapeHtml(record.Title || "Document preview")}" loading="lazy"></iframe></div>`,
-            preConfirm: () => {
-                window.open(openUrl, "_blank", "noopener");
+        let previewUrl = record.LinkURL;
+        let downloadUrl = record.LinkURL;
+        let previewMimeType = "";
+        let previewFileName = record.FileName || record.Title || "knowledge-document";
+        let objectUrl = "";
+
+        try {
+            if (record.DriveFileId) {
+                UI.loading("Preparing preview", "Loading the secured document through IT Management");
+                const response = await ApiClient.request("getKnowledgePreviewData", {
+                    token: ApiClient.getSessionToken(),
+                    documentId: record.DocumentID
+                });
+                const previewData = response.data || {};
+                const binary = window.atob(String(previewData.base64 || ""));
+                const bytes = new Uint8Array(binary.length);
+                for (let index = 0; index < binary.length; index += 1) {
+                    bytes[index] = binary.charCodeAt(index);
+                }
+                previewMimeType = String(previewData.mimeType || "application/octet-stream");
+                previewFileName = previewData.fileName || previewFileName;
+                objectUrl = URL.createObjectURL(new Blob([bytes], { type: previewMimeType }));
+                previewUrl = objectUrl;
+                downloadUrl = objectUrl;
+                Swal.close();
             }
-        });
+
+            const isImage = previewMimeType.startsWith("image/");
+            const previewMarkup = isImage
+                ? `<div class="knowledge-preview"><img src="${UI.escapeHtml(previewUrl)}" alt="${UI.escapeHtml(record.Title || "Document preview")}"></div>`
+                : `<div class="knowledge-preview"><iframe src="${UI.escapeHtml(previewUrl)}" title="${UI.escapeHtml(record.Title || "Document preview")}" loading="lazy"></iframe></div>`;
+            await Swal.fire({
+                title: record.Title || "Document Preview",
+                width: "min(1100px, calc(100vw - 32px))",
+                showCloseButton: true,
+                showConfirmButton: true,
+                confirmButtonText: record.DriveFileId ? "Download file" : "Open document",
+                html: previewMarkup,
+                preConfirm: () => {
+                    if (record.DriveFileId) {
+                        const link = document.createElement("a");
+                        link.href = downloadUrl;
+                        link.download = previewFileName;
+                        link.click();
+                    } else {
+                        window.open(downloadUrl, "_blank", "noopener");
+                    }
+                },
+                willClose: () => {
+                    if (objectUrl) {
+                        URL.revokeObjectURL(objectUrl);
+                    }
+                }
+            });
+        } catch (error) {
+            Swal.close();
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+            await UI.alert({ icon: "error", title: "Preview unavailable", text: error.message || "Unable to load this document preview." });
+        }
     }
 
     async function addKnowledgeCategory() {
