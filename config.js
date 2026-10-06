@@ -1,7 +1,7 @@
 window.APP_CONFIG = {
     appName: "IT Asset Management & Request Job System",
     projectProfile: "Enterprise Clean",
-    webAppUrl: "https://script.google.com/macros/s/AKfycbxvlEi7vIBr9U78pvBJn6l3m5j9h7ZvK82S9VLEvjIN5jg3Fa0VTDKgZMGbvgpPyBA/exec",
+    webAppUrl: "https://script.google.com/macros/s/AKfycbyhhWm1wF_efNEbJ5vvuKWFu3ROx08_VTD-bnXXE0nEv9rnLjam4oc2uwFxvXaAtoE/exec",
     sessionStorageKey: "itms_session",
     sessionHours: 12,
     pageRoutes: {
@@ -300,48 +300,5 @@ window.APP_CONFIG = {
             listFields: ["LogID", "Timestamp", "Action", "Module", "RecordID", "ActorName", "ActorRole", "Detail"],
             fields: []
         }
-    },
-    sampleData: {
-        users: [
-            { UserID: "USR-001", Username: "admin", FullName: "System Admin", Department: "IT", Role: "Admin", Status: "Active", Email: "admin@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { UserID: "USR-002", Username: "itmanager", FullName: "IT Manager", Department: "IT", Role: "Admin", Status: "Active", Email: "itmanager@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { UserID: "USR-003", Username: "itstaff", FullName: "IT Support", Department: "IT", Role: "Admin", Status: "Active", Email: "itstaff@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { UserID: "USR-004", Username: "deptmgr", FullName: "Production Manager", Department: "Production", Role: "User", Status: "Active", Email: "deptmgr@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { UserID: "USR-005", Username: "user01", FullName: "Production User", Department: "Production", Role: "User", Status: "Active", Email: "user01@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { UserID: "USR-006", Username: "auditor", FullName: "Compliance Auditor", Department: "Quality", Role: "User", Status: "Active", Email: "auditor@factory.local", LastLogin: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
-        ],
-        assets: [
-            { AssetID: "ITA-001", FixedAssetNo: "FA-2026-001", AssetName: "Notebook Dell Latitude 5440", Group: "Computer", DateOfDepreciation: "2025-03-01", PONo: "PO-IT-250301", Quantity: 1, LifeTime: "5 Years", AmountBaht: 38500, User: "IT Support", Location: "HQ-IT", Remark: "Primary support notebook", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { AssetID: "ITA-002", FixedAssetNo: "FA-2026-002", AssetName: "Production Line PC", Group: "Computer", DateOfDepreciation: "2024-01-12", PONo: "PO-PRD-240112", Quantity: 1, LifeTime: "5 Years", AmountBaht: 28900, User: "Production User", Location: "Line A", Remark: "Production workstation", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { AssetID: "ITA-003", FixedAssetNo: "FA-2026-003", AssetName: "Domain Controller", Group: "Computer", DateOfDepreciation: "2023-06-10", PONo: "PO-IT-230610", Quantity: 1, LifeTime: "7 Years", AmountBaht: 145000, User: "Infrastructure Team", Location: "Server Room", Remark: "Core server asset", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
-        ],
-        tickets: [
-            { TicketID: "TCK-001", RequestDate: "2026-06-17", Requester: "Production User", Department: "Production", Category: "Printer Request", Priority: "Medium", Subject: "Printer toner replacement", Description: "Line B printer toner low", AssignedTo: "IT Support", Status: "Open", DueDate: "2026-06-19", ResolvedDate: "", ApprovedBy: "Production Manager", ApprovalStatus: "Approved", Remark: "", CreatedAt: "2026-06-17 09:30:00", UpdatedAt: "2026-06-17 09:30:00" },
-            { TicketID: "TCK-002", RequestDate: "2026-06-16", Requester: "Finance User", Department: "Finance", Category: "Software Installation", Priority: "High", Subject: "Install PDF editor", Description: "Urgent invoice update task", AssignedTo: "IT Support", Status: "In Progress", DueDate: "2026-06-18", ResolvedDate: "", ApprovedBy: "Finance Manager", ApprovalStatus: "Approved", Remark: "", CreatedAt: "2026-06-16 08:15:00", UpdatedAt: "2026-06-17 11:10:00" },
-            { TicketID: "TCK-003", RequestDate: "2026-06-15", Requester: "HR User", Department: "HR", Category: "New User Request", Priority: "Critical", Subject: "Prepare new starter account", Description: "Employee start date 2026-06-20", AssignedTo: "IT Manager", Status: "Pending", DueDate: "2026-06-19", ResolvedDate: "", ApprovedBy: "HR Manager", ApprovalStatus: "Pending Approval", Remark: "", CreatedAt: "2026-06-15 14:00:00", UpdatedAt: "2026-06-15 14:00:00" }
-        ],
-        accessRequests: [
-            { RequestID: "ACC-001", RequestDate: "2026-06-14", Requester: "HR User", Department: "HR", RequestType: "Create AD User", TargetUser: "New Starter", SystemName: "AD + Email", Reason: "Onboarding", Status: "Pending Approval", ApprovedBy: "", Remark: "", CreatedAt: "2026-06-14 10:00:00", UpdatedAt: "2026-06-14 10:00:00" },
-            { RequestID: "ACC-002", RequestDate: "2026-06-12", Requester: "Finance Manager", Department: "Finance", RequestType: "Shared Folder Permission", TargetUser: "Accountant B", SystemName: "Finance Shared Drive", Reason: "Monthly closing", Status: "Approved", ApprovedBy: "Finance Manager", Remark: "", CreatedAt: "2026-06-12 13:15:00", UpdatedAt: "2026-06-13 09:00:00" }
-        ],
-        stockItems: [
-            { ItemID: "STK-001", ItemName: "LAN Cable Cat6", Description: "Network cable for workstation and switch connection", Category: "Consumable", Quantity: 48, MinimumStock: 20, Location: "Main Store", Unit: "pcs", StockStatus: "Available", LastUpdated: "2026-06-18 08:00:00", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { ItemID: "STK-002", ItemName: "Wireless Mouse", Description: "Standard wireless mouse for office users", Category: "Accessory", Quantity: 8, MinimumStock: 10, Location: "Main Store", Unit: "pcs", StockStatus: "Low Stock", LastUpdated: "2026-06-18 08:00:00", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
-        ],
-        stockMovements: [
-            { MovementID: "MOV-001", MovementDate: "2026-06-18", ItemID: "STK-002", MovementType: "Outbound", Quantity: 2, ReferenceNo: "REQ-005", PerformedBy: "IT Support", Remark: "Issued to QA", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
-        ],
-        licenses: [
-            { LicenseID: "LIC-001", SoftwareName: "Microsoft 365 E3", LicenseType: "Subscription", TotalQty: 120, UsedQty: 108, ExpiryDate: "2026-08-01", Vendor: "Microsoft CSP", AssignedUser: "Shared Pool", Status: "Expiring", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { LicenseID: "LIC-002", SoftwareName: "Adobe Acrobat Pro", LicenseType: "Per User", TotalQty: 10, UsedQty: 7, ExpiryDate: "2027-02-15", Vendor: "Adobe", AssignedUser: "Finance Team", Status: "Active", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
-        ],
-        documents: [
-            { DocumentID: "DOC-001", Category: "IT Operations", DocumentType: "SOP", Title: "IT Asset Receiving SOP", OwnerDepartment: "IT", ReviewDate: "2026-09-30", LinkURL: "https://example.com/documents/asset-receiving", Status: "Active", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" },
-            { DocumentID: "DOC-002", Category: "Vendor & License", DocumentType: "Vendor Contract", Title: "Printer Maintenance Contract", OwnerDepartment: "IT", ReviewDate: "2026-07-31", LinkURL: "https://example.com/documents/printer-contract", Status: "Review Required", Remark: "", CreatedAt: "2026-06-18 08:00:00", UpdatedAt: "2026-06-18 08:00:00" }
-        ],
-        auditLogs: [
-            { LogID: "LOG-001", Timestamp: "2026-06-18 08:05:00", Action: "LOGIN", Module: "auth", RecordID: "USR-001", ActorUserID: "USR-001", ActorName: "System Admin", ActorRole: "Admin", Detail: "User logged in" },
-            { LogID: "LOG-002", Timestamp: "2026-06-18 08:25:00", Action: "UPDATE", Module: "assets", RecordID: "AST-002", ActorUserID: "USR-003", ActorName: "IT Support", ActorRole: "IT Staff", Detail: "Updated asset repair remark" }
-        ]
     }
 };

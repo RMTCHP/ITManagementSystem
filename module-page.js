@@ -1333,9 +1333,18 @@
     }
 
     async function refreshSidebarAlertsInBackground() {
+        const userId = state.session && state.session.user && state.session.user.UserID || "anonymous";
+        const freshnessKey = `itms-sidebar-alerts-fetched:${userId}`;
+        try {
+            const lastFetchedAt = Number(sessionStorage.getItem(freshnessKey) || 0);
+            if (Date.now() - lastFetchedAt < 2 * 60 * 1000) return;
+        } catch (error) {
+            // Storage can be unavailable in private browsing; still refresh.
+        }
         try {
             const result = await ApiClient.request("sidebarAlerts", { token: ApiClient.getSessionToken() });
             AppShell.updateSidebarAlerts(result.data || {});
+            try { sessionStorage.setItem(freshnessKey, String(Date.now())); } catch (error) {}
         } catch (error) {
         }
     }
@@ -2041,10 +2050,6 @@
     }
 
     function getVisibleTicketRecords() {
-        const getTicketSequence = (ticketId) => {
-            const match = String(ticketId || "").match(/(\d+)(?!.*\d)/);
-            return match ? Number(match[1]) : -1;
-        };
         return getFilteredRecords().filter((record) => {
             const requestDate = getDateFilterKey(record.RequestDate);
             if (state.filters.ticketStartDate && requestDate < state.filters.ticketStartDate) return false;
@@ -2054,10 +2059,11 @@
             if (state.filters.ticketStatus && state.filters.ticketStatus !== "active" && String(record.Status || "") !== state.filters.ticketStatus) return false;
             return true;
         }).sort((left, right) => {
-            // Ticket IDs are generated sequentially; newest work should always appear first.
-            const sequenceDifference = getTicketSequence(right.TicketID) - getTicketSequence(left.TicketID);
-            if (sequenceDifference) return sequenceDifference;
-            return String(right.RequestDate || "").localeCompare(String(left.RequestDate || ""));
+            const dateDifference = String(right.RequestDate || "").localeCompare(String(left.RequestDate || ""));
+            if (dateDifference) return dateDifference;
+            // Monthly IDs include YYYYMM, so comparing the complete ID keeps
+            // a new month's first ticket above the previous month's last one.
+            return String(right.TicketID || "").localeCompare(String(left.TicketID || ""), undefined, { numeric: true });
         });
     }
 
@@ -2356,14 +2362,18 @@
 
         UI.loading("Assigning ticket", "Updating work ownership");
         try {
+            // The queue intentionally contains only summary fields. Load the
+            // complete row before saving so signatures and notes are preserved.
+            const fullTicket = await loadTicketDetails(ticketId);
+            UI.loading("Assigning ticket", "Updating work ownership");
             const response = await ApiClient.request("saveRecord", {
                 token: ApiClient.getSessionToken(),
                 module: "tickets",
                 record: {
-                    ...ticket,
+                    ...fullTicket,
                     AssignedTo: assignee,
                     Status: "In Progress",
-                    WorkStartedAt: ticket.WorkStartedAt || getLocalDateTimeInputValue()
+                    WorkStartedAt: fullTicket.WorkStartedAt || getLocalDateTimeInputValue()
                 }
             });
             upsertStateRecord(response.data.record, "edit");
