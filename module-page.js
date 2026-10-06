@@ -1654,7 +1654,7 @@
         rows = rows.filter((record) => matchesSummaryFilter(record));
         rows = rows.filter((record) => matchesAssetGroupFilter(record));
 
-        if (isKnowledgeModule() && state.filters.knowledgeCategory !== "all") {
+        if (isKnowledgeModule() && state.filters.knowledgeCategory !== "all" && !String(state.filters.search || "").trim()) {
             rows = rows.filter((record) => String(record.Category || "") === state.filters.knowledgeCategory);
         }
 
@@ -1915,12 +1915,50 @@
         return tones[category] || "operations";
     }
 
+    function getKnowledgeFileType(record) {
+        const fileName = String(record.FileName || "").trim();
+        const extension = fileName.match(/\.([a-z][a-z0-9]{0,7})$/i);
+        const mimeTypes = {
+            "application/pdf": "PDF",
+            "image/png": "PNG",
+            "image/jpeg": "JPG",
+            "image/webp": "WEBP",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
+            "application/vnd.google-apps.document": "GOOGLE DOC",
+            "application/vnd.google-apps.spreadsheet": "GOOGLE SHEET",
+            "application/vnd.google-apps.presentation": "GOOGLE SLIDE"
+        };
+        const mimeType = String(record.MimeType || "").trim().toLowerCase();
+        const linkExtension = String(record.LinkURL || "").split(/[?#]/)[0].match(/\.([a-z][a-z0-9]{0,7})$/i);
+        const label = extension ? extension[1].toUpperCase()
+            : mimeTypes[mimeType] || (linkExtension ? linkExtension[1].toUpperCase() : record.LinkURL ? "LINK" : "FILE");
+        const tone = label === "PDF" ? "pdf"
+            : ["PNG", "JPG", "JPEG", "WEBP", "GIF"].includes(label) ? "image"
+                : ["DOC", "DOCX", "XLS", "XLSX", "PPT", "PPTX", "GOOGLE DOC", "GOOGLE SHEET", "GOOGLE SLIDE"].includes(label) ? "office" : "other";
+        return { label, tone };
+    }
+
     function renderKnowledgeCenter() {
         const existingCategories = state.records.map((record) => String(record.Category || "").trim()).filter(Boolean);
         const categories = [...new Set([...state.knowledgeCategories, ...existingCategories])].filter(Boolean).sort((a, b) => a.localeCompare(b));
         const currentFolder = state.filters.knowledgeCategory;
         const isFolderOpen = currentFolder !== "all";
+        const searchTerm = String(state.filters.search || "").trim();
+        const isSearching = Boolean(searchTerm);
+        const showFiles = isFolderOpen || isSearching;
         const filtered = getFilteredRecords().sort((left, right) => {
+            if (isSearching) {
+                const leftTitle = normalizeSearchText(left.Title || left.FileName || "");
+                const rightTitle = normalizeSearchText(right.Title || right.FileName || "");
+                const query = normalizeSearchText(searchTerm);
+                const leftStarts = leftTitle.startsWith(query) ? 1 : 0;
+                const rightStarts = rightTitle.startsWith(query) ? 1 : 0;
+                if (leftStarts !== rightStarts) return rightStarts - leftStarts;
+                return String(right.UploadedAt || right.UpdatedAt || right.CreatedAt || "")
+                    .localeCompare(String(left.UploadedAt || left.UpdatedAt || left.CreatedAt || ""));
+            }
             const leftDate = String(left.ReviewDate || "9999-12-31");
             const rightDate = String(right.ReviewDate || "9999-12-31");
             return leftDate.localeCompare(rightDate);
@@ -1937,16 +1975,17 @@
         const cardsMarkup = cards.map((record) => {
             const category = record.Category || "Uncategorized";
             const tone = getKnowledgeCategoryTone(category);
+            const fileType = getKnowledgeFileType(record);
             const canEdit = AppShell.canDo(moduleConfig, "edit", state.session);
             const canDelete = AppShell.canDo(moduleConfig, "delete", state.session);
             return `
                 <article class="knowledge-card knowledge-card--${tone}">
                     <div class="knowledge-card__topline">
                         <span class="knowledge-tag knowledge-tag--${tone}">${UI.escapeHtml(category)}</span>
-                        <span class="knowledge-card__type">${UI.escapeHtml(record.DocumentType || "Document")}</span>
+                        <span class="knowledge-card__type knowledge-card__type--${fileType.tone}" title="${UI.escapeHtml(record.FileName || record.MimeType || fileType.label)}">${UI.escapeHtml(fileType.label)}</span>
                     </div>
                     <h3>${UI.escapeHtml(record.Title || "Untitled knowledge")}</h3>
-                    <p class="knowledge-card__summary">${UI.escapeHtml(record.Remark || "No description provided.")}</p>
+                    <p class="knowledge-card__summary">${UI.escapeHtml(record.Remark || record.FileName || "No description provided.")}</p>
                     <div class="knowledge-card__meta">
                         <span><i class="fa-regular fa-building"></i>${UI.escapeHtml(record.OwnerDepartment || "IT")}</span>
                         <span><i class="fa-regular fa-calendar"></i>${UI.escapeHtml(record.ReviewDate ? formatDateDisplay(record.ReviewDate) : "No review date")}</span>
@@ -1961,18 +2000,18 @@
                 </article>`;
         }).join("");
 
-        const matchingFolders = categories.filter((category) => !state.filters.search || category.toLowerCase().includes(state.filters.search.toLowerCase()) || state.records.some((record) => String(record.Category || "") === category && Object.values(record).some((value) => String(value || "").toLowerCase().includes(state.filters.search.toLowerCase()))));
         document.getElementById("viewContainer").innerHTML = `
             <section class="knowledge-library knowledge-library--folders">
                 <div class="knowledge-library__header">
                     <div>
-                        ${isFolderOpen ? `<button class="knowledge-breadcrumb" type="button" data-knowledge-category="all"><i class="fa-solid fa-arrow-left"></i> All folders</button>` : `<p class="section-card__eyebrow">Knowledge Library</p>`}
-                        <h3>${UI.escapeHtml(isFolderOpen ? currentFolder : "IT Knowledge Center")}</h3>
-                        <p>${isFolderOpen ? `${state.records.filter((record) => String(record.Category || "") === currentFolder).length} files in this folder` : `${categories.length} folders | ${state.records.length} files`}</p>
+                        ${showFiles ? `<button class="knowledge-breadcrumb" type="button" data-knowledge-category="all"><i class="fa-solid fa-arrow-left"></i> All folders</button>` : `<p class="section-card__eyebrow">Knowledge Library</p>`}
+                        <h3>${UI.escapeHtml(isSearching ? "Search results" : isFolderOpen ? currentFolder : "IT Knowledge Center")}</h3>
+                        <p>${isSearching ? `${filtered.length} file${filtered.length === 1 ? "" : "s"} found for "${UI.escapeHtml(searchTerm)}"` : isFolderOpen ? `${state.records.filter((record) => String(record.Category || "") === currentFolder).length} files in this folder` : `${categories.length} folders | ${state.records.length} files`}</p>
                     </div>
-                    ${canCreate && !isFolderOpen ? `<button class="primary-btn" id="addKnowledgeCategoryButton" type="button"><i class="fa-solid fa-folder-plus"></i><span>Add folder</span></button>` : ""}
+                    ${canCreate && !showFiles ? `<button class="primary-btn" id="addKnowledgeCategoryButton" type="button"><i class="fa-solid fa-folder-plus"></i><span>Add folder</span></button>` : ""}
                 </div>
-                ${isFolderOpen ? `
+                ${showFiles ? `
+                    ${!isSearching ? `
                     ${canCreate ? `<div class="knowledge-upload">
                         <input id="knowledgeMultiFileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp" multiple hidden>
                         <button class="knowledge-dropzone" id="knowledgeDropzone" type="button" ${state.knowledgeUploading ? "disabled" : ""}>
@@ -1985,15 +2024,15 @@
                     ${canEditCategories || canDeleteCategories ? `<div class="knowledge-folder-actions">
                         ${canEditCategories ? `<button class="knowledge-folder-edit" type="button" data-edit-knowledge-category="${UI.escapeHtml(currentFolder)}"><i class="fa-solid fa-pen"></i> Rename folder</button>` : ""}
                         ${canDeleteCategories ? `<button class="knowledge-folder-edit knowledge-folder-edit--danger" type="button" data-delete-knowledge-category="${UI.escapeHtml(currentFolder)}"><i class="fa-solid fa-trash"></i> Delete folder</button>` : ""}
-                    </div>` : ""}
+                    </div>` : ""}` : ""}
                     <div class="knowledge-filters">
                         <label><span>Document type</span><select id="knowledgeTypeFilter"><option value="">All types</option>${documentTypes.map((type) => `<option value="${UI.escapeHtml(type)}" ${state.filters.knowledgeType === type ? "selected" : ""}>${UI.escapeHtml(type)}</option>`).join("")}</select></label>
                         <label><span>Status</span><select id="statusFilter"><option value="">All status</option>${[...new Set(state.records.map((record) => record.Status).filter(Boolean))].map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.status === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}</select></label>
                         <span class="knowledge-filters__count">${filtered.length} file${filtered.length === 1 ? "" : "s"}</span>
                     </div>
-                    <div class="knowledge-card-grid">${cardsMarkup || `<div class="knowledge-empty-state">${UI.emptyState("No files in this folder", "Drop PDF or image files above to add them.")}</div>`}</div>
+                    <div class="knowledge-card-grid">${cardsMarkup || `<div class="knowledge-empty-state">${isSearching ? UI.emptyState("No files found", "Try another file name or keyword.") : UI.emptyState("No files in this folder", "Drop PDF or image files above to add them.")}</div>`}</div>
                     ${totalPages > 1 ? `<div class="knowledge-pagination"><button class="ghost-btn" id="prevPageButton" ${page <= 1 ? "disabled" : ""}>Previous</button><span>Page ${page} of ${totalPages}</span><button class="ghost-btn" id="nextPageButton" ${page >= totalPages ? "disabled" : ""}>Next</button></div>` : ""}
-                ` : `<div class="knowledge-folder-grid">${matchingFolders.map((category) => `<button class="knowledge-folder" type="button" data-knowledge-category="${UI.escapeHtml(category)}"><span class="knowledge-folder__icon"><i class="fa-solid fa-folder"></i></span><strong>${UI.escapeHtml(category)}</strong><span>${state.records.filter((record) => String(record.Category || "") === category).length} files</span><i class="fa-solid fa-arrow-right knowledge-folder__arrow"></i></button>`).join("") || `<div class="knowledge-empty-state">${UI.emptyState("No folders found", "Create a folder to start adding files.")}</div>`}</div>`}
+                ` : `<div class="knowledge-folder-grid">${categories.map((category) => `<button class="knowledge-folder" type="button" data-knowledge-category="${UI.escapeHtml(category)}"><span class="knowledge-folder__icon"><i class="fa-solid fa-folder"></i></span><strong>${UI.escapeHtml(category)}</strong><span>${state.records.filter((record) => String(record.Category || "") === category).length} files</span><i class="fa-solid fa-arrow-right knowledge-folder__arrow"></i></button>`).join("") || `<div class="knowledge-empty-state">${UI.emptyState("No folders found", "Create a folder to start adding files.")}</div>`}</div>`}
             </section>`;
     }
 
@@ -3572,6 +3611,9 @@
             const knowledgeCategoryButton = event.target.closest("[data-knowledge-category]");
             if (knowledgeCategoryButton) {
                 state.filters.knowledgeCategory = knowledgeCategoryButton.getAttribute("data-knowledge-category") || "all";
+                state.filters.search = "";
+                const searchInput = document.getElementById("globalSearch");
+                if (searchInput) searchInput.value = "";
                 state.knowledgeUploadFiles = [];
                 state.page = 1;
                 renderTable();
@@ -3886,6 +3928,10 @@
             eyebrow: "Module Workspace",
             searchPlaceholder: `Search ${moduleConfig.label.toLowerCase()}`,
             onSearch(value) {
+                if (isKnowledgeModule() && !String(state.filters.search || "").trim() && String(value || "").trim()) {
+                    state.filters.knowledgeType = "";
+                    state.filters.status = "";
+                }
                 state.filters.search = value;
                 state.page = 1;
                 renderTable();

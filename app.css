@@ -4610,6 +4610,9 @@ button {
 .knowledge-tag--troubleshooting { background: rgba(213, 87, 73, 0.12); color: #b63e31; }
 .knowledge-tag--configuration { background: rgba(40, 125, 101, 0.12); color: #1d6b56; }
 .knowledge-card__type { background: rgba(23, 40, 61, 0.06); color: var(--text-muted); }
+.knowledge-card__type--pdf { background: rgba(213, 87, 73, 0.12); color: #aa3d32; }
+.knowledge-card__type--image { background: rgba(40, 125, 101, 0.12); color: #1d6b56; }
+.knowledge-card__type--office { background: rgba(33, 133, 208, 0.12); color: #12609a; }
 
 .knowledge-card h3 {
     margin: 13px 0 7px;
