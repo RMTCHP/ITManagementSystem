@@ -1416,13 +1416,20 @@
         }
 
         if (isKnowledgeModule()) {
-            const documentResult = await ApiClient.request("listRecords", {
-                token: ApiClient.getSessionToken(),
-                module: moduleKey
-            });
+            // The folder list includes empty folders, which are not present in
+            // document records. Wait for both sources before the first render so
+            // the library does not briefly show only folders containing files.
+            const token = ApiClient.getSessionToken();
+            const [documentResult, categoryResult] = await Promise.all([
+                ApiClient.request("listRecords", { token, module: moduleKey }),
+                ApiClient.request("listKnowledgeCategories", { token }).catch(() => null)
+            ]);
             state.records = documentResult.data.records || [];
+            const savedCategories = categoryResult && categoryResult.data && Array.isArray(categoryResult.data.categories)
+                ? categoryResult.data.categories
+                : state.knowledgeCategories;
             state.knowledgeCategories = [...new Set([
-                ...state.knowledgeCategories,
+                ...savedCategories,
                 ...state.records.map((record) => String(record.Category || "").trim()).filter(Boolean)
             ])];
             const categoryField = getFieldConfig("Category");
@@ -1431,7 +1438,6 @@
             }
             state.sort.key = "";
             state.sort.direction = "asc";
-            refreshKnowledgeCategoriesInBackground();
             return;
         }
 
