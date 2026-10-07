@@ -3949,6 +3949,16 @@
             return;
         }
 
+        // A report opens this page in a new tab solely to prepare a printable
+        // document. Start feedback before session validation and API work so it
+        // never appears as an unresponsive blank tab.
+        const requestedPrintAction = initialQuery.get("action");
+        const openingPrintableDocument = (requestedPrintAction === "print-ticket" && isTicketModule()) ||
+            (requestedPrintAction === "print-borrowing" && isAssetModule());
+        if (openingPrintableDocument) {
+            UI.loading("Loading PDF", "Preparing the document and signatures");
+        }
+
         const shell = await AppShell.init({
             currentView: moduleKey,
             title: moduleConfig.label,
@@ -4000,7 +4010,7 @@
             return;
         }
 
-        const printAction = initialQuery.get("action");
+        const printAction = requestedPrintAction;
         if (printAction === "print-ticket" && isTicketModule()) {
             const ticketId = initialQuery.get("ticketId");
             if (ticketId) await openTicketDetailsModal(ticketId, window);
