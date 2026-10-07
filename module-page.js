@@ -20,6 +20,9 @@
         session: null,
         dashboard: null,
         records: [],
+        assetSummary: null,
+        assetTotal: 0,
+        assetRequestVersion: 0,
         ticketYear: defaultTicketDateRange.start.slice(0, 4),
         ticketYearTotal: 0,
         stockItems: [],
@@ -55,6 +58,7 @@
         },
         pendingActions: new Set()
     };
+    let assetSearchTimer = 0;
 
     function beginAction(actionKey) {
         if (state.pendingActions.has(actionKey)) {
@@ -467,6 +471,9 @@
     }
 
     function getAssetSummaryStats() {
+        if (isAssetModule() && state.assetSummary) {
+            return state.assetSummary;
+        }
         const summary = {
             totalAssets: state.records.length,
             normalAssets: 0,
@@ -1408,6 +1415,33 @@
             return;
         }
 
+        if (isAssetModule()) {
+            if (!state.sort.key) {
+                state.sort.key = moduleConfig.listFields[0] || "FixedAssetNo";
+                state.sort.direction = "asc";
+            }
+            const requestVersion = ++state.assetRequestVersion;
+            const result = await ApiClient.request("listAssetWorkspace", {
+                token: ApiClient.getSessionToken(),
+                page: state.page,
+                pageSize: state.pageSize,
+                query: state.filters.search,
+                summary: state.filters.summary,
+                group: state.filters.assetGroup,
+                sortKey: state.sort.key,
+                sortDirection: state.sort.direction
+            });
+            if (requestVersion !== state.assetRequestVersion) return;
+            state.records = result.data.records || [];
+            state.assetTotal = Math.max(0, Number(result.data.total) || 0);
+            state.page = Math.max(1, Number(result.data.page) || 1);
+            state.pageSize = Math.max(8, Number(result.data.pageSize) || state.pageSize);
+            state.assetSummary = result.data.summary || null;
+            state.stockMovements = [];
+            syncSidebarAlerts();
+            return;
+        }
+
         if (isStockMovementModule()) {
             const inventoryResult = await ApiClient.request("listRecords", {
                 token: ApiClient.getSessionToken(),
@@ -1492,6 +1526,28 @@
             await UI.alert({ icon: "error", title: "Unable to load tickets", text: error.message || "Please try again." });
         } finally {
             Swal.close();
+        }
+    }
+
+    async function reloadAssetWorkspace(showLoading) {
+        if (!isAssetModule()) return;
+        const shouldShowLoading = showLoading !== false;
+        const expectedRequestVersion = state.assetRequestVersion + 1;
+        if (shouldShowLoading) {
+            UI.loading("Loading assets", "Fetching the selected asset page");
+        }
+        try {
+            await loadModuleData();
+            if (expectedRequestVersion !== state.assetRequestVersion) return;
+            syncSidebarAlerts();
+            renderHero();
+            renderTable();
+            if (shouldShowLoading) Swal.close();
+        } catch (error) {
+            if (expectedRequestVersion !== state.assetRequestVersion) return;
+            if (shouldShowLoading) Swal.close();
+            if (await AppShell.handleSessionError(error)) return;
+            await UI.alert({ icon: "error", title: "Unable to load assets", text: error.message || "Please try again." });
         }
     }
 
@@ -1682,6 +1738,10 @@
 
     function getFilteredRecords() {
         let rows = [...state.records];
+
+        if (isAssetModule()) {
+            return rows;
+        }
 
         if (isStockMovementModule()) {
             const movementType = getMovementTypeFromTab(state.movementTab).toLowerCase();
@@ -2643,11 +2703,11 @@
         }
 
         const filtered = getFilteredRecords();
-        const total = filtered.length;
+        const total = isAssetModule() ? state.assetTotal : filtered.length;
         const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
         const page = Math.min(state.page, totalPages);
         const start = (page - 1) * state.pageSize;
-        const pageRows = filtered.slice(start, start + state.pageSize);
+        const pageRows = isAssetModule() ? filtered : filtered.slice(start, start + state.pageSize);
         const statusValues = moduleConfig.statusField
             ? [...new Set(state.records.map((record) => record[moduleConfig.statusField]).filter(Boolean))]
             : [];
@@ -2809,6 +2869,19 @@
 
         UI.loading("Exporting data", `Preparing ${moduleConfig.label} ${format.toUpperCase()} file`);
         const fileName = `${moduleConfig.key}_${UI.buildTimestampForFileName()}`;
+        let assetExportRows = null;
+        if (isAssetModule()) {
+            const result = await ApiClient.request("listAssetWorkspace", {
+                token: ApiClient.getSessionToken(),
+                query: state.filters.search,
+                summary: state.filters.summary,
+                group: state.filters.assetGroup,
+                sortKey: state.sort.key,
+                sortDirection: state.sort.direction,
+                exportAll: true
+            });
+            assetExportRows = result.data.records || [];
+        }
         const rows = isTicketModule()
             ? getVisibleTicketRecords().map((record) => ({
                 "Ticket ID": record.TicketID || "-",
@@ -2822,7 +2895,7 @@
                 "Performed By": record.AssignedTo || "-",
                 Status: record.Status || "Open"
             }))
-            : state.records;
+            : (assetExportRows || state.records);
         if (format === "csv") {
             await UI.exportToCsv(fileName, rows);
         } else {
@@ -2900,7 +2973,11 @@
                 Swal.close();
                 return result;
             }
-            upsertStateRecord(result.data && result.data.record ? result.data.record : record, mode);
+            if (isAssetModule()) {
+                await loadModuleData();
+            } else {
+                upsertStateRecord(result.data && result.data.record ? result.data.record : record, mode);
+            }
             syncSidebarAlerts();
             renderHero();
             renderTable();
@@ -3748,7 +3825,11 @@
                 Swal.close();
                 return;
             }
-            state.records = state.records.filter((item) => item[moduleConfig.idField] !== recordId);
+            if (isAssetModule()) {
+                await loadModuleData();
+            } else {
+                state.records = state.records.filter((item) => item[moduleConfig.idField] !== recordId);
+            }
             syncSidebarAlerts();
             renderHero();
             renderTable();
@@ -3759,13 +3840,16 @@
     }
 
     function attachEvents() {
-        document.getElementById("heroPanel").addEventListener("click", (event) => {
+        document.getElementById("heroPanel").addEventListener("click", async (event) => {
             const heroViewButton = event.target.closest("[data-hero-view]");
             if (heroViewButton) {
                 state.heroView = heroViewButton.getAttribute("data-hero-view") || "summary";
                 state.filters.assetGroup = "all";
-                renderHero();
-                renderTable();
+                if (isAssetModule()) await reloadAssetWorkspace();
+                else {
+                    renderHero();
+                    renderTable();
+                }
                 return;
             }
 
@@ -3774,8 +3858,7 @@
                 const currentGroup = groupButton.getAttribute("data-group-filter") || "all";
                 state.filters.assetGroup = state.filters.assetGroup === currentGroup ? "all" : currentGroup;
                 state.page = 1;
-                renderHero();
-                renderTable();
+                await reloadAssetWorkspace();
                 return;
             }
 
@@ -3789,8 +3872,11 @@
             state.filters.assetGroup = "all";
             state.heroView = isAssetModule() && nextSummary === "all" ? "groups" : "summary";
             state.page = 1;
-            renderHero();
-            renderTable();
+            if (isAssetModule()) await reloadAssetWorkspace();
+            else {
+                renderHero();
+                renderTable();
+            }
         });
 
         document.getElementById("viewContainer").addEventListener("click", async (event) => {
@@ -3937,13 +4023,15 @@
 
             if (event.target.closest("#prevPageButton")) {
                 state.page = Math.max(1, state.page - 1);
-                renderTable();
+                if (isAssetModule()) await reloadAssetWorkspace();
+                else renderTable();
                 return;
             }
 
             if (event.target.closest("#nextPageButton")) {
                 state.page += 1;
-                renderTable();
+                if (isAssetModule()) await reloadAssetWorkspace();
+                else renderTable();
                 return;
             }
 
@@ -3990,7 +4078,8 @@
                     state.sort.key = sortKey;
                     state.sort.direction = "asc";
                 }
-                renderTable();
+                if (isAssetModule()) await reloadAssetWorkspace();
+                else renderTable();
             }
         });
 
@@ -4097,7 +4186,8 @@
             if (event.target.id === "pageSizeSelect") {
                 state.pageSize = Number(event.target.value);
                 state.page = 1;
-                renderTable();
+                if (isAssetModule()) await reloadAssetWorkspace();
+                else renderTable();
             }
         });
 
@@ -4168,6 +4258,13 @@
                 }
                 state.filters.search = value;
                 state.page = 1;
+                if (isAssetModule()) {
+                    window.clearTimeout(assetSearchTimer);
+                    assetSearchTimer = window.setTimeout(() => {
+                        reloadAssetWorkspace(false);
+                    }, 350);
+                    return;
+                }
                 renderTable();
             },
             onImport: isTicketModule() ? null : async () => {

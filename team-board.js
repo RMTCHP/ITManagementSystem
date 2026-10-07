@@ -14,20 +14,6 @@
         return /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : "";
     }
 
-    function renderHero() {
-        const tasks = state.cards.filter((card) => card.Type === "Task");
-        AppShell.renderHero(document.getElementById("heroPanel"), {
-            profile: "Internal collaboration",
-            title: "IT Team Board",
-            description: "Team updates, handover information and internal tasks in one shared space. This board is separate from user tickets.",
-            meta: [{ icon: "fa-users", text: "Visible to every signed-in account" }],
-            stats: [
-                { label: "Team updates", value: state.cards.filter(isUpdate).length },
-                { label: "Open tasks", value: tasks.filter((card) => card.Status !== "Done").length }
-            ]
-        });
-    }
-
     function cardMarkup(card) {
         const id = escape(card.BoardID);
         const type = card.Type === "Task" ? "Task" : "Update";
@@ -46,7 +32,6 @@
     }
 
     function render() {
-        renderHero();
         const query = state.query.toLowerCase();
         const cards = state.cards.filter((card) => (state.filter === "all" || (state.filter === "Update" ? isUpdate(card) : card.Type === state.filter))
             && (!query || [card.Title, card.Body, card.AssigneeName, card.CreatedByName].some((value) => String(value || "").toLowerCase().includes(query))));

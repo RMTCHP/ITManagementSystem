@@ -81,6 +81,7 @@
             saveTeamBoardCard: 30000,
             setTeamBoardStatus: 30000,
             listRecords: 30000,
+            listAssetWorkspace: 30000,
             searchAssets: 30000,
             getPublicTicketWorkspace: 30000,
             listTicketWorkspace: 60000,
@@ -138,7 +139,7 @@
             body: body.toString(),
             signal: controller.signal
         };
-        const retryableActions = new Set(["login", "checkSession", "dashboardSummary", "dashboardOverview", "sidebarAlerts", "listRecords", "listTicketWorkspace", "listKnowledgeCategories"]);
+        const retryableActions = new Set(["login", "checkSession", "dashboardSummary", "dashboardOverview", "sidebarAlerts", "listRecords", "listAssetWorkspace", "listTicketWorkspace", "listKnowledgeCategories"]);
 
         try {
             const retryDelays = [0, 800, 1800];
