@@ -2049,6 +2049,7 @@
                     <div class="knowledge-card__actions">
                         ${record.DriveFileId ? `<button class="knowledge-card__open" type="button" data-action="preview" data-id="${UI.escapeHtml(record.DocumentID)}" title="Preview document"><i class="fa-regular fa-eye"></i><span>Preview</span></button>` : ""}
                         ${record.DriveFileId ? `<a class="knowledge-card__download" href="https://drive.google.com/uc?export=download&id=${encodeURIComponent(record.DriveFileId)}" target="_blank" rel="noopener noreferrer" title="Download document"><i class="fa-solid fa-download"></i></a>` : ""}
+                        ${canEdit ? `<button class="table-action" type="button" data-action="move-knowledge" data-id="${UI.escapeHtml(record.DocumentID)}" title="Move to another folder" aria-label="Move to another folder"><i class="fa-solid fa-folder-arrow-up"></i></button>` : ""}
                         ${canEdit ? `<button class="table-action" data-action="edit" data-id="${UI.escapeHtml(record.DocumentID)}" title="Edit document"><i class="fa-solid fa-pen"></i></button>` : ""}
                         ${canDelete ? `<button class="table-action table-action--danger" data-action="delete" data-id="${UI.escapeHtml(record.DocumentID)}" title="Delete document"><i class="fa-solid fa-trash"></i></button>` : ""}
                     </div>
@@ -2072,7 +2073,7 @@
                         <button class="knowledge-dropzone" id="knowledgeDropzone" type="button" ${state.knowledgeUploading ? "disabled" : ""}>
                             <i class="fa-solid fa-cloud-arrow-up"></i>
                             <strong>Drop files here or click to browse</strong>
-                            <span>PDF, PNG, JPG or WEBP | up to 10 MB each | select multiple files</span>
+                            <span>PDF, DOCX, XLSX, PPTX, PNG, JPG or WEBP | up to 10 MB each | select multiple files</span>
                         </button>
                         ${state.knowledgeUploadFiles.length ? `<div class="knowledge-upload__queue"><strong>${state.knowledgeUploadFiles.length} file${state.knowledgeUploadFiles.length === 1 ? "" : "s"} ready</strong><span>${state.knowledgeUploadFiles.map((file) => UI.escapeHtml(file.name)).join(" | ")}</span><button class="primary-btn" id="uploadKnowledgeFilesButton" type="button" ${state.knowledgeUploading ? "disabled" : ""}>Upload ${state.knowledgeUploadFiles.length} file${state.knowledgeUploadFiles.length === 1 ? "" : "s"}</button><button class="ghost-btn" id="clearKnowledgeFilesButton" type="button" ${state.knowledgeUploading ? "disabled" : ""}>Clear</button></div>` : ""}
                     </div>` : ""}
@@ -2085,7 +2086,7 @@
                         <label><span>Status</span><select id="statusFilter"><option value="">All status</option>${[...new Set(state.records.map((record) => record.Status).filter(Boolean))].map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.status === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}</select></label>
                         <span class="knowledge-filters__count">${filtered.length} file${filtered.length === 1 ? "" : "s"}</span>
                     </div>
-                    <div class="knowledge-card-grid">${cardsMarkup || `<div class="knowledge-empty-state">${isSearching ? UI.emptyState("No files found", "Try another file name or keyword.") : UI.emptyState("No files in this folder", "Drop PDF or image files above to add them.")}</div>`}</div>
+                    <div class="knowledge-card-grid">${cardsMarkup || `<div class="knowledge-empty-state">${isSearching ? UI.emptyState("No files found", "Try another file name or keyword.") : UI.emptyState("No files in this folder", "Drop a supported file above to add it.")}</div>`}</div>
                     ${totalPages > 1 ? `<div class="knowledge-pagination"><button class="ghost-btn" id="prevPageButton" ${page <= 1 ? "disabled" : ""}>Previous</button><span>Page ${page} of ${totalPages}</span><button class="ghost-btn" id="nextPageButton" ${page >= totalPages ? "disabled" : ""}>Next</button></div>` : ""}
                 ` : `<div class="knowledge-folder-grid">${categories.map((category) => `<button class="knowledge-folder" type="button" data-knowledge-category="${UI.escapeHtml(category)}"><span class="knowledge-folder__icon"><i class="fa-solid fa-folder"></i></span><strong>${UI.escapeHtml(category)}</strong><span>${state.records.filter((record) => String(record.Category || "") === category).length} files</span><i class="fa-solid fa-arrow-right knowledge-folder__arrow"></i></button>`).join("") || `<div class="knowledge-empty-state">${UI.emptyState("No folders found", "Create a folder to start adding files.")}</div>`}</div>`}
             </section>`;
@@ -3610,6 +3611,55 @@
         }
     }
 
+    async function moveKnowledgeDocument(documentId) {
+        const record = state.records.find((item) => String(item.DocumentID || "") === String(documentId || ""));
+        if (!record || !AppShell.canDo(moduleConfig, "edit", state.session)) return;
+        const currentFolder = String(record.Category || "").trim();
+        const destinations = state.knowledgeCategories
+            .map((name) => String(name || "").trim())
+            .filter((name) => name && name !== currentFolder)
+            .sort((left, right) => left.localeCompare(right));
+        if (!destinations.length) {
+            await UI.alert({ icon: "info", title: "No other folder", text: "Create another folder before moving this document." });
+            return;
+        }
+        const result = await Swal.fire({
+            title: "Move document",
+            html: `<p>${UI.escapeHtml(record.Title || record.FileName || documentId)}</p><p>Current folder: ${UI.escapeHtml(currentFolder || "Uncategorized")}</p>`,
+            input: "select",
+            inputPlaceholder: "Select destination folder",
+            inputOptions: Object.fromEntries(destinations.map((name) => [name, name])),
+            showCancelButton: true,
+            showCloseButton: true,
+            confirmButtonText: "Move document",
+            inputValidator(value) {
+                return value && destinations.includes(value) ? undefined : "Select a destination folder.";
+            }
+        });
+        if (!result.isConfirmed) return;
+        const destination = String(result.value || "");
+        const actionKey = `move-knowledge:${documentId}`;
+        if (!beginAction(actionKey)) return;
+        UI.loading("Moving document", `Moving to ${destination}`);
+        try {
+            const response = await ApiClient.request("moveKnowledgeDocument", {
+                token: ApiClient.getSessionToken(),
+                documentId,
+                destination
+            });
+            record.Category = response.data.category;
+            state.page = 1;
+            Swal.close();
+            renderTable();
+            await UI.alert({ icon: "success", title: "Document moved", text: `Moved to ${response.data.category}.` });
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to move document", text: error.message || "Please try again." });
+        } finally {
+            endAction(actionKey);
+        }
+    }
+
     async function deleteKnowledgeCategory(folderName) {
         if (!folderName || folderName === "all" || state.knowledgeUploading) return;
         const documentIds = state.records
@@ -3915,6 +3965,8 @@
                     await openMaintenanceRenewalModal(id);
                 } else if (action === "preview") {
                     await openKnowledgePreview(id);
+                } else if (action === "move-knowledge") {
+                    await moveKnowledgeDocument(id);
                 } else if (action === "ticket-details") {
                     await openTicketDetailsModal(id);
                 } else if (action === "assign-ticket") {
