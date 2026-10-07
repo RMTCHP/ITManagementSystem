@@ -2,12 +2,86 @@
     const config = window.APP_CONFIG;
     const state = {
         session: null,
-        dashboard: null
+        dashboard: null,
+        jobTrend: null,
+        jobTrendLoading: false
     };
 
     async function loadDashboard() {
         const result = await ApiClient.request("dashboardOverview", { token: ApiClient.getSessionToken() });
         state.dashboard = result.data || {};
+    }
+
+    function monthKey(value) {
+        const raw = String(value == null ? "" : value).trim();
+        const iso = raw.match(/^(\d{4})-(\d{2})/);
+        if (iso) return `${iso[1]}-${iso[2]}`;
+        const local = raw.match(/^(\d{2})[/-](\d{2})[/-](\d{4})/);
+        return local ? `${local[3]}-${local[2]}` : "";
+    }
+
+    function getRecentMonths(count = 6) {
+        const today = new Date();
+        const months = [];
+        for (let offset = count - 1; offset >= 0; offset -= 1) {
+            const date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+            months.push({
+                key,
+                label: date.toLocaleDateString("en-US", { month: "short" })
+            });
+        }
+        return months;
+    }
+
+    function buildJobTrend(records) {
+        const months = getRecentMonths();
+        const byMonth = new Map(months.map((month) => [month.key, { ...month, onsite: 0, remote: 0 }]));
+        (records || []).forEach((ticket) => {
+            const item = byMonth.get(monthKey(ticket.RequestDate));
+            const service = String(ticket.RequestedService || "").trim().toLowerCase();
+            if (!item) return;
+            if (service === "on-site" || service === "onsite") item.onsite += 1;
+            if (service === "remote support") item.remote += 1;
+        });
+        return months.map((month) => byMonth.get(month.key));
+    }
+
+    async function loadJobTrendInBackground(force = false) {
+        if (AppShell.normalizeRole(state.session.user.Role) !== "admin" || state.jobTrendLoading || (!force && state.jobTrend)) {
+            return;
+        }
+        state.jobTrendLoading = true;
+        renderDashboard();
+        try {
+            const result = await ApiClient.request("listTicketWorkspace", { token: ApiClient.getSessionToken() });
+            state.jobTrend = buildJobTrend((result.data && result.data.records) || []);
+        } catch (error) {
+            // The operational cards remain useful even if the optional trend
+            // request is delayed by Apps Script or temporarily unavailable.
+            state.jobTrend = [];
+        } finally {
+            state.jobTrendLoading = false;
+            renderDashboard();
+        }
+    }
+
+    function renderJobTrend() {
+        if (state.jobTrendLoading) {
+            return `<section class="dashboard-job-trend dashboard-job-trend--loading" aria-label="Loading job trend"><div><p class="dashboard-command__eyebrow">SERVICE ACTIVITY</p><h4>On-site and Remote jobs</h4><p>Loading the last six months of ticket activity.</p></div><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></section>`;
+        }
+        const trend = state.jobTrend || [];
+        if (!trend.length) {
+            return `<section class="dashboard-job-trend dashboard-job-trend--empty"><div><p class="dashboard-command__eyebrow">SERVICE ACTIVITY</p><h4>On-site and Remote jobs</h4><p>Job trend is temporarily unavailable. Refresh to try again.</p></div></section>`;
+        }
+        const total = trend.reduce((sum, month) => sum + month.onsite + month.remote, 0);
+        const max = Math.max(1, ...trend.map((month) => month.onsite + month.remote));
+        return `<section class="dashboard-job-trend" aria-label="On-site and Remote Support ticket trend over six months"><div class="dashboard-job-trend__header"><div><p class="dashboard-command__eyebrow">SERVICE ACTIVITY</p><h4>Job volume by month</h4><p>Tickets created in the last 6 months, separated by service method.</p></div><div class="dashboard-job-trend__summary"><strong>${total.toLocaleString("en-US")}</strong><span>jobs total</span></div></div><div class="dashboard-job-trend__legend"><span><i class="is-onsite"></i>On-site</span><span><i class="is-remote"></i>Remote Support</span></div><div class="dashboard-job-trend__chart">${trend.map((month) => {
+            const totalMonth = month.onsite + month.remote;
+            const onSiteHeight = (month.onsite / max) * 100;
+            const remoteHeight = (month.remote / max) * 100;
+            return `<div class="dashboard-job-trend__month"><strong>${totalMonth || ""}</strong><div class="dashboard-job-trend__bars" title="${month.label}: ${month.onsite} On-site, ${month.remote} Remote Support"><i class="is-onsite" style="height:${onSiteHeight}%"></i><i class="is-remote" style="height:${remoteHeight}%"></i></div><span>${month.label}</span></div>`;
+        }).join("")}</div><a class="dashboard-job-trend__link" href="tickets.html">Open Ticket Workspace <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></section>`;
     }
 
     function renderDashboard() {
@@ -106,6 +180,7 @@
                     </div>
                 </div>
             </section>
+            ${isAdmin ? renderJobTrend() : ""}
         `;
 
         document.querySelectorAll("[data-dashboard-route]").forEach((button) => {
@@ -119,6 +194,7 @@
         await loadDashboard();
         AppShell.updateSidebarAlerts(state.dashboard);
         renderDashboard();
+        void loadJobTrendInBackground();
     }
 
     async function bootstrap() {
@@ -143,6 +219,7 @@
                 }
             },
             async onRefresh() {
+                state.jobTrend = null;
                 await renderPage();
             }
         });

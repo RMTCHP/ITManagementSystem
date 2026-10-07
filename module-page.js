@@ -2,10 +2,26 @@
     const moduleKey = document.body.dataset.module || "";
     const moduleConfig = AppShell.getModule(moduleKey);
     const initialQuery = new URLSearchParams(window.location.search);
+
+    function getDateInputValue(date) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+
+    function getDefaultTicketDateRange() {
+        const today = new Date();
+        return {
+            start: getDateInputValue(new Date(today.getFullYear(), today.getMonth(), 1)),
+            end: getDateInputValue(new Date(today.getFullYear(), today.getMonth() + 1, 0))
+        };
+    }
+
+    const defaultTicketDateRange = getDefaultTicketDateRange();
     const state = {
         session: null,
         dashboard: null,
         records: [],
+        ticketYear: defaultTicketDateRange.start.slice(0, 4),
+        ticketYearTotal: 0,
         stockItems: [],
         stockMovements: [],
         knowledgeCategories: [],
@@ -19,8 +35,8 @@
             assetGroup: "all",
             knowledgeCategory: "all",
             knowledgeType: "",
-            ticketStartDate: "",
-            ticketEndDate: "",
+            ticketStartDate: defaultTicketDateRange.start,
+            ticketEndDate: defaultTicketDateRange.end,
             ticketService: "",
             ticketStatus: initialQuery.get("ticketStatus") || ""
         },
@@ -1378,9 +1394,14 @@
         if (isTicketModule()) {
             const ticketResult = await ApiClient.request("listTicketWorkspace", {
                 token: ApiClient.getSessionToken(),
-                module: "tickets"
+                module: "tickets",
+                from: state.filters.ticketStartDate,
+                to: state.filters.ticketEndDate,
+                year: (state.filters.ticketStartDate || defaultTicketDateRange.start).slice(0, 4)
             });
             state.records = ticketResult.data.records || [];
+            state.ticketYear = String(ticketResult.data.year || state.filters.ticketStartDate.slice(0, 4) || defaultTicketDateRange.start.slice(0, 4));
+            state.ticketYearTotal = Math.max(0, Number(ticketResult.data.yearTotal) || 0);
             state.stockMovements = [];
             state.sort.key = moduleConfig.listFields[0] || "";
             state.sort.direction = "desc";
@@ -1459,6 +1480,19 @@
             state.pageSize = 50;
         }
         syncSidebarAlerts();
+    }
+
+    async function reloadTicketWorkspace() {
+        UI.loading("Loading tickets", "Fetching the selected date range");
+        try {
+            await loadModuleData();
+            renderTicketWorkspace();
+        } catch (error) {
+            if (await AppShell.handleSessionError(error)) return;
+            await UI.alert({ icon: "error", title: "Unable to load tickets", text: error.message || "Please try again." });
+        } finally {
+            Swal.close();
+        }
     }
 
     function upsertStateRecord(record, mode) {
@@ -2090,6 +2124,12 @@
             pending: visibleRecords.filter((record) => String(record.Status || "").toLowerCase() === "pending").length,
             completed: visibleRecords.filter(isCompletedTicket).length
         };
+        const defaultRange = getDefaultTicketDateRange();
+        const isCurrentMonth = state.filters.ticketStartDate === defaultRange.start && state.filters.ticketEndDate === defaultRange.end;
+        const rangeLabel = state.filters.ticketStartDate && state.filters.ticketEndDate
+            ? `${formatDateDisplay(state.filters.ticketStartDate)} - ${formatDateDisplay(state.filters.ticketEndDate)}`
+            : "All dates";
+        const periodLabel = isCurrentMonth ? "This month" : "Selected period";
 
         const rowsMarkup = visibleRecords.map((record) => {
             const completed = isCompletedTicket(record);
@@ -2125,8 +2165,13 @@
 
         document.getElementById("viewContainer").innerHTML = `
             <section class="ticket-workspace-summary ticket-workspace-summary--metrics-only" aria-label="Ticket summary">
+                <div class="ticket-workspace-summary__period">
+                    <div><p>${periodLabel.toUpperCase()}</p><strong>${UI.escapeHtml(rangeLabel)}</strong></div>
+                    <span>Ticket status cards use this date range</span>
+                </div>
                 <div class="ticket-workspace-summary__metrics">
-                    <span><small>Total</small><b>${queueCounts.all}</b></span>
+                    <span class="ticket-workspace-summary__year-card"><small>${UI.escapeHtml(state.ticketYear)} Total</small><b>${state.ticketYearTotal}</b><em>All tickets in this year</em></span>
+                    <span><small>${periodLabel}</small><b>${queueCounts.all}</b></span>
                     <span><small>New</small><b>${queueCounts.open}</b></span>
                     <span><small>In Progress</small><b>${queueCounts.progress}</b></span>
                     <span><small>Pending</small><b>${queueCounts.pending}</b></span>
@@ -2143,7 +2188,7 @@
                     <label><span>End date</span><input id="ticketEndDateFilter" type="date" value="${UI.escapeHtml(state.filters.ticketEndDate)}"></label>
                     <label><span>Service</span><select id="ticketServiceFilter"><option value="">All services</option>${ticketServices.map((service) => `<option value="${UI.escapeHtml(service)}" ${state.filters.ticketService === service ? "selected" : ""}>${UI.escapeHtml(service)}</option>`).join("")}</select></label>
                     <label><span>Status</span><select id="ticketStatusFilter"><option value="">All statuses</option><option value="active" ${state.filters.ticketStatus === "active" ? "selected" : ""}>Active tickets</option>${ticketStatuses.map((status) => `<option value="${UI.escapeHtml(status)}" ${state.filters.ticketStatus === status ? "selected" : ""}>${UI.escapeHtml(status)}</option>`).join("")}</select></label>
-                    <button class="ghost-btn ticket-date-filter__clear" type="button" data-action="clear-ticket-dates" title="Clear date range"><i class="fa-solid fa-rotate-left"></i><span>Clear</span></button>
+                    <button class="ghost-btn ticket-date-filter__clear" type="button" data-action="clear-ticket-dates" title="Show this month"><i class="fa-solid fa-calendar-day"></i><span>This month</span></button>
                 </div>
                 <div class="data-table-wrap ticket-queue-table-wrap">
                     <table class="data-table ticket-queue-table">
@@ -3618,11 +3663,12 @@
             }
 
             if (event.target.closest('[data-action="clear-ticket-dates"]')) {
-                state.filters.ticketStartDate = "";
-                state.filters.ticketEndDate = "";
+                const range = getDefaultTicketDateRange();
+                state.filters.ticketStartDate = range.start;
+                state.filters.ticketEndDate = range.end;
                 state.filters.ticketService = "";
                 state.filters.ticketStatus = "";
-                renderTicketWorkspace();
+                await reloadTicketWorkspace();
                 return;
             }
 
@@ -3828,6 +3874,7 @@
                 return;
             }
             if (["ticketStartDateFilter", "ticketEndDateFilter", "ticketServiceFilter", "ticketStatusFilter"].includes(event.target.id)) {
+                const dateRangeChanged = ["ticketStartDateFilter", "ticketEndDateFilter"].includes(event.target.id);
                 state.filters.ticketStartDate = document.getElementById("ticketStartDateFilter").value;
                 state.filters.ticketEndDate = document.getElementById("ticketEndDateFilter").value;
                 state.filters.ticketService = document.getElementById("ticketServiceFilter").value;
@@ -3836,7 +3883,11 @@
                     await UI.alert({ icon: "warning", title: "Invalid date range", text: "End date must be the same as or after start date." });
                     state.filters.ticketEndDate = "";
                 }
-                renderTicketWorkspace();
+                if (dateRangeChanged) {
+                    await reloadTicketWorkspace();
+                } else {
+                    renderTicketWorkspace();
+                }
                 return;
             }
 

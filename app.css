@@ -1553,7 +1553,7 @@ button {
 
 .ticket-workspace-summary__metrics {
     display: grid;
-    grid-template-columns: repeat(5, minmax(58px, 1fr));
+    grid-template-columns: repeat(6, minmax(58px, 1fr));
     gap: 7px;
 }
 
@@ -1570,6 +1570,43 @@ button {
     min-height: 72px;
     align-content: center;
     padding: 12px 14px;
+}
+
+.ticket-workspace-summary__period {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.ticket-workspace-summary__period p {
+    margin: 0 0 3px;
+    color: #0878bd;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+}
+
+.ticket-workspace-summary__period strong {
+    color: #1b3853;
+    font-size: 0.82rem;
+}
+
+.ticket-workspace-summary__period > span {
+    color: var(--text-soft);
+    font-size: 0.71rem;
+}
+
+.ticket-workspace-summary--metrics-only .ticket-workspace-summary__metrics .ticket-workspace-summary__year-card {
+    border-color: #a6d5f4;
+    background: linear-gradient(135deg, #eaf7ff, #f7fbff);
+}
+
+.ticket-workspace-summary__year-card em {
+    color: #5c7990;
+    font-size: 0.64rem;
+    font-style: normal;
 }
 
 .ticket-workspace-summary--metrics-only .ticket-workspace-summary__metrics small {
@@ -2314,7 +2351,7 @@ button {
 
     .ticket-workspace-summary__metrics {
         grid-column: 1 / -1;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .ticket-date-filter {
@@ -3330,6 +3367,164 @@ button {
     letter-spacing: 0.09em;
 }
 
+.dashboard-job-trend {
+    margin-top: 18px;
+    padding: clamp(20px, 2.2vw, 28px);
+    border: 1px solid #dce6ef;
+    border-radius: 21px;
+    background: #fff;
+    box-shadow: 0 11px 25px rgba(21, 54, 81, 0.08);
+}
+
+.dashboard-job-trend__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.dashboard-job-trend h4 {
+    margin: 8px 0 5px;
+    color: #142d47;
+    font-size: 1.18rem;
+    letter-spacing: -0.025em;
+}
+
+.dashboard-job-trend p {
+    margin: 0;
+    color: #6c8198;
+    font-size: 0.82rem;
+}
+
+.dashboard-job-trend .dashboard-command__eyebrow {
+    color: #0878bd;
+}
+
+.dashboard-job-trend__summary {
+    display: grid;
+    min-width: 104px;
+    padding: 10px 14px;
+    border-radius: 13px;
+    background: #edf7ff;
+    color: #0c70ad;
+    text-align: right;
+}
+
+.dashboard-job-trend__summary strong {
+    font-size: 1.65rem;
+    line-height: 1;
+    letter-spacing: -0.05em;
+}
+
+.dashboard-job-trend__summary span {
+    margin-top: 4px;
+    color: #5d7991;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.dashboard-job-trend__legend {
+    display: flex;
+    gap: 15px;
+    margin: 19px 0 13px;
+    color: #647990;
+    font-size: 0.73rem;
+    font-weight: 700;
+}
+
+.dashboard-job-trend__legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dashboard-job-trend .is-onsite,
+.dashboard-job-trend .is-remote {
+    display: inline-block;
+    border-radius: 5px 5px 1px 1px;
+}
+
+.dashboard-job-trend__legend i {
+    width: 9px;
+    height: 9px;
+    border-radius: 99px !important;
+}
+
+.dashboard-job-trend .is-onsite { background: #1581c4; }
+.dashboard-job-trend .is-remote { background: #8061d0; }
+
+.dashboard-job-trend__chart {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(48px, 1fr));
+    align-items: end;
+    gap: clamp(10px, 2vw, 25px);
+    min-height: 205px;
+    padding: 5px 7px 0;
+}
+
+.dashboard-job-trend__month {
+    display: grid;
+    min-width: 0;
+    grid-template-rows: 18px 150px 18px;
+    gap: 7px;
+    text-align: center;
+}
+
+.dashboard-job-trend__month > strong {
+    color: #23425e;
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.dashboard-job-trend__bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 5px;
+    min-height: 150px;
+    padding: 0 4px;
+    border-bottom: 1px solid #d9e4ed;
+}
+
+.dashboard-job-trend__bars i {
+    width: min(20px, 37%);
+    min-height: 0;
+    transition: height 220ms ease;
+}
+
+.dashboard-job-trend__month > span {
+    overflow: hidden;
+    color: #73869b;
+    font-size: 0.69rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-job-trend__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 15px;
+    color: #0878bd;
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.dashboard-job-trend--loading,
+.dashboard-job-trend--empty {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 144px;
+}
+
+.dashboard-job-trend--loading > i {
+    color: #1581c4;
+    font-size: 1.45rem;
+}
+
 @media (max-width: 900px) {
     .dashboard-command__hero-top {
         align-items: flex-start;
@@ -3353,6 +3548,20 @@ button {
 
     .dashboard-command__cards {
         grid-template-columns: 1fr;
+    }
+
+    .dashboard-job-trend__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .dashboard-job-trend__summary {
+        text-align: left;
+    }
+
+    .dashboard-job-trend__chart {
+        gap: 7px;
+        overflow-x: auto;
     }
 }
 
