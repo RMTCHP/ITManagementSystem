@@ -5303,6 +5303,36 @@ button {
     object-fit: contain;
 }
 
+.knowledge-preview--office {
+    overflow: auto;
+    padding: 18px;
+    text-align: left;
+}
+
+.knowledge-preview__sheet {
+    margin-bottom: 24px;
+    overflow-x: auto;
+}
+
+.knowledge-preview__sheet h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+}
+
+.knowledge-preview__sheet table {
+    border-collapse: collapse;
+    min-width: 100%;
+    background: #fff;
+}
+
+.knowledge-preview__sheet td {
+    border: 1px solid #dbe4ed;
+    padding: 6px 9px;
+    min-width: 70px;
+    white-space: pre-wrap;
+    vertical-align: top;
+}
+
 .knowledge-pagination {
     display: flex;
     align-items: center;

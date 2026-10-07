@@ -2068,7 +2068,7 @@
                 ${showFiles ? `
                     ${!isSearching ? `
                     ${canCreate ? `<div class="knowledge-upload">
-                        <input id="knowledgeMultiFileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp" multiple hidden>
+                        <input id="knowledgeMultiFileInput" type="file" accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.webp" multiple hidden>
                         <button class="knowledge-dropzone" id="knowledgeDropzone" type="button" ${state.knowledgeUploading ? "disabled" : ""}>
                             <i class="fa-solid fa-cloud-arrow-up"></i>
                             <strong>Drop files here or click to browse</strong>
@@ -3163,13 +3163,19 @@
     function queueKnowledgeFiles(files) {
         const incoming = Array.from(files || []);
         if (!incoming.length || state.knowledgeUploading) return;
-        const mimeByExtension = { pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
+        const mimeByExtension = {
+            pdf: "application/pdf",
+            docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp"
+        };
         const invalid = incoming.find((file) => {
             const extension = String(file.name || "").split(".").pop().toLowerCase();
-            return !mimeByExtension[extension] || file.type.toLowerCase() !== mimeByExtension[extension] || file.size <= 0 || file.size > 10 * 1024 * 1024;
+            return !mimeByExtension[extension] || (file.type && file.type.toLowerCase() !== mimeByExtension[extension]) || file.size <= 0 || file.size > 10 * 1024 * 1024;
         });
         if (invalid) {
-            UI.alert({ icon: "warning", title: "File not supported", text: `${invalid.name}: choose a PDF, PNG, JPG or WEBP file up to 10 MB.` });
+            UI.alert({ icon: "warning", title: "File not supported", text: `${invalid.name}: choose a PDF, DOCX, XLSX, PPTX, PNG, JPG or WEBP file up to 10 MB.` });
             return;
         }
         const queued = new Map(state.knowledgeUploadFiles.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file]));
@@ -3242,11 +3248,11 @@
             confirmButtonText: mode === "create" ? "Save Knowledge" : "Update Knowledge",
             html: `
                 <div class="knowledge-form">
-                    <div class="knowledge-form__intro"><i class="fa-solid fa-cloud-arrow-up"></i><span>Upload a preview-ready PDF or image, or paste an existing Google Drive link.</span></div>
+                    <div class="knowledge-form__intro"><i class="fa-solid fa-cloud-arrow-up"></i><span>Upload a PDF, Office document or image, or paste an existing Google Drive link.</span></div>
                     <label><span>Knowledge Category <em>*</em></span><select data-knowledge-field="Category"><option value="">Select category</option>${categoryOptions}</select></label>
                     <label class="knowledge-form__full"><span>Title <em>*</em></span><input data-knowledge-field="Title" value="${UI.escapeHtml(existing.Title || "")}" placeholder="Example: Firewall backup and restore procedure"></label>
-                    <label class="knowledge-form__full"><span>Upload File</span><input type="file" data-knowledge-file accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp"><small>PDF, PNG, JPG or WEBP only. Maximum 10 MB. All uploaded files can be previewed.</small></label>
-                    <label class="knowledge-form__full"><span>Google Drive Link</span><input type="url" data-knowledge-field="LinkURL" value="${UI.escapeHtml(existing.LinkURL || "")}" placeholder="https://drive.google.com/... "><small>Optional. Upload a PDF or image when an in-system preview is required.</small></label>
+                    <label class="knowledge-form__full"><span>Upload File</span><input type="file" data-knowledge-file accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.webp"><small>PDF, DOCX, XLSX, PPTX, PNG, JPG or WEBP. Maximum 10 MB.</small></label>
+                    <label class="knowledge-form__full"><span>Google Drive Link</span><input type="url" data-knowledge-field="LinkURL" value="${UI.escapeHtml(existing.LinkURL || "")}" placeholder="https://drive.google.com/... "><small>Optional. Upload a supported file when an in-system preview is required.</small></label>
                     <label class="knowledge-form__full"><span>Description</span><textarea data-knowledge-field="Remark" placeholder="Explain when and how this knowledge should be used.">${UI.escapeHtml(existing.Remark || "")}</textarea></label>
                     <details class="knowledge-form__details knowledge-form__full">
                         <summary>Additional details <span>Optional</span></summary>
@@ -3276,10 +3282,10 @@
                 }
                 if (file) {
                     const extension = String(file.name || "").split(".").pop().toLowerCase();
-                    const previewExtensions = ["pdf", "png", "jpg", "jpeg", "webp"];
-                    const previewTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+                    const previewExtensions = ["pdf", "docx", "xlsx", "pptx", "png", "jpg", "jpeg", "webp"];
+                    const previewTypes = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "image/png", "image/jpeg", "image/webp"];
                     if (!previewExtensions.includes(extension) || (file.type && !previewTypes.includes(file.type.toLowerCase()))) {
-                        Swal.showValidationMessage("Upload PDF, PNG, JPG or WEBP only so this document can be previewed.");
+                        Swal.showValidationMessage("Upload PDF, DOCX, XLSX, PPTX, PNG, JPG or WEBP only.");
                         return false;
                     }
                 }
@@ -3327,6 +3333,74 @@
         }
     }
 
+    const knowledgePreviewScripts = new Map();
+
+    function loadKnowledgePreviewScript(url) {
+        if (!knowledgePreviewScripts.has(url)) {
+            knowledgePreviewScripts.set(url, new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = url;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error("The document viewer could not be loaded. Check access to cdn.jsdelivr.net."));
+                document.head.appendChild(script);
+            }).catch((error) => {
+                knowledgePreviewScripts.delete(url);
+                throw error;
+            }));
+        }
+        return knowledgePreviewScripts.get(url);
+    }
+
+    async function prepareKnowledgeOfficeViewer(mimeType) {
+        if (mimeType.includes("wordprocessingml")) {
+            await loadKnowledgePreviewScript("https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js");
+            await loadKnowledgePreviewScript("https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js");
+            if (!window.docx?.renderAsync) throw new Error("The Word preview library is unavailable.");
+            return "docx";
+        }
+        if (mimeType.includes("spreadsheetml")) {
+            await UI.loadSpreadsheetLibrary();
+            return "xlsx";
+        }
+        if (mimeType.includes("presentationml")) {
+            await loadKnowledgePreviewScript("https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js");
+            await loadKnowledgePreviewScript("https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.js");
+            if (!window.pptxPreview?.init) throw new Error("The PowerPoint preview library is unavailable.");
+            return "pptx";
+        }
+        return "";
+    }
+
+    function renderKnowledgeSpreadsheet(bytes, container) {
+        const workbook = window.XLSX.read(bytes, { type: "array" });
+        workbook.SheetNames.forEach((sheetName) => {
+            const sheet = workbook.Sheets[sheetName];
+            const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", blankrows: false });
+            const section = document.createElement("section");
+            section.className = "knowledge-preview__sheet";
+            const title = document.createElement("h3");
+            title.textContent = sheetName;
+            section.appendChild(title);
+            if (rows.length > 500 || rows.some((row) => row.length > 40)) {
+                const note = document.createElement("p");
+                note.textContent = "Preview shows up to 500 rows and 40 columns per sheet. Download the file to see all data.";
+                section.appendChild(note);
+            }
+            const table = document.createElement("table");
+            rows.slice(0, 500).forEach((row) => {
+                const tr = document.createElement("tr");
+                row.slice(0, 40).forEach((value) => {
+                    const td = document.createElement("td");
+                    td.textContent = String(value ?? "");
+                    tr.appendChild(td);
+                });
+                table.appendChild(tr);
+            });
+            section.appendChild(table);
+            container.appendChild(section);
+        });
+    }
+
     async function openKnowledgePreview(recordId) {
         const record = state.records.find((item) => item.DocumentID === recordId);
         if (!record || !record.DriveFileId) {
@@ -3365,7 +3439,8 @@
             objectUrl = URL.createObjectURL(blob);
             const isPdf = preview.mimeType === "application/pdf";
             const isImage = /^image\//i.test(preview.mimeType);
-            if (!isPdf && !isImage) {
+            const officeType = await prepareKnowledgeOfficeViewer(preview.mimeType);
+            if (!isPdf && !isImage && !officeType) {
                 throw new Error("This file type cannot be displayed in the preview window.");
             }
 
@@ -3380,7 +3455,26 @@
                 confirmButtonText: "Download preview",
                 html: isPdf
                     ? `<div class="knowledge-preview"><iframe src="${objectUrl}" title="${UI.escapeHtml(displayName)}"></iframe></div>`
-                    : `<div class="knowledge-preview"><img src="${objectUrl}" alt="${UI.escapeHtml(displayName)}"></div>`,
+                    : isImage
+                        ? `<div class="knowledge-preview"><img src="${objectUrl}" alt="${UI.escapeHtml(displayName)}"></div>`
+                        : `<div class="knowledge-preview knowledge-preview--office"><div id="knowledgeOfficePreview">Loading document...</div></div>`,
+                didOpen: async () => {
+                    if (!officeType) return;
+                    const container = document.getElementById("knowledgeOfficePreview");
+                    try {
+                        container.textContent = "";
+                        if (officeType === "docx") {
+                            await window.docx.renderAsync(blob, container, container, { inWrapper: true });
+                        } else if (officeType === "xlsx") {
+                            renderKnowledgeSpreadsheet(bytes, container);
+                        } else {
+                            const viewer = window.pptxPreview.init(container, { width: 960, height: 540 });
+                            await viewer.preview(bytes.buffer);
+                        }
+                    } catch (error) {
+                        container.textContent = `Could not display this Office file: ${error.message || "Unknown error"}. Download the original file instead.`;
+                    }
+                },
                 preConfirm: () => {
                     const link = document.createElement("a");
                     link.href = objectUrl;
