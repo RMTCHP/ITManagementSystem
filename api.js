@@ -81,6 +81,7 @@
             searchAssets: 30000,
             getPublicTicketWorkspace: 30000,
             listTicketWorkspace: 60000,
+            listReportDocuments: 30000,
             getTicketRecord: 30000,
             listKnowledgeCategories: 30000,
             createKnowledgeCategory: 30000,
@@ -110,6 +111,9 @@
     }
 
     async function callWebApp(action, payload = {}) {
+        const requestName = action === "listRecords" && payload.module
+            ? `${action}/${payload.module}`
+            : action;
         const body = new URLSearchParams();
         body.set("action", action);
         Object.entries(payload).forEach(([key, value]) => {
@@ -146,7 +150,7 @@
             }
         } catch (error) {
             if (error && error.name === "AbortError") {
-                throw new Error(`API request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
+                throw new Error(`${requestName} timed out after ${Math.round(timeoutMs / 1000)} seconds`);
             }
             throw error;
         } finally {
@@ -155,9 +159,9 @@
 
         if (!response.ok) {
             if (response.status === 404) {
-                throw new Error("Apps Script Web App returned 404. Check that the deployment URL in config.js is active and accessible.");
+                throw new Error(`${requestName} returned 404 from Apps Script. Check that the deployment URL is active and accessible.`);
             }
-            throw new Error(`API request failed with status ${response.status}`);
+            throw new Error(`${requestName} failed with status ${response.status}`);
         }
 
         const result = await response.json();

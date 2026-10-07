@@ -1208,8 +1208,8 @@
         });
     }
 
-    async function openComputerBorrowingPdf(borrowingId) {
-        const printWindow = window.open("", "_blank");
+    async function openComputerBorrowingPdf(borrowingId, targetWindow) {
+        const printWindow = targetWindow || window.open("", "_blank");
         if (!printWindow) {
             await UI.alert({ icon: "warning", title: "Popup blocked", text: "Allow popups to open the borrowing PDF." });
             return;
@@ -1295,7 +1295,7 @@
                 : new Promise((resolve) => { image.onload = image.onerror = resolve; })));
             printWindow.print();
         } catch (error) {
-            printWindow.close();
+            if (!targetWindow) printWindow.close();
             await UI.alert({ icon: "error", title: "Unable to open PDF", text: error.message || "Please try again." });
         }
     }
@@ -1416,18 +1416,24 @@
         }
 
         if (isKnowledgeModule()) {
-            // The folder list includes empty folders, which are not present in
-            // document records. Wait for both sources before the first render so
-            // the library does not briefly show only folders containing files.
+            // The current API returns files and empty folders together. Older
+            // deployments need a separate folder request; cap that fallback so
+            // it cannot hold the whole library behind a 30-second timeout.
             const token = ApiClient.getSessionToken();
-            const [documentResult, categoryResult] = await Promise.all([
-                ApiClient.request("listRecords", { token, module: moduleKey }),
-                ApiClient.request("listKnowledgeCategories", { token }).catch(() => null)
-            ]);
+            const documentResult = await ApiClient.request("listRecords", { token, module: moduleKey });
             state.records = documentResult.data.records || [];
-            const savedCategories = categoryResult && categoryResult.data && Array.isArray(categoryResult.data.categories)
-                ? categoryResult.data.categories
-                : state.knowledgeCategories;
+            let savedCategories = Array.isArray(documentResult.data.categories)
+                ? documentResult.data.categories
+                : null;
+            if (!savedCategories) {
+                const categoryResult = await Promise.race([
+                    ApiClient.request("listKnowledgeCategories", { token }).catch(() => null),
+                    new Promise((resolve) => window.setTimeout(() => resolve(null), 6000))
+                ]);
+                savedCategories = categoryResult && categoryResult.data && Array.isArray(categoryResult.data.categories)
+                    ? categoryResult.data.categories
+                    : state.knowledgeCategories;
+            }
             state.knowledgeCategories = [...new Set([
                 ...savedCategories,
                 ...state.records.map((record) => String(record.Category || "").trim()).filter(Boolean)
@@ -2177,19 +2183,24 @@
         }
     }
 
-    async function openTicketDetailsModal(ticketId) {
+    async function openTicketDetailsModal(ticketId, targetWindow) {
         let ticket = state.records.find((record) => String(record.TicketID || "") === String(ticketId || ""));
-        if (!ticket) {
+        if (!ticket && !targetWindow) {
             UI.alert({ icon: "error", title: "Ticket not found", text: "Refresh the ticket queue and try again." });
             return;
         }
         try {
-            ticket = await loadTicketDetails(ticketId);
+            if (targetWindow && !ticket) {
+                const result = await ApiClient.request("getTicketRecord", { token: ApiClient.getSessionToken(), ticketId });
+                ticket = result.data.record || {};
+            } else {
+                ticket = await loadTicketDetails(ticketId);
+            }
         } catch (error) {
             await UI.alert({ icon: "error", title: "Unable to load ticket", text: error.message || "Please try again." });
             return;
         }
-        const reportWindow = window.open("", "_blank");
+        const reportWindow = targetWindow || window.open("", "_blank");
         if (!reportWindow) {
             UI.alert({ icon: "warning", title: "Popup blocked", text: "Allow popups for this site, then try again to view the work order." });
             return;
@@ -3986,6 +3997,18 @@
                 text: "Your role cannot access this module."
             });
             AppShell.navigateTo("dashboard");
+            return;
+        }
+
+        const printAction = initialQuery.get("action");
+        if (printAction === "print-ticket" && isTicketModule()) {
+            const ticketId = initialQuery.get("ticketId");
+            if (ticketId) await openTicketDetailsModal(ticketId, window);
+            return;
+        }
+        if (printAction === "print-borrowing" && isAssetModule()) {
+            const borrowingId = initialQuery.get("borrowingId");
+            if (borrowingId) await openComputerBorrowingPdf(borrowingId, window);
             return;
         }
 
