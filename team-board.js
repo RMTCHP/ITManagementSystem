@@ -1,12 +1,13 @@
 (() => {
     const state = { cards: [], members: [], totalActive: 0, query: "", filter: "all", session: null, busy: new Set() };
-    const types = ["Announcement", "Note", "Task"];
+    const types = ["Update", "Task"];
     const statuses = ["To Do", "In Progress", "Done"];
     const escape = (value) => UI.escapeHtml(String(value ?? ""));
     const currentUserId = () => String(state.session?.user?.UserID || "");
     const isAdmin = () => String(state.session?.user?.Role || "").toLowerCase() === "admin";
     const canManage = (card) => isAdmin() || String(card.CreatedByID || "") === currentUserId();
     const canChangeStatus = (card) => card.Type === "Task" && (canManage(card) || String(card.AssigneeUserID || "") === currentUserId());
+    const isUpdate = (card) => ["Update", "Announcement", "Note"].includes(String(card?.Type || ""));
 
     function dateLabel(value) {
         const date = String(value || "").slice(0, 10);
@@ -18,11 +19,10 @@
         AppShell.renderHero(document.getElementById("heroPanel"), {
             profile: "Internal collaboration",
             title: "IT Team Board",
-            description: "Announcements, handover notes and internal tasks in one shared space. This board is separate from user tickets.",
+            description: "Team updates, handover information and internal tasks in one shared space. This board is separate from user tickets.",
             meta: [{ icon: "fa-users", text: "Visible to every signed-in account" }],
             stats: [
-                { label: "Announcements", value: state.cards.filter((card) => card.Type === "Announcement").length },
-                { label: "Notes", value: state.cards.filter((card) => card.Type === "Note").length },
+                { label: "Team updates", value: state.cards.filter(isUpdate).length },
                 { label: "Open tasks", value: tasks.filter((card) => card.Status !== "Done").length }
             ]
         });
@@ -30,13 +30,13 @@
 
     function cardMarkup(card) {
         const id = escape(card.BoardID);
-        const type = String(card.Type || "Note");
+        const type = card.Type === "Task" ? "Task" : "Update";
         const managed = canManage(card);
         const assignLabel = card.AssigneeName ? `<span><i class="fa-regular fa-user"></i>${escape(card.AssigneeName)}</span>` : "";
         const dueLabel = card.DueDate ? `<span><i class="fa-regular fa-calendar"></i>${escape(dateLabel(card.DueDate))}</span>` : "";
         const statusOptions = statuses.map((status) => `<option value="${status}" ${card.Status === status ? "selected" : ""}>${status}</option>`).join("");
         return `<article class="team-card team-card--${type.toLowerCase()}">
-            <div class="team-card__top"><span class="team-card__kind">${type === "Announcement" ? "Announcement" : type === "Note" ? "Note / Handover" : "Internal task"}</span>${String(card.IsPinned).toUpperCase() === "TRUE" ? `<span class="team-card__pin"><i class="fa-solid fa-thumbtack"></i> Pinned</span>` : ""}</div>
+            <div class="team-card__top"><span class="team-card__kind">${type === "Update" ? "Team update / Handover" : "Internal task"}</span>${String(card.IsPinned).toUpperCase() === "TRUE" ? `<span class="team-card__pin"><i class="fa-solid fa-thumbtack"></i> Pinned</span>` : ""}</div>
             <h3>${escape(card.Title)}</h3>
             <p class="team-card__body">${escape(card.Body || "No details added.")}</p>
             ${type === "Task" ? `<div class="team-card__status">${canChangeStatus(card) ? `<label>Status <select data-board-status="${id}">${statusOptions}</select></label>` : `<span class="team-status">${escape(card.Status)}</span>`}</div>` : ""}
@@ -48,19 +48,18 @@
     function render() {
         renderHero();
         const query = state.query.toLowerCase();
-        const cards = state.cards.filter((card) => (state.filter === "all" || card.Type === state.filter)
+        const cards = state.cards.filter((card) => (state.filter === "all" || (state.filter === "Update" ? isUpdate(card) : card.Type === state.filter))
             && (!query || [card.Title, card.Body, card.AssigneeName, card.CreatedByName].some((value) => String(value || "").toLowerCase().includes(query))));
         const groups = [
-            { type: "Announcement", label: "Announcements", icon: "fa-bullhorn" },
-            { type: "Note", label: "Notes & handover", icon: "fa-note-sticky" },
+            { type: "Update", label: "Team updates", icon: "fa-bullhorn" },
             { type: "Task", label: "Team tasks", icon: "fa-list-check" }
         ];
         document.getElementById("viewContainer").innerHTML = `<section class="team-board">
-            <div class="team-board__toolbar"><div><p class="section-card__eyebrow">Shared workspace</p><h2>Team activity</h2><p>Leave a note, post an announcement or assign a task to a teammate.</p></div><button class="primary-btn" type="button" id="addBoardItem"><i class="fa-solid fa-plus"></i> Add item</button></div>
+            <div class="team-board__toolbar"><div><p class="section-card__eyebrow">Shared workspace</p><h2>Team activity</h2><p>Share an update, hand over information or assign a task to a teammate.</p></div><button class="primary-btn" type="button" id="addBoardItem"><i class="fa-solid fa-plus"></i> Add item</button></div>
             <div class="team-board__filters"><button type="button" data-board-filter="all" class="${state.filter === "all" ? "is-active" : ""}">All</button>${groups.map((group) => `<button type="button" data-board-filter="${group.type}" class="${state.filter === group.type ? "is-active" : ""}">${group.label}</button>`).join("")}</div>
             ${state.totalActive > 250 ? `<p class="team-board__notice">Showing the latest 250 active items. Archive completed items to keep the board focused.</p>` : ""}
             <div class="team-board__columns">${groups.map((group) => {
-                const groupCards = cards.filter((card) => card.Type === group.type);
+                const groupCards = cards.filter((card) => group.type === "Update" ? isUpdate(card) : card.Type === group.type);
                 return `<section class="team-board__column team-board__column--${group.type.toLowerCase()}"><header><span><i class="fa-solid ${group.icon}"></i>${group.label}</span><strong>${groupCards.length}</strong></header><div class="team-board__stack">${groupCards.map(cardMarkup).join("") || `<p class="team-board__empty">No items here yet.</p>`}</div></section>`;
             }).join("")}</div>
         </section>`;
@@ -77,6 +76,7 @@
     async function openCardForm(card = null) {
         const editing = Boolean(card);
         const memberOptions = state.members.map((member) => `<option value="${escape(member.userId)}" ${String(card?.AssigneeUserID || "") === member.userId ? "selected" : ""}>${escape(member.name)}</option>`).join("");
+        const selectedType = card?.Type === "Task" ? "Task" : "Update";
         const result = await Swal.fire({
             title: editing ? "Edit board item" : "Add board item",
             width: "min(720px, calc(100vw - 32px))",
@@ -85,17 +85,17 @@
             showCloseButton: true,
             confirmButtonText: editing ? "Save changes" : "Post item",
             html: `<div class="team-board__form">
-                <label>Type<select id="boardType">${types.map((type) => `<option value="${type}" ${card?.Type === type ? "selected" : ""}>${type === "Note" ? "Note / Handover" : type === "Task" ? "Internal task" : "Announcement"}</option>`).join("")}</select></label>
+                <label>Type<select id="boardType">${types.map((type) => `<option value="${type}" ${selectedType === type ? "selected" : ""}>${type === "Task" ? "Team task" : "Team update / Handover"}</option>`).join("")}</select></label>
                 <label>Title<input id="boardTitle" maxlength="120" value="${escape(card?.Title || "")}" placeholder="What should the team know?"></label>
                 <label>Details<textarea id="boardBody" maxlength="3000" rows="5" placeholder="Add context, instructions or a handover note">${escape(card?.Body || "")}</textarea></label>
                 <div id="boardTaskFields" class="team-board__form-row"><label>Assign to<select id="boardAssignee"><option value="">Unassigned</option>${memberOptions}</select></label><label>Due date<input id="boardDueDate" type="date" value="${escape(String(card?.DueDate || "").slice(0, 10))}"></label></div>
-                <label id="boardPinField" class="team-board__checkbox"><input id="boardPinned" type="checkbox" ${String(card?.IsPinned || "").toUpperCase() === "TRUE" ? "checked" : ""}> Pin this announcement</label>
+                <label id="boardPinField" class="team-board__checkbox"><input id="boardPinned" type="checkbox" ${String(card?.IsPinned || "").toUpperCase() === "TRUE" ? "checked" : ""}> Pin this update</label>
             </div>`,
             didOpen: () => {
                 const type = document.getElementById("boardType");
                 const sync = () => {
                     document.getElementById("boardTaskFields").hidden = type.value !== "Task";
-                    document.getElementById("boardPinField").hidden = type.value !== "Announcement";
+                    document.getElementById("boardPinField").hidden = type.value !== "Update";
                 };
                 type.addEventListener("change", sync);
                 sync();
@@ -108,7 +108,7 @@
                     Body: document.getElementById("boardBody").value.trim(),
                     AssigneeUserID: Type === "Task" ? document.getElementById("boardAssignee").value : "",
                     DueDate: Type === "Task" ? document.getElementById("boardDueDate").value : "",
-                    IsPinned: Type === "Announcement" && document.getElementById("boardPinned").checked ? "TRUE" : "FALSE" };
+                    IsPinned: Type === "Update" && document.getElementById("boardPinned").checked ? "TRUE" : "FALSE" };
             }
         });
         if (!result.isConfirmed) return;
@@ -143,12 +143,12 @@
     async function showCard(card) {
         await Swal.fire({ title: escape(card.Title), width: "min(720px, calc(100vw - 32px))", showCloseButton: true,
             confirmButtonText: "Close",
-            html: `<div class="team-board__detail"><p>${escape(card.Body || "No details added.").replace(/\n/g, "<br>")}</p><dl><dt>Type</dt><dd>${escape(card.Type)}</dd>${card.Type === "Task" ? `<dt>Status</dt><dd>${escape(card.Status)}</dd><dt>Assigned to</dt><dd>${escape(card.AssigneeName || "Unassigned")}</dd><dt>Due date</dt><dd>${escape(dateLabel(card.DueDate) || "Not set")}</dd>` : ""}<dt>Posted by</dt><dd>${escape(card.CreatedByName)}</dd><dt>Posted at</dt><dd>${escape(card.CreatedAt)}</dd></dl></div>` });
+            html: `<div class="team-board__detail"><p>${escape(card.Body || "No details added.").replace(/\n/g, "<br>")}</p><dl><dt>Type</dt><dd>${card.Type === "Task" ? "Team task" : "Team update / Handover"}</dd>${card.Type === "Task" ? `<dt>Status</dt><dd>${escape(card.Status)}</dd><dt>Assigned to</dt><dd>${escape(card.AssigneeName || "Unassigned")}</dd><dt>Due date</dt><dd>${escape(dateLabel(card.DueDate) || "Not set")}</dd>` : ""}<dt>Posted by</dt><dd>${escape(card.CreatedByName)}</dd><dt>Posted at</dt><dd>${escape(card.CreatedAt)}</dd></dl></div>` });
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
         const context = await AppShell.init({ currentView: "teamBoard", title: "IT Team Board", eyebrow: "TEAM WORKSPACE",
-            searchPlaceholder: "Search announcements, notes and tasks",
+            searchPlaceholder: "Search team updates and tasks",
             onSearch: (value) => { state.query = value.trim(); render(); },
             onRefresh: () => loadBoard() });
         if (!context) return;

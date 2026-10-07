@@ -1,7 +1,7 @@
 window.APP_CONFIG = {
     appName: "IT Asset Management & Request Job System",
     projectProfile: "Enterprise Clean",
-    webAppUrl: "https://script.google.com/macros/s/AKfycbyUxWihwz_sOzSfsPSQCjYYMG7yUff9flYRjnFNGnLneEE8TKOgLsaiFW3mz5Nic8E/exec",
+    webAppUrl: "https://script.google.com/macros/s/AKfycbxd6y7P2ObUKgq29N_UCOcf10VNbCQaXFj2E4OpiVxXIWX8E7QvIDHdBJkQgMu9zUc/exec",
     sessionStorageKey: "itms_session",
     sessionHours: 12,
     pageRoutes: {
@@ -58,7 +58,7 @@ window.APP_CONFIG = {
     menu: [
         { group: "Overview", items: [
             { key: "dashboard", label: "Dashboard", icon: "fa-chart-pie", description: "Summary and quick actions" },
-            { key: "teamBoard", label: "IT Team Board", icon: "fa-note-sticky", description: "Team announcements, notes and tasks" }
+            { key: "teamBoard", label: "IT Team Board", icon: "fa-note-sticky", description: "Team updates, handovers and tasks" }
         ] },
         { group: "Asset & Inventory", items: [
             { key: "assets", label: "Asset Management", icon: "fa-laptop-file", description: "Asset register and lifecycle" },

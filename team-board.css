@@ -6,7 +6,7 @@
 .team-board__filters button { border: 1px solid #d8e4ee; border-radius: 999px; background: #fff; color: #536b83; padding: 9px 15px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .team-board__filters button.is-active { background: #146bb5; border-color: #146bb5; color: #fff; }
 .team-board__notice { color: #697d91; font-size: 13px; }
-.team-board__columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.team-board__columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
 .team-board__column { min-width: 0; background: #f5f8fb; border: 1px solid #dce6ef; border-radius: 20px; padding: 14px; }
 .team-board__column > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 5px 15px; font-weight: 800; color: #1b334e; }
 .team-board__column > header span { display: flex; align-items: center; gap: 9px; }
@@ -15,8 +15,7 @@
 .team-board__stack { display: grid; gap: 12px; }
 .team-board__empty { margin: 0; padding: 30px 12px; color: #8797a9; text-align: center; font-size: 13px; }
 .team-card { background: #fff; border: 1px solid #dee8f1; border-radius: 15px; padding: 17px; box-shadow: 0 6px 18px rgba(28, 66, 100, .05); }
-.team-card--announcement { border-top: 3px solid #0e9ba7; }
-.team-card--note { border-top: 3px solid #8664cf; }
+.team-card--update { border-top: 3px solid #0e9ba7; }
 .team-card--task { border-top: 3px solid #e19429; }
 .team-card__top, .team-card__actions, .team-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .team-card__top { justify-content: space-between; }
@@ -45,5 +44,4 @@
 .team-board__detail dl { display: grid; grid-template-columns: 115px 1fr; gap: 6px 12px; padding-top: 12px; border-top: 1px solid #e3ebf2; }
 .team-board__detail dt { font-weight: 800; }
 .team-board__detail dd { margin: 0; }
-@media (max-width: 1100px) { .team-board__columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .team-board__columns, .team-board__form-row { grid-template-columns: 1fr; } .team-board__toolbar { align-items: start; flex-direction: column; } }
