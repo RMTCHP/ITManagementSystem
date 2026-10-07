@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="app.css?v=20260902-1">
-    <link rel="stylesheet" href="user-request.css?v=20260902-1">
+    <link rel="stylesheet" href="user-request.css?v=20261007-form-1">
 </head>
 <body class="public-ticket-body user-request-body">
     <main class="public-ticket-shell user-request-shell">
@@ -56,6 +56,9 @@
             <form id="userRequestForm" class="public-ticket-form" novalidate>
                 <input id="requestedService" name="requestedService" type="hidden">
                 <div class="public-ticket-form__grid" id="userRequestFormGrid">
+                    <section class="request-form-section request-form-section--requester" aria-labelledby="requesterSectionTitle">
+                        <div class="request-form-section__heading"><span class="request-form-section__step">01</span><div><h3 id="requesterSectionTitle">ข้อมูลผู้แจ้ง</h3><p>ระบุข้อมูลติดต่อเพื่อให้ทีม IT ประสานงานกลับ</p></div></div>
+                        <div class="request-form-fields request-form-fields--requester">
                     <label>
                         <span id="requesterLabel">ชื่อผู้แจ้ง <em>*</em></span>
                         <input id="requester" name="requester" type="text" maxlength="120" autocomplete="name" required placeholder="ชื่อ - นามสกุล">
@@ -81,6 +84,15 @@
                         <span>เบอร์ติดต่อหรืออีเมล</span>
                         <input id="contact" name="contact" type="text" maxlength="160" autocomplete="tel" placeholder="เช่น 081-234-5678 หรือ name@company.com">
                     </label>
+                    <label id="locationField">
+                        <span id="locationLabel">สถานที่ / จุดที่พบปัญหา / เครื่องคอมพิวเตอร์ <em>*</em></span>
+                        <input id="location" name="location" type="text" maxlength="240" required placeholder="เช่น ชั้น 2, Line A, โต๊ะ QA-04">
+                    </label>
+                        </div>
+                    </section>
+                    <section class="request-form-section hidden" id="equipmentDetailsSection" aria-labelledby="equipmentSectionTitle">
+                        <div class="request-form-section__heading"><span class="request-form-section__step">02</span><div><h3 id="equipmentSectionTitle">รายละเอียดการเบิกอุปกรณ์</h3><p>ค้นหารายการในคลังและระบุจำนวนที่ต้องการ</p></div></div>
+                        <div class="request-form-fields request-form-fields--equipment">
                     <label class="hidden public-ticket-equipment-item" id="equipmentItemField">
                         <span>รายการอุปกรณ์ <em>*</em></span>
                         <div class="public-ticket-combobox">
@@ -92,8 +104,13 @@
                     </label>
                     <label class="hidden" id="equipmentQuantityField">
                         <span>จำนวน <em>*</em></span>
-                        <input id="equipmentQuantity" name="equipmentQuantity" type="number" min="1" step="1" inputmode="numeric" disabled placeholder="0">
+                        <input id="equipmentQuantity" name="equipmentQuantity" type="number" min="1" step="1" inputmode="numeric" disabled placeholder="เช่น 1">
                     </label>
+                        </div>
+                    </section>
+                    <section class="request-form-section" id="onsiteDetailsSection" aria-labelledby="onsiteSectionTitle">
+                        <div class="request-form-section__heading"><span class="request-form-section__step">02</span><div><h3 id="onsiteSectionTitle">รายละเอียดแจ้งปัญหาหน้างาน</h3><p>บอกประเภท จุดที่พบ และอาการของปัญหา</p></div></div>
+                        <div class="request-form-fields request-form-fields--onsite">
                     <label id="categoryField">
                         <span>ประเภทปัญหา <em>*</em></span>
                         <select id="category" name="category" required>
@@ -108,14 +125,12 @@
                             <option>Other</option>
                         </select>
                     </label>
-                    <label>
-                        <span>สถานที่ / จุดที่พบปัญหา / เครื่องคอมพิวเตอร์ <em>*</em></span>
-                        <input id="location" name="location" type="text" maxlength="240" required placeholder="เช่น ชั้น 2, Line A, โต๊ะ QA-04">
-                    </label>
                     <label class="public-ticket-form__full" id="subjectField">
                         <span>สรุปปัญหา <em>*</em></span>
                         <textarea id="subject" name="subject" rows="2" maxlength="180" required placeholder="เช่น Printer ชั้น 2 พิมพ์ไม่ได้"></textarea>
                     </label>
+                        </div>
+                    </section>
                 </div>
 
                 <div class="ticket-signature-field hidden" id="equipmentSignatureSection">
@@ -150,6 +165,6 @@
     <script src="config-loader.js"></script>
     <script src="api.js?v=20261006-3"></script>
     <script src="ui.js"></script>
-    <script src="user-request.js?v=20260921-1"></script>
+    <script src="user-request.js?v=20261007-form-1"></script>
 </body>
 </html>

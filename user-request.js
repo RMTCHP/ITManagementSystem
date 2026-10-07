@@ -5,6 +5,9 @@
     const formTitle = document.getElementById("userRequestFormTitle");
     const requestedServiceInput = document.getElementById("requestedService");
     const requesterLabel = document.getElementById("requesterLabel");
+    const locationLabel = document.getElementById("locationLabel");
+    const onsiteDetailsSection = document.getElementById("onsiteDetailsSection");
+    const equipmentDetailsSection = document.getElementById("equipmentDetailsSection");
     const categoryField = document.getElementById("categoryField");
     const categoryInput = document.getElementById("category");
     const subjectField = document.getElementById("subjectField");
@@ -154,8 +157,12 @@
         const isEquipment = service === "Equipment Requisition";
         clientRequestId = createClientRequestId();
         requestedServiceInput.value = service;
+        formCard.dataset.requestType = isEquipment ? "equipment" : "onsite";
         formTitle.textContent = isEquipment ? "รายละเอียดการเบิกอุปกรณ์" : "รายละเอียดแจ้งปัญหาหน้างาน";
         requesterLabel.innerHTML = "ชื่อผู้แจ้ง <em>*</em>";
+        locationLabel.innerHTML = isEquipment ? "สถานที่ใช้งาน / จุดรับอุปกรณ์ <em>*</em>" : "สถานที่ / จุดที่พบปัญหา / เครื่องคอมพิวเตอร์ <em>*</em>";
+        onsiteDetailsSection.classList.toggle("hidden", isEquipment);
+        equipmentDetailsSection.classList.toggle("hidden", !isEquipment);
         categoryField.classList.toggle("hidden", isEquipment);
         categoryInput.disabled = isEquipment;
         categoryInput.required = !isEquipment;
@@ -191,6 +198,10 @@
         clientRequestId = "";
         form.reset();
         requestedServiceInput.value = "";
+        formCard.removeAttribute("data-request-type");
+        locationLabel.innerHTML = "สถานที่ / จุดที่พบปัญหา / เครื่องคอมพิวเตอร์ <em>*</em>";
+        onsiteDetailsSection.classList.remove("hidden");
+        equipmentDetailsSection.classList.add("hidden");
         categoryInput.disabled = false;
         categoryInput.required = true;
         subjectInput.disabled = false;

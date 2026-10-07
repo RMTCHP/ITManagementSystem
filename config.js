@@ -1,11 +1,12 @@
 window.APP_CONFIG = {
     appName: "IT Asset Management & Request Job System",
     projectProfile: "Enterprise Clean",
-    webAppUrl: "https://script.google.com/macros/s/AKfycbx7Hh6ojLdnJPMtou92ztJkZZ9LSX06OGlN4WoX8QWR_QNIxGTb0MOrY2FydpFzuQQ/exec",
+    webAppUrl: "https://script.google.com/macros/s/AKfycbyUxWihwz_sOzSfsPSQCjYYMG7yUff9flYRjnFNGnLneEE8TKOgLsaiFW3mz5Nic8E/exec",
     sessionStorageKey: "itms_session",
     sessionHours: 12,
     pageRoutes: {
         dashboard: "dashboard.html",
+        teamBoard: "team-board.html",
         assets: "assets.html",
         tickets: "tickets.html",
         accessRequests: "access-management.html",
@@ -55,7 +56,10 @@ window.APP_CONFIG = {
         Critical: "danger"
     },
     menu: [
-        { group: "Overview", items: [{ key: "dashboard", label: "Dashboard", icon: "fa-chart-pie", description: "Summary and quick actions" }] },
+        { group: "Overview", items: [
+            { key: "dashboard", label: "Dashboard", icon: "fa-chart-pie", description: "Summary and quick actions" },
+            { key: "teamBoard", label: "IT Team Board", icon: "fa-note-sticky", description: "Team announcements, notes and tasks" }
+        ] },
         { group: "Asset & Inventory", items: [
             { key: "assets", label: "Asset Management", icon: "fa-laptop-file", description: "Asset register and lifecycle" },
             { key: "licenses", label: "License Management", icon: "fa-id-card-clip", description: "Software license tracking" },
@@ -86,6 +90,13 @@ window.APP_CONFIG = {
         { key: "outOfStock", label: "Out of Stock", icon: "fa-ban" }
     ],
     modules: {
+        teamBoard: {
+            key: "teamBoard",
+            label: "IT Team Board",
+            icon: "fa-note-sticky",
+            roles: ["Admin", "User"],
+            permissions: { create: ["Admin", "User"], edit: ["Admin", "User"] }
+        },
         assets: {
             key: "assets",
             label: "Asset Management",

@@ -66,6 +66,132 @@
     user-select: none;
 }
 
+/* Keep both request flows on the same field and spacing system. */
+.user-request-body .public-ticket-card {
+    overflow: visible;
+}
+
+.user-request-body .public-ticket-form__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 960px;
+    gap: 18px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.request-form-section {
+    min-width: 0;
+    padding: clamp(20px, 2.5vw, 28px);
+    border: 1px solid #dfe9f2;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 7px 22px rgba(33, 76, 116, 0.04);
+}
+
+.request-form-section__heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.request-form-section__step {
+    display: grid;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 11px;
+    background: #e5f2fc;
+    color: #0b72bc;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.request-form-section__heading h3 {
+    margin: 0;
+    color: #17344f;
+    font-size: 1.04rem;
+    line-height: 1.4;
+}
+
+.request-form-section__heading p {
+    margin: 3px 0 0;
+    color: #6d8399;
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+.request-form-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 20px;
+}
+
+.request-form-fields--onsite {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.request-form-fields > label {
+    min-width: 0;
+}
+
+.user-request-body .request-form-fields input:not([type="file"]),
+.user-request-body .request-form-fields select,
+.user-request-body .request-form-fields textarea {
+    width: 100%;
+    min-width: 0;
+    min-height: 54px;
+    border: 1px solid #cbdbe9;
+    border-radius: 13px;
+    background: #fff;
+    color: #17344f;
+    font-size: 16px;
+    line-height: 1.45;
+}
+
+.user-request-body .request-form-fields textarea {
+    min-height: 118px;
+    padding: 14px 15px;
+}
+
+.user-request-body .request-form-fields input:focus-visible,
+.user-request-body .request-form-fields select:focus-visible,
+.user-request-body .request-form-fields textarea:focus-visible {
+    border-color: #0b78c7;
+    box-shadow: 0 0 0 4px rgba(11, 120, 199, 0.11);
+}
+
+.user-request-body .request-form-fields #subjectField {
+    grid-column: auto;
+}
+
+.user-request-body #ticketPhotoSection,
+.user-request-body #equipmentSignatureSection {
+    max-width: 960px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.user-request-body #ticketPhotoSection {
+    margin-top: 18px;
+}
+
+.user-request-body #equipmentSignatureSection {
+    margin-top: 18px;
+}
+
+.user-request-body .public-ticket-form__footer {
+    max-width: 960px;
+}
+
+.user-request-body .public-ticket-card[data-request-type="equipment"] .request-form-section__step {
+    background: #e4f6ec;
+    color: #17885b;
+}
+
 @media (max-width: 640px) {
     .user-request-body {
         background:
@@ -189,6 +315,7 @@
         position: relative;
         z-index: 2;
         margin-top: -18px;
+        padding: 0 0 24px;
         border-radius: 0;
         border: 0;
         background: #ffffff;
@@ -237,12 +364,21 @@
     }
 
     .user-request-body .public-ticket-form__grid {
-        padding: 20px 18px 16px;
-        gap: 16px;
+        padding: 18px 16px 0;
+        gap: 14px;
         border: 0;
         border-radius: 0;
         background: transparent;
     }
+
+    .request-form-section {
+        padding: 18px 16px;
+        border-radius: 17px;
+    }
+
+    .request-form-section__heading { margin-bottom: 17px; }
+
+    .request-form-fields { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 
     .user-request-body .public-ticket-form label:not(.public-ticket-photo) {
         gap: 7px;
@@ -274,7 +410,11 @@
     }
 
     .user-request-body #ticketPhotoSection {
-        margin: 0 18px;
+        margin: 16px 16px 0;
+    }
+
+    .user-request-body #equipmentSignatureSection {
+        margin: 16px 16px 0;
     }
 
     .user-request-body .public-ticket-photo {
