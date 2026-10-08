@@ -10,6 +10,9 @@
     async function loadDashboard() {
         const result = await ApiClient.request("dashboardOverview", { token: ApiClient.getSessionToken() });
         state.dashboard = result.data || {};
+        if (Array.isArray(state.dashboard.ticketServiceTrend)) {
+            state.jobTrend = state.dashboard.ticketServiceTrend;
+        }
     }
 
     function monthKey(value) {
@@ -39,10 +42,10 @@
         const byMonth = new Map(months.map((month) => [month.key, { ...month, onsite: 0, remote: 0 }]));
         (records || []).forEach((ticket) => {
             const item = byMonth.get(monthKey(ticket.RequestDate));
-            const service = String(ticket.RequestedService || "").trim().toLowerCase();
+            const service = String(ticket.RequestedService || ticket.ServiceMethod || "").trim().toLowerCase();
             if (!item) return;
-            if (service === "on-site" || service === "onsite") item.onsite += 1;
-            if (service === "remote support") item.remote += 1;
+            if (service.includes("remote")) item.remote += 1;
+            else if (/on[\s-]?site/.test(service)) item.onsite += 1;
         });
         return months.map((month) => byMonth.get(month.key));
     }
@@ -54,7 +57,14 @@
         state.jobTrendLoading = true;
         renderDashboard();
         try {
-            const result = await ApiClient.request("listTicketWorkspace", { token: ApiClient.getSessionToken() });
+            const months = getRecentMonths();
+            const today = new Date();
+            const result = await ApiClient.request("listTicketWorkspace", {
+                token: ApiClient.getSessionToken(),
+                from: `${months[0].key}-01`,
+                to: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
+                year: String(today.getFullYear())
+            });
             state.jobTrend = buildJobTrend((result.data && result.data.records) || []);
         } catch (error) {
             // The operational cards remain useful even if the optional trend
