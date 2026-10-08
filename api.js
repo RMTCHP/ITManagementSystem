@@ -80,6 +80,8 @@
             listTeamBoard: 30000,
             saveTeamBoardCard: 30000,
             setTeamBoardStatus: 30000,
+            listTeamBoardReplies: 30000,
+            addTeamBoardReply: 30000,
             listRecords: 30000,
             listAssetWorkspace: 30000,
             searchAssets: 30000,
