@@ -2599,6 +2599,11 @@ button {
     box-shadow: 0 10px 18px rgba(239, 68, 68, 0.26);
 }
 
+.nav-link__badge--info {
+    background: linear-gradient(135deg, #3b9ff2, #176fbe);
+    box-shadow: 0 10px 18px rgba(23, 111, 190, 0.28);
+}
+
 .nav-link:hover,
 .nav-link.is-active {
     transform: none;

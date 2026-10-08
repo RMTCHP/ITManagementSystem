@@ -13,7 +13,14 @@
     ];
     const GROUPS = ["Printable documents", "Service Desk", "Asset & Inventory", "Renewal & Governance"];
     const PAGE_SIZE = 12;
-    const emptyFilters = () => ({ query: "", from: "", to: "", status: "", category: "" });
+    function currentMonthFilters() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const lastDay = String(new Date(year, now.getMonth() + 1, 0).getDate()).padStart(2, "0");
+        return { query: "", from: `${year}-${month}-01`, to: `${year}-${month}-${lastDay}`, status: "", category: "" };
+    }
+    const emptyFilters = () => currentMonthFilters();
     const state = { session: null, tab: "detail", selected: "", catalogSearch: "", rows: {}, documents: {}, loadedAt: {}, summary: null, busy: false, error: "", page: 1, filters: emptyFilters() };
     const escape = (value) => UI.escapeHtml(value == null ? "" : String(value));
     const reportFor = (key) => REPORTS.find((report) => report.key === key);
@@ -154,7 +161,13 @@
         renderPage();
         try {
             const action = key === "tickets" ? "listTicketWorkspace" : "listRecords";
-            const result = await ApiClient.request(action, { token: ApiClient.getSessionToken(), module: key });
+            const result = await ApiClient.request(action, {
+                token: ApiClient.getSessionToken(),
+                module: key,
+                from: state.filters.from,
+                to: state.filters.to,
+                dateField: report.dateField || ""
+            });
             state.rows[key] = result.data.records || [];
             state.loadedAt[key] = AppShell.currentTimestampLabel();
         } catch (error) {
@@ -239,7 +252,7 @@
             } else if (button.hasAttribute("data-summary-retry")) {
                 await loadSummary(true);
             } else if (button.hasAttribute("data-report-clear")) {
-                state.filters = emptyFilters(); state.page = 1; renderPage();
+                state.filters = emptyFilters(); state.page = 1; await loadReport(state.selected, true);
             } else if (button.hasAttribute("data-document-clear")) {
                 state.filters = emptyFilters();
                 await loadDocumentReport(state.selected, 1);
@@ -286,7 +299,7 @@
             }
             state.filters = { query: String(values.get("query") || ""), from, to, status: String(values.get("status") || ""), category: String(values.get("category") || "") };
             state.page = 1;
-            renderPage();
+            loadReport(state.selected, true);
         });
     }
 

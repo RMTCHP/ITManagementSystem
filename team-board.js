@@ -60,6 +60,10 @@
         state.cards = Array.isArray(response.data?.cards) ? response.data.cards : [];
         state.members = Array.isArray(response.data?.members) ? response.data.members : [];
         state.totalActive = Number(response.data?.totalActive || state.cards.length);
+        const assignedTeamTasks = state.cards.filter((card) => card.Type === "Task"
+            && String(card.AssigneeUserID || "") === currentUserId()
+            && !["Done", "Archived"].includes(String(card.Status || ""))).length;
+        AppShell.updateSidebarAlerts({ assignedTeamTasks });
         render();
     }
 

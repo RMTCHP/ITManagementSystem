@@ -191,6 +191,10 @@
                                             <span class="nav-link__badge nav-link__badge--warning hidden" data-nav-badge="maintenance-expiring"></span>
                                             <span class="nav-link__badge nav-link__badge--danger hidden" data-nav-badge="maintenance-expired"></span>
                                         </span>
+                                     ` : item.key === "teamBoard" ? `
+                                         <span class="nav-link__badges">
+                                             <span class="nav-link__badge nav-link__badge--info hidden" data-nav-badge="teamBoard-assigned"></span>
+                                         </span>
                                     ` : `<span class="nav-link__badges"></span>`}
                                 </span>
                             </a>
@@ -211,7 +215,8 @@
         const outBadge = document.querySelector('[data-nav-badge="stockItems-out"]');
         const maintenanceExpiringBadge = document.querySelector('[data-nav-badge="maintenance-expiring"]');
         const maintenanceExpiredBadge = document.querySelector('[data-nav-badge="maintenance-expired"]');
-        if (!assetExpiringBadge || !assetExpiredBadge || !accessPendingBadge || !lowBadge || !outBadge || !maintenanceExpiringBadge || !maintenanceExpiredBadge) {
+        const assignedTeamTasksBadge = document.querySelector('[data-nav-badge="teamBoard-assigned"]');
+        if (!assetExpiringBadge || !assetExpiredBadge || !accessPendingBadge || !lowBadge || !outBadge || !maintenanceExpiringBadge || !maintenanceExpiredBadge || !assignedTeamTasksBadge) {
             return;
         }
 
@@ -237,7 +242,10 @@
                 : Number(previousState.maintenanceExpiring || 0),
             maintenanceExpired: Object.prototype.hasOwnProperty.call(summary || {}, "maintenanceExpired")
                 ? Number(summary.maintenanceExpired || 0)
-                : Number(previousState.maintenanceExpired || 0)
+                : Number(previousState.maintenanceExpired || 0),
+            assignedTeamTasks: Object.prototype.hasOwnProperty.call(summary || {}, "assignedTeamTasks")
+                ? Number(summary.assignedTeamTasks || 0)
+                : Number(previousState.assignedTeamTasks || 0)
         };
         setSidebarAlertsState(nextState);
 
@@ -248,6 +256,7 @@
         const outOfStockCount = nextState.outOfStock;
         const maintenanceExpiringCount = nextState.maintenanceExpiring;
         const maintenanceExpiredCount = nextState.maintenanceExpired;
+        const assignedTeamTasksCount = nextState.assignedTeamTasks;
 
         if (expiringSoonCount > 0) {
             assetExpiringBadge.textContent = String(expiringSoonCount);
@@ -304,6 +313,21 @@
             maintenanceExpiredBadge.textContent = "";
             maintenanceExpiredBadge.classList.add("hidden");
         }
+
+        if (assignedTeamTasksCount > 0) {
+            assignedTeamTasksBadge.textContent = String(assignedTeamTasksCount);
+            assignedTeamTasksBadge.classList.remove("hidden");
+        } else {
+            assignedTeamTasksBadge.textContent = "";
+            assignedTeamTasksBadge.classList.add("hidden");
+        }
+    }
+
+    function refreshSidebarAlertsInBackground() {
+        if (!window.ApiClient || !ApiClient.getSessionToken()) return;
+        ApiClient.request("sidebarAlerts", { token: ApiClient.getSessionToken() })
+            .then((result) => updateSidebarAlerts(result.data || {}))
+            .catch(() => {});
     }
 
     function bindSidebarGroupToggles(sidebarNav) {
@@ -534,6 +558,7 @@
         elements.toggleSidebarBtn = ensureSidebarToggleButton(elements);
         renderSidebar(options.currentView, session, elements.sidebarNav);
         updateSidebarAlerts(getSidebarAlertsState());
+        refreshSidebarAlertsInBackground();
         bindSidebarGroupToggles(elements.sidebarNav);
         applyTooltips(elements.sidebarNav);
         bindSidebarToggle(elements.sidebar, elements.toggleSidebarBtn);
