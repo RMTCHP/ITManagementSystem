@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link rel="stylesheet" href="ticket-login.css?v=20260828-1">
+    <link rel="stylesheet" href="ticket-login.css?v=20261008-shared-login-1">
 </head>
 <body class="ticket-login-body">
     <main class="ticket-login-shell">
@@ -29,6 +29,7 @@
                 <input id="ticketLoginUsername" type="text" autocomplete="username" maxlength="120" required placeholder="Enter username">
                 <label for="ticketLoginPassword">Password</label>
                 <input id="ticketLoginPassword" type="password" autocomplete="current-password" required placeholder="Enter password">
+                <label class="ticket-login-remember"><input type="checkbox" id="ticketRememberMe"><span>Remember username on this device</span></label>
                 <button type="submit"><i class="fa-solid fa-right-to-bracket"></i><span>Login to Ticket Workspace</span></button>
             </form>
             <button id="userQrCodeButton" class="ticket-login-card__qr-button" type="button">
@@ -39,8 +40,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="config-loader.js"></script>
-    <script src="api.js?v=20261006-3"></script>
+    <script src="api.js?v=20261008-shared-login-1"></script>
     <script src="ui.js"></script>
-    <script src="ticket-login.js?v=20261005-2"></script>
+    <script src="ticket-login.js?v=20261008-shared-login-1"></script>
 </body>
 </html>

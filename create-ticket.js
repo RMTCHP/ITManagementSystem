@@ -44,9 +44,12 @@
     const requestFormChoices = document.getElementById("requestFormChoices");
     const requestComputerSearch = document.getElementById("requestComputerSearch");
     const requestComputerSearchInput = document.getElementById("requestComputerSearchInput");
+    const requestComputerSearchForm = document.getElementById("requestComputerSearchForm");
+    const requestComputerSearchButton = requestComputerSearchForm.querySelector('[type="submit"]');
     const requestComputerResults = document.getElementById("requestComputerResults");
     const submitButton = form.querySelector('[type="submit"]');
     let selectedPhoto = null;
+    let preparedPhotoPromise = null;
     let previewUrl = "";
     let currentTicketJobs = [];
     let hasEquipmentSignature = false;
@@ -55,6 +58,7 @@
     let isSubmitting = false;
     let requestComputerAssets = [];
     let isOpeningComputerBorrowing = false;
+    let isSearchingComputer = false;
     let selectedBorrowAsset = null;
     let selectedReturnBorrowing = null;
     let clientRequestId = "";
@@ -111,9 +115,10 @@
     async function loadEquipmentItems() {
         const session = getActiveSession();
         if (!session) throw new Error("Please login to the Ticket Workspace again.");
-        UI.loading("Loading inventory", "Retrieving available equipment");
+        equipmentItemSearch.disabled = true;
+        equipmentItemHint.textContent = "Loading available equipment…";
         try {
-            const result = await ApiClient.request("listRecords", { token: session.token, module: "stockItems" });
+            const result = await ApiClient.request("listPublicInventoryItems");
             equipmentItems = ((result.data && result.data.records) || [])
                 .filter((item) => Number(item.Quantity || 0) > 0)
                 .sort((left, right) => String(left.ItemName || "").localeCompare(String(right.ItemName || "")));
@@ -124,8 +129,9 @@
                 ? `${equipmentItems.length} available item${equipmentItems.length === 1 ? "" : "s"}. Search by name.`
                 : "No inventory items are currently available.";
             renderEquipmentOptions();
-        } finally {
-            Swal.close();
+        } catch (error) {
+            equipmentItemHint.textContent = "Unable to load equipment. Choose Equipment Requisition again to retry.";
+            throw error;
         }
     }
 
@@ -155,9 +161,10 @@
     function setupEquipmentSignature() {
         const rect = equipmentSignatureCanvas.getBoundingClientRect();
         const context = equipmentSignatureCanvas.getContext("2d");
-        equipmentSignatureCanvas.width = Math.max(1, Math.floor(rect.width * window.devicePixelRatio));
-        equipmentSignatureCanvas.height = Math.max(1, Math.floor(rect.height * window.devicePixelRatio));
-        context.scale(window.devicePixelRatio, window.devicePixelRatio);
+        const signatureScale = Math.min(window.devicePixelRatio || 1, 1.5);
+        equipmentSignatureCanvas.width = Math.max(1, Math.floor(rect.width * signatureScale));
+        equipmentSignatureCanvas.height = Math.max(1, Math.floor(rect.height * signatureScale));
+        context.scale(signatureScale, signatureScale);
         context.lineWidth = 2;
         context.lineCap = "round";
         context.strokeStyle = "#17324d";
@@ -216,9 +223,9 @@
         formCard.classList.remove("hidden");
         window.scrollTo({ top: 0, behavior: "smooth" });
         if (isEquipment) {
+            setupEquipmentSignature();
             try {
                 await loadEquipmentItems();
-                setupEquipmentSignature();
             } catch (error) {
                 await UI.alert({ icon: "error", title: "Unable to load inventory", text: error.message || "Please try again." });
             }
@@ -239,6 +246,7 @@
 
     function clearSelectedPhoto() {
         selectedPhoto = null;
+        preparedPhotoPromise = null;
         photoInput.value = "";
         if (previewUrl) {
             URL.revokeObjectURL(previewUrl);
@@ -553,6 +561,12 @@
             return;
         }
         selectedPhoto = file;
+        // Prepare the upload while the requester finishes the form, instead of
+        // making Submit wait for image decoding and compression.
+        preparedPhotoPromise = preparePhotoUpload(file).then(
+            (value) => ({ value }),
+            (error) => ({ error })
+        );
         previewUrl = URL.createObjectURL(file);
         photoPreviewImage.src = previewUrl;
         photoPreview.classList.remove("hidden");
@@ -586,13 +600,22 @@
     });
     document.getElementById("requestEmailButton").addEventListener("click", () => { requestFormCard.classList.add("hidden"); selectService("Email"); });
     document.getElementById("requestComputerButton").addEventListener("click", () => { requestFormChoices.classList.add("hidden"); requestComputerSearch.classList.remove("hidden"); requestComputerSearchInput.focus(); });
-    document.getElementById("requestComputerSearchForm").addEventListener("submit", async (event) => {
+    requestComputerSearchForm.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (isSearchingComputer || isOpeningComputerBorrowing) return;
+        const query = requestComputerSearchInput.value.trim();
+        if (!query) {
+            await UI.alert({ icon: "warning", title: "Enter a computer name", text: "Search by computer name, Asset Tag, Serial Number, Asset ID, or Location." });
+            requestComputerSearchInput.focus();
+            return;
+        }
+        isSearchingComputer = true;
+        requestComputerSearchButton.disabled = true;
         try {
             const session = getActiveSession();
             if (!session) throw new Error("Please login again.");
             UI.loading("Searching computers", "Looking up matching assets");
-            const result = await ApiClient.request("searchAssets", { token: session.token, query: requestComputerSearchInput.value.trim() });
+            const result = await ApiClient.request("searchAssets", { token: session.token, query });
             const matches = (result.data && result.data.records) || [];
             requestComputerAssets = matches;
             Swal.close();
@@ -610,7 +633,13 @@
             } finally {
                 isOpeningComputerBorrowing = false;
             }
-        } catch (error) { Swal.close(); await UI.alert({ icon: "error", title: "Search failed", text: error.message || "Unable to search computers." }); }
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Computer request failed", text: error.message || "Unable to search computers." });
+        } finally {
+            isSearchingComputer = false;
+            requestComputerSearchButton.disabled = false;
+        }
     });
     requestComputerResults.addEventListener("click", async (event) => {
         const result = event.target.closest("[data-request-asset]");
@@ -703,18 +732,21 @@
 
     async function openComputerBorrowingSwal(asset) {
         const session = getActiveSession();
-        UI.loading("Loading computer", "Checking borrowing status");
-        let recordResult;
-        try {
-            recordResult = await ApiClient.request("listComputerBorrowings", { token: session.token, assetId: asset.AssetID });
-        } finally {
-            Swal.close();
-        }
-        const activeBorrowing = ((recordResult.data && recordResult.data.records) || []).find((item) => item.Status === "Borrowed");
+        if (!session) throw new Error("Please login again.");
         let selectedAction = "";
         await Swal.fire({ title: "Computer Borrowing", html: `<div class="asset-borrowing-menu"><div class="inventory-history__header"><strong>${escapeHtml(asset.AssetName || asset.AssetID)}</strong><span>${escapeHtml(asset.FixedAssetNo || asset.AssetID)}</span></div><div class="asset-borrowing-menu__choices"><button type="button" data-computer-action="borrow"><i class="fa-solid fa-hand-holding-hand"></i><span><strong>Borrow Computer</strong><small>Hand over this computer to a user.</small></span></button><button type="button" data-computer-action="return"><i class="fa-solid fa-rotate-left"></i><span><strong>Return Computer</strong><small>Receive this computer and its accessories.</small></span></button></div></div>`, showConfirmButton: false, showCloseButton: true, didOpen: () => document.querySelectorAll("[data-computer-action]").forEach((button) => button.onclick = () => { selectedAction = button.dataset.computerAction; Swal.close(); }) });
         if (selectedAction === "borrow") await openBorrowComputerForm(asset, session);
-        if (selectedAction === "return") await openReturnComputerForm(asset, activeBorrowing, session);
+        if (selectedAction === "return") {
+            UI.loading("Loading computer", "Checking borrowing status");
+            let recordResult;
+            try {
+                recordResult = await ApiClient.request("listComputerBorrowings", { token: session.token, assetId: asset.AssetID });
+            } finally {
+                Swal.close();
+            }
+            const activeBorrowing = ((recordResult.data && recordResult.data.records) || []).find((item) => item.Status === "Borrowed");
+            await openReturnComputerForm(asset, activeBorrowing, session);
+        }
     }
 
     async function openBorrowComputerForm(asset, session) {
@@ -874,6 +906,7 @@
             return;
         }
         setSubmitting(true);
+        UI.loading("Submitting ticket", "Preparing your request");
 
         const values = new FormData(form);
         const payload = {
@@ -898,13 +931,17 @@
 
         try {
             if (selectedPhoto) {
-                payload.file = await preparePhotoUpload(selectedPhoto);
+                const preparedPhoto = await preparedPhotoPromise;
+                if (preparedPhoto.error) throw preparedPhoto.error;
+                payload.file = preparedPhoto.value;
             }
             if (isEquipment) {
+                // Let the loading dialog paint before encoding the signature.
+                await new Promise((resolve) => requestAnimationFrame(resolve));
                 const signatureData = equipmentSignatureCanvas.toDataURL("image/png");
                 payload.requestSignature = { name: "equipment-request-signature.png", type: "image/png", size: Math.ceil(signatureData.length * 0.75), base64: signatureData.split(",")[1] };
             }
-            UI.loading("Submitting ticket", "Sending your issue to IT");
+            UI.loading("Submitting ticket", "Saving your ticket in the system");
             const result = await ApiClient.request("createPublicTicket", payload);
             Swal.close();
             await UI.alert({

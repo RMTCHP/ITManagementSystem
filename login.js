@@ -13,19 +13,6 @@
         return allowedPages.has(returnTo) ? returnTo : "dashboard.html";
     }
 
-    function hasLikelyActiveSession(session) {
-        if (!session || !session.token || !session.user) {
-            return false;
-        }
-
-        if (!session.expiresAt) {
-            return true;
-        }
-
-        const expiry = new Date(session.expiresAt);
-        return !Number.isNaN(expiry.getTime()) && expiry.getTime() > Date.now();
-    }
-
     async function bootstrap() {
         const remembered = localStorage.getItem("itms_remember_username");
         if (remembered) {
@@ -34,12 +21,12 @@
         }
 
         const savedSession = ApiClient.getSavedSession();
-        if (hasLikelyActiveSession(savedSession)) {
+        if (ApiClient.hasLikelyActiveSession(savedSession)) {
             window.location.href = getPostLoginDestination();
             return;
         }
 
-        if (savedSession && !hasLikelyActiveSession(savedSession)) {
+        if (savedSession && !ApiClient.hasLikelyActiveSession(savedSession)) {
             ApiClient.clearSession();
         }
     }
@@ -71,23 +58,7 @@
         try {
             UI.loading("Signing in", "Validating your credentials");
             const result = await ApiClient.request("login", { username, password });
-            let session = result && result.data && result.data.user
-                ? result.data
-                : (result && result.user ? result : null);
-            const loginData = result && result.data ? result.data : result;
-            if ((!session || !session.user) && loginData && loginData.token) {
-                const checkedSession = await ApiClient.request("checkSession", { token: loginData.token });
-                if (checkedSession.data && checkedSession.data.valid && checkedSession.data.user) {
-                    session = {
-                        token: checkedSession.data.token || loginData.token,
-                        expiresAt: checkedSession.data.expiresAt || loginData.expiresAt,
-                        user: checkedSession.data.user
-                    };
-                }
-            }
-            if (!session || !session.token || !session.user) {
-                throw new Error("Login response is incomplete. Confirm that the latest code.gs has been deployed.");
-            }
+            const session = await ApiClient.resolveLoginSession(result);
 
             ApiClient.saveSession(session);
             ApiClient.fireAndForget("recordLoginActivity", { token: session.token });

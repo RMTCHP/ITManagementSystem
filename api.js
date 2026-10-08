@@ -43,6 +43,38 @@
         return session && session.token ? session.token : "";
     }
 
+    function hasLikelyActiveSession(session) {
+        if (!session || !session.token || !session.user) {
+            return false;
+        }
+        if (!session.expiresAt) {
+            return true;
+        }
+        const expiry = new Date(session.expiresAt);
+        return !Number.isNaN(expiry.getTime()) && expiry.getTime() > Date.now();
+    }
+
+    async function resolveLoginSession(result) {
+        let session = result && result.data && result.data.user
+            ? result.data
+            : (result && result.user ? result : null);
+        const loginData = result && result.data ? result.data : result;
+        if ((!session || !session.user) && loginData && loginData.token) {
+            const checkedSession = await request("checkSession", { token: loginData.token });
+            if (checkedSession.data && checkedSession.data.valid && checkedSession.data.user) {
+                session = {
+                    token: checkedSession.data.token || loginData.token,
+                    expiresAt: checkedSession.data.expiresAt || loginData.expiresAt,
+                    user: checkedSession.data.user
+                };
+            }
+        }
+        if (!session || !session.token || !session.user) {
+            throw new Error("Login response is incomplete. Confirm that the latest code.gs has been deployed.");
+        }
+        return session;
+    }
+
     function saveSession(session) {
         const serialized = JSON.stringify(session);
         try {
@@ -141,7 +173,7 @@
             body: body.toString(),
             signal: controller.signal
         };
-        const retryableActions = new Set(["login", "checkSession", "dashboardSummary", "dashboardOverview", "sidebarAlerts", "listRecords", "listAssetWorkspace", "listTicketWorkspace", "listKnowledgeCategories"]);
+        const retryableActions = new Set(["login", "checkSession", "dashboardSummary", "dashboardOverview", "sidebarAlerts", "listRecords", "listAssetWorkspace", "searchAssets", "listComputerBorrowings", "listTicketWorkspace", "listKnowledgeCategories"]);
 
         try {
             const retryDelays = [0, 800, 1800];
@@ -219,6 +251,8 @@
         fireAndForget,
         getSessionToken,
         getSavedSession,
+        hasLikelyActiveSession,
+        resolveLoginSession,
         saveSession,
         clearSession
     };
