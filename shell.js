@@ -565,9 +565,17 @@
         bindLogout(elements.logoutButton);
 
         if (typeof options.onSearch === "function") {
-            elements.globalSearch.addEventListener("input", (event) => {
-                options.onSearch(event.target.value.trim(), { session, elements });
-            });
+            if (options.searchOnEnter) {
+                elements.globalSearch.addEventListener("keydown", async (event) => {
+                    if (event.key !== "Enter" || event.isComposing) return;
+                    event.preventDefault();
+                    await options.onSearch(event.currentTarget.value.trim(), { session, elements });
+                });
+            } else {
+                elements.globalSearch.addEventListener("input", (event) => {
+                    options.onSearch(event.target.value.trim(), { session, elements });
+                });
+            }
         }
 
         const context = { session, elements };

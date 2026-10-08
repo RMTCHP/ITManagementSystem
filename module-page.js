@@ -58,7 +58,6 @@
         },
         pendingActions: new Set()
     };
-    let assetSearchTimer = 0;
 
     function beginAction(actionKey) {
         if (state.pendingActions.has(actionKey)) {
@@ -4251,7 +4250,8 @@
             title: moduleConfig.label,
             eyebrow: "Module Workspace",
             searchPlaceholder: `Search ${moduleConfig.label.toLowerCase()}`,
-            onSearch(value) {
+            searchOnEnter: isAssetModule(),
+            async onSearch(value) {
                 if (isKnowledgeModule() && !String(state.filters.search || "").trim() && String(value || "").trim()) {
                     state.filters.knowledgeType = "";
                     state.filters.status = "";
@@ -4259,10 +4259,7 @@
                 state.filters.search = value;
                 state.page = 1;
                 if (isAssetModule()) {
-                    window.clearTimeout(assetSearchTimer);
-                    assetSearchTimer = window.setTimeout(() => {
-                        reloadAssetWorkspace(false);
-                    }, 350);
+                    await reloadAssetWorkspace();
                     return;
                 }
                 renderTable();
