@@ -13,6 +13,31 @@
     const canReply = (card) => card.Type === "Task" && Boolean(card.AssigneeUserID) && (canManage(card) || String(card.AssigneeUserID) === currentUserId());
     const isUpdate = (card) => ["Update", "Announcement", "Note"].includes(String(card?.Type || ""));
 
+    function refreshAssignedTaskBadge() {
+        const assignedTeamTasks = state.cards.filter((card) => card.Type === "Task"
+            && String(card.AssigneeUserID || "") === currentUserId()
+            && !["Done", "Archived"].includes(String(card.Status || ""))).length;
+        AppShell.updateSidebarAlerts({ assignedTeamTasks });
+    }
+
+    function applySavedCard(card) {
+        if (!card || !card.BoardID) return;
+        const existingIndex = state.cards.findIndex((item) => String(item.BoardID) === String(card.BoardID));
+        if (String(card.Status || "") === "Archived") {
+            if (existingIndex !== -1) {
+                state.cards.splice(existingIndex, 1);
+                state.totalActive = Math.max(0, state.totalActive - 1);
+            }
+        } else if (existingIndex === -1) {
+            state.cards.unshift(card);
+            state.totalActive += 1;
+        } else {
+            state.cards.splice(existingIndex, 1, card);
+        }
+        refreshAssignedTaskBadge();
+        render();
+    }
+
     function dateLabel(value) {
         const date = String(value || "").slice(0, 10);
         return /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : "";
@@ -60,10 +85,7 @@
         state.cards = Array.isArray(response.data?.cards) ? response.data.cards : [];
         state.members = Array.isArray(response.data?.members) ? response.data.members : [];
         state.totalActive = Number(response.data?.totalActive || state.cards.length);
-        const assignedTeamTasks = state.cards.filter((card) => card.Type === "Task"
-            && String(card.AssigneeUserID || "") === currentUserId()
-            && !["Done", "Archived"].includes(String(card.Status || ""))).length;
-        AppShell.updateSidebarAlerts({ assignedTeamTasks });
+        refreshAssignedTaskBadge();
         render();
     }
 
@@ -109,8 +131,8 @@
         if (!result.isConfirmed) return;
         UI.loading(editing ? "Saving changes" : "Posting to board", "Updating the team board");
         try {
-            await ApiClient.request("saveTeamBoardCard", { token: ApiClient.getSessionToken(), record: result.value });
-            await loadBoard();
+            const saved = await ApiClient.request("saveTeamBoardCard", { token: ApiClient.getSessionToken(), record: result.value });
+            applySavedCard(saved.data);
             Swal.close();
         } catch (error) {
             Swal.close();
@@ -123,8 +145,8 @@
         state.busy.add(card.BoardID);
         UI.loading(status === "Archived" ? "Archiving item" : "Updating task", "Saving the latest status");
         try {
-            await ApiClient.request("setTeamBoardStatus", { token: ApiClient.getSessionToken(), boardId: card.BoardID, status });
-            await loadBoard();
+            const saved = await ApiClient.request("setTeamBoardStatus", { token: ApiClient.getSessionToken(), boardId: card.BoardID, status });
+            applySavedCard(saved.data);
             Swal.close();
         } catch (error) {
             Swal.close();
