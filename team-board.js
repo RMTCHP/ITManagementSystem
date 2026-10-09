@@ -1,6 +1,6 @@
 (() => {
     const state = {
-        cards: [], members: [], totalActive: 0, query: "", filter: "all", session: null, busy: new Set(),
+        cards: [], historyCards: null, members: [], totalActive: 0, query: "", filter: "all", session: null, busy: new Set(),
         view: "board", calendarMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     };
     const types = ["Update", "Task"];
@@ -13,8 +13,10 @@
     const isAdmin = () => String(state.session?.user?.Role || "").toLowerCase() === "admin";
     const canManage = (card) => isAdmin() || String(card.CreatedByID || "") === currentUserId();
     const canChangeStatus = (card) => card.Type === "Task" && (canManage(card) || String(card.AssigneeUserID || "") === currentUserId());
-    const canReply = (card) => card.Type === "Task" && Boolean(card.AssigneeUserID) && (canManage(card) || String(card.AssigneeUserID) === currentUserId());
+    const canReply = (card) => card.Type === "Task" && card.Status !== "Archived" && Boolean(card.AssigneeUserID) && (canManage(card) || String(card.AssigneeUserID) === currentUserId());
     const isUpdate = (card) => ["Update", "Announcement", "Note"].includes(String(card?.Type || ""));
+    const findKnownCard = (id) => state.cards.find((card) => String(card.BoardID) === String(id))
+        || (state.historyCards || []).find((card) => String(card.BoardID) === String(id));
 
     function refreshAssignedTaskBadge() {
         const assignedTeamTasks = state.cards.filter((card) => card.Type === "Task"
@@ -36,6 +38,11 @@
             state.totalActive += 1;
         } else {
             state.cards.splice(existingIndex, 1, card);
+        }
+        if (Array.isArray(state.historyCards)) {
+            const historyIndex = state.historyCards.findIndex((item) => String(item.BoardID) === String(card.BoardID));
+            if (historyIndex === -1) state.historyCards.unshift(card);
+            else state.historyCards.splice(historyIndex, 1, card);
         }
         refreshAssignedTaskBadge();
         render();
@@ -76,7 +83,7 @@
         const monthIndex = month.getMonth();
         const firstDay = new Date(year, monthIndex, 1);
         const gridStart = new Date(year, monthIndex, 1 - ((firstDay.getDay() + 6) % 7));
-        const tasksByDate = state.cards.filter((card) => card.Type === "Task" && card.Status !== "Archived" && dueDateKey(card.DueDate))
+        const tasksByDate = (state.historyCards || state.cards).filter((card) => card.Type === "Task" && dueDateKey(card.DueDate))
             .reduce((items, card) => {
                 const key = dueDateKey(card.DueDate);
                 (items[key] ||= []).push(card);
@@ -89,12 +96,12 @@
             const tasks = tasksByDate[key] || [];
             return `<div class="team-board__calendar-day${date.getMonth() !== monthIndex ? " is-outside" : ""}${key === calendarDateKey(new Date()) ? " is-today" : ""}">
                 <span class="team-board__calendar-date">${date.getDate()}</span>
-                <div class="team-board__calendar-tasks">${tasks.slice(0, 3).map((card) => `<button type="button" class="team-board__calendar-task team-board__calendar-task--${taskPriority(card).toLowerCase()}" data-calendar-card="${escape(card.BoardID)}" title="${escape(card.Title)}">${escape(card.Title)}</button>`).join("")}${tasks.length > 3 ? `<span class="team-board__calendar-more">+${tasks.length - 3} more</span>` : ""}</div>
+                <div class="team-board__calendar-tasks">${tasks.slice(0, 3).map((card) => `<button type="button" class="team-board__calendar-task ${card.Status === "Archived" ? "team-board__calendar-task--archived" : `team-board__calendar-task--${taskPriority(card).toLowerCase()}`}" data-calendar-card="${escape(card.BoardID)}" title="${escape(card.Title)}${card.Status === "Archived" ? " (Archived)" : ""}">${escape(card.Title)}</button>`).join("")}${tasks.length > 3 ? `<span class="team-board__calendar-more">+${tasks.length - 3} more</span>` : ""}</div>
             </div>`;
         }).join("");
         return `<section class="team-board__calendar" aria-label="Team task due-date calendar">
             <div class="team-board__calendar-head"><button type="button" class="icon-btn" data-calendar-month="previous" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><h3>${calendarMonthLabel(month)}</h3><button type="button" class="icon-btn" data-calendar-month="next" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div>
-            <p class="team-board__calendar-caption"><i class="fa-regular fa-calendar"></i> Due dates for active internal team tasks only</p>
+            <p class="team-board__calendar-caption"><i class="fa-regular fa-calendar"></i> Due dates for all internal team tasks · Green = archived</p>
             <div class="team-board__calendar-weekdays"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
             <div class="team-board__calendar-grid">${days}</div>
         </section>`;
@@ -112,15 +119,14 @@
 
     function render() {
         const query = state.query.toLowerCase();
-        const cards = state.cards.filter((card) => (state.filter === "all" || (state.filter === "Update" ? isUpdate(card) : card.Type === state.filter))
-            && (!query || [card.Title, card.Body, card.AssigneeName, card.CreatedByName].some((value) => String(value || "").toLowerCase().includes(query))));
+        const cards = state.cards.filter((card) => !query || [card.Title, card.Body, card.AssigneeName, card.CreatedByName].some((value) => String(value || "").toLowerCase().includes(query)));
         const groups = [
             { type: "Update", label: "Team updates", icon: "fa-bullhorn" },
             { type: "Task", label: "Team tasks", icon: "fa-list-check" }
         ];
         document.getElementById("viewContainer").innerHTML = `<section class="team-board">
             <div class="team-board__toolbar"><div><p class="section-card__eyebrow">Shared workspace</p><h2>Team activity</h2><p>Share an update, hand over information or assign a task to a teammate.</p></div><button class="primary-btn" type="button" id="addBoardItem"><i class="fa-solid fa-plus"></i> Add item</button></div>
-            <div class="team-board__viewbar"><div class="team-board__view-toggle" role="group" aria-label="Board view"><button type="button" data-board-view-mode="board" class="${state.view === "board" ? "is-active" : ""}"><i class="fa-solid fa-grip"></i> Board</button><button type="button" data-board-view-mode="calendar" class="${state.view === "calendar" ? "is-active" : ""}"><i class="fa-regular fa-calendar-days"></i> Due-date calendar</button></div>${state.view === "board" ? `<div class="team-board__filters"><button type="button" data-board-filter="all" class="${state.filter === "all" ? "is-active" : ""}">All</button>${groups.map((group) => `<button type="button" data-board-filter="${group.type}" class="${state.filter === group.type ? "is-active" : ""}">${group.label}</button>`).join("")}</div>` : ""}</div>
+            <div class="team-board__viewbar"><div class="team-board__view-toggle" role="group" aria-label="Board view"><button type="button" data-board-view-mode="board" class="${state.view === "board" ? "is-active" : ""}"><i class="fa-solid fa-grip"></i> Board</button><button type="button" data-board-view-mode="calendar" class="${state.view === "calendar" ? "is-active" : ""}"><i class="fa-regular fa-calendar-days"></i> Due-date calendar</button></div><button class="team-board__history-btn" type="button" data-team-board-history><i class="fa-solid fa-clock-rotate-left"></i> History</button></div>
             ${state.totalActive > 250 ? `<p class="team-board__notice">Showing the latest 250 active items. Archive completed items to keep the board focused.</p>` : ""}
             ${state.view === "calendar" ? renderCalendar() : `<div class="team-board__columns">${groups.map((group) => {
                 const groupCards = cards.filter((card) => group.type === "Update" ? isUpdate(card) : card.Type === group.type);
@@ -136,6 +142,43 @@
         state.totalActive = Number(response.data?.totalActive || state.cards.length);
         refreshAssignedTaskBadge();
         render();
+    }
+
+    async function loadBoardHistoryCards() {
+        const response = await ApiClient.request("listTeamBoardHistory", { token: ApiClient.getSessionToken() });
+        state.historyCards = Array.isArray(response.data?.cards) ? response.data.cards : [];
+        return state.historyCards;
+    }
+
+    async function openBoardHistory() {
+        UI.loading("Loading history", "Fetching all team updates and tasks");
+        let historyCards = [];
+        try {
+            historyCards = await loadBoardHistoryCards();
+            Swal.close();
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to load history", text: error.message || "Please try again." });
+            return;
+        }
+        let selectedId = "";
+        await Swal.fire({
+            title: "Team Board History", width: "min(820px, calc(100vw - 24px))", showCloseButton: true,
+            confirmButtonText: "Close", customClass: { popup: "team-board__modal" },
+            html: `<div class="team-board__history"><p class="team-board__history-intro">${historyCards.length} items · Includes active and archived updates and tasks</p>${historyCards.length ? `<div class="team-board__history-list">${historyCards.map((card) => {
+                const archived = card.Status === "Archived";
+                const type = card.Type === "Task" ? "Task" : "Update";
+                const status = type === "Task" ? (card.Status || "To Do") : (archived ? "Archived" : "Update");
+                return `<button type="button" class="team-board__history-item${archived ? " is-archived" : ""}" data-history-card="${escape(card.BoardID)}"><span class="team-board__history-icon"><i class="fa-solid ${type === "Task" ? "fa-list-check" : "fa-bullhorn"}"></i></span><span class="team-board__history-main"><strong>${escape(card.Title)}</strong><small>${type === "Task" ? `Assigned to ${escape(card.AssigneeName || "Unassigned")}` : `Posted by ${escape(card.CreatedByName || "-")}`} · ${escape(dateTimeLabel(card.UpdatedAt || card.CreatedAt))}</small></span><span class="team-board__history-status${archived ? " is-archived" : ""}">${escape(status)}</span></button>`;
+            }).join("")}</div>` : `<p class="team-board__activity-empty">No board history yet.</p>`}</div>`,
+            didOpen: () => {
+                Swal.getPopup()?.querySelectorAll("[data-history-card]").forEach((button) => {
+                    button.addEventListener("click", () => { selectedId = button.dataset.historyCard; Swal.close(); });
+                });
+            }
+        });
+        const selected = historyCards.find((card) => String(card.BoardID) === String(selectedId));
+        if (selected) await showCard(selected);
     }
 
     async function openCardForm(card = null) {
@@ -238,7 +281,7 @@
             confirmButtonText: allowReply ? "Post reply" : "Close",
             showCancelButton: allowReply,
             cancelButtonText: "Close",
-            html: `<div class="team-board__detail"><p>${escape(card.Body || "No details added.").replace(/\n/g, "<br>")}</p><dl><dt>Type</dt><dd>${card.Type === "Task" ? "Team task" : "Team update / Handover"}</dd>${card.Type === "Task" ? `<dt>Priority</dt><dd>${priorityLabel[taskPriority(card)]}</dd><dt>Status</dt><dd>${escape(card.Status)}</dd><dt>Assigned to</dt><dd>${escape(card.AssigneeName || "Unassigned")}</dd><dt>Due date</dt><dd>${escape(dateLabel(card.DueDate) || "Not set")}</dd>` : ""}<dt>Posted by</dt><dd>${escape(card.CreatedByName)}</dd><dt>Posted at</dt><dd>${escape(dateTimeLabel(card.CreatedAt))}</dd></dl><section class="team-board__activity"><h4>Activity history</h4>${activityMarkup}</section>${card.Type === "Task" ? `<section class="team-board__thread"><h4>Task conversation</h4><ol>${replyMarkup || `<li class="team-board__thread-empty">No replies yet.</li>`}</ol>${allowReply ? `<label for="boardReplyBody">Your reply</label><textarea id="boardReplyBody" rows="3" maxlength="2000" placeholder="Share progress, a question or a handover note"></textarea>` : ""}</section>` : ""}${managed ? `<div class="team-board__detail-actions"><button type="button" data-detail-edit>Edit</button><button type="button" data-detail-archive>Archive</button></div>` : ""}</div>`,
+            html: `<div class="team-board__detail"><p>${escape(card.Body || "No details added.").replace(/\n/g, "<br>")}</p><dl><dt>Type</dt><dd>${card.Type === "Task" ? "Team task" : "Team update / Handover"}</dd>${card.Type === "Task" ? `<dt>Priority</dt><dd>${priorityLabel[taskPriority(card)]}</dd><dt>Status</dt><dd>${escape(card.Status)}</dd><dt>Assigned to</dt><dd>${escape(card.AssigneeName || "Unassigned")}</dd><dt>Due date</dt><dd>${escape(dateLabel(card.DueDate) || "Not set")}</dd>` : ""}<dt>Posted by</dt><dd>${escape(card.CreatedByName)}</dd><dt>Posted at</dt><dd>${escape(dateTimeLabel(card.CreatedAt))}</dd></dl><section class="team-board__activity"><h4>Activity history</h4>${activityMarkup}</section>${card.Type === "Task" ? `<section class="team-board__thread"><h4>Task conversation</h4><ol>${replyMarkup || `<li class="team-board__thread-empty">No replies yet.</li>`}</ol>${allowReply ? `<label for="boardReplyBody">Your reply</label><textarea id="boardReplyBody" rows="3" maxlength="2000" placeholder="Share progress, a question or a handover note"></textarea>` : ""}</section>` : ""}${managed && card.Status !== "Archived" ? `<div class="team-board__detail-actions"><button type="button" data-detail-edit>Edit</button><button type="button" data-detail-archive>Archive</button></div>` : ""}</div>`,
             didOpen: () => {
                 if (focusReply) document.getElementById("boardReplyBody")?.focus();
                 const popup = Swal.getPopup();
@@ -282,8 +325,24 @@
         view.innerHTML = `<div class="team-board__loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading team board...</div>`;
         view.addEventListener("click", async (event) => {
             if (event.target.closest("#addBoardItem")) return openCardForm();
+            if (event.target.closest("[data-team-board-history]")) return openBoardHistory();
             const viewMode = event.target.closest("[data-board-view-mode]");
-            if (viewMode) { state.view = viewMode.dataset.boardViewMode; render(); return; }
+            if (viewMode) {
+                const nextView = viewMode.dataset.boardViewMode;
+                if (nextView === "calendar" && !Array.isArray(state.historyCards)) {
+                    UI.loading("Loading calendar", "Fetching archived team tasks");
+                    try { await loadBoardHistoryCards(); }
+                    catch (error) {
+                        Swal.close();
+                        await UI.alert({ icon: "error", title: "Unable to load calendar", text: error.message || "Please try again." });
+                        return;
+                    }
+                    Swal.close();
+                }
+                state.view = nextView;
+                render();
+                return;
+            }
             const calendarMonth = event.target.closest("[data-calendar-month]");
             if (calendarMonth) {
                 const delta = calendarMonth.dataset.calendarMonth === "next" ? 1 : -1;
@@ -293,12 +352,10 @@
             }
             const calendarCard = event.target.closest("[data-calendar-card]");
             if (calendarCard) {
-                const card = state.cards.find((item) => item.BoardID === calendarCard.dataset.calendarCard);
+                const card = findKnownCard(calendarCard.dataset.calendarCard);
                 if (card) await showCard(card);
                 return;
             }
-            const filter = event.target.closest("[data-board-filter]");
-            if (filter) { state.filter = filter.dataset.boardFilter; render(); return; }
             const edit = event.target.closest("[data-board-edit]");
             if (edit) return openCardForm(state.cards.find((card) => card.BoardID === edit.dataset.boardEdit));
             const archive = event.target.closest("[data-board-archive]");

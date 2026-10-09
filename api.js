@@ -110,6 +110,7 @@
             dashboardOverview: 60000,
             sidebarAlerts: 30000,
             listTeamBoard: 30000,
+            listTeamBoardHistory: 30000,
             listTeamBoardActivity: 30000,
             saveTeamBoardCard: 30000,
             setTeamBoardStatus: 30000,
