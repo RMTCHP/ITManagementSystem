@@ -113,7 +113,7 @@
         const priority = type === "Task" ? taskPriority(card) : "";
         return `<article class="team-card team-card--compact team-card--${type.toLowerCase()}${priority ? ` team-card--${priority.toLowerCase()}` : ""}" data-board-open="${id}" role="button" tabindex="0" aria-label="Open ${type === "Task" ? "team task" : "team update"}: ${escape(card.Title)}">
             <h3>${escape(card.Title)}</h3>
-            ${type === "Task" ? `<div class="team-card__summary"><p><span>Assigned to</span>${escape(card.AssigneeName || "Unassigned")}</p><p><span>Posted by</span>${escape(card.CreatedByName || "-")}</p><p><span>Date</span>${escape(dateLabel(card.CreatedAt) || "-")}</p></div>` : ""}
+            ${type === "Task" ? `<div class="team-card__summary"><p><span>Assigned to</span>${escape(card.AssigneeName || "Unassigned")}</p><p><span>Posted by</span>${escape(card.CreatedByName || "-")}</p><p><span>Post date</span>${escape(dateLabel(card.CreatedAt) || "-")}</p><p><span>Due date</span>${escape(dateLabel(card.DueDate) || "Not set")}</p></div>` : ""}
         </article>`;
     }
 
