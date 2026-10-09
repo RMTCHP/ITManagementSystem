@@ -1,6 +1,6 @@
 (() => {
     const state = {
-        cards: [], historyCards: null, members: [], totalActive: 0, query: "", filter: "all", session: null, busy: new Set(),
+        cards: [], historyCards: null, quickLinks: null, members: [], totalActive: 0, query: "", filter: "all", session: null, busy: new Set(),
         view: "board", calendarMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     };
     const types = ["Update", "Task"];
@@ -117,6 +117,13 @@
         </article>`;
     }
 
+    function renderQuickLinks() {
+        const query = state.query.toLowerCase();
+        const links = (state.quickLinks || []).filter((link) => !query || [link.Title, link.Category, link.Remark, link.CredentialReference]
+            .some((value) => String(value || "").toLowerCase().includes(query)));
+        return `<section class="team-quick-links"><div class="team-quick-links__intro"><div><h3>IT Quick Links</h3><p>Approved shortcuts to systems, portals and operational tools used by the IT team.</p></div><span><i class="fa-solid fa-shield-halved"></i> Open links in a new tab</span></div>${links.length ? `<div class="team-quick-links__grid">${links.map((link) => `<article class="team-quick-link"><div class="team-quick-link__top"><span class="team-quick-link__icon"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>${link.Category ? `<span class="team-quick-link__category">${escape(link.Category)}</span>` : ""}</div><h3>${escape(link.Title)}</h3><p>${escape(link.Remark || "No description added.")}</p>${link.CredentialReference ? `<div class="team-quick-link__access"><i class="fa-solid fa-key"></i><span>${escape(link.CredentialReference)}</span></div>` : ""}<div class="team-quick-link__actions"><button type="button" class="team-quick-link__open" data-quick-link-open="${escape(link.LinkID)}"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open</button>${isAdmin() ? `<button type="button" class="icon-btn" data-quick-link-edit="${escape(link.LinkID)}" aria-label="Edit link"><i class="fa-solid fa-pen"></i></button><button type="button" class="icon-btn team-quick-link__delete" data-quick-link-delete="${escape(link.LinkID)}" aria-label="Delete link"><i class="fa-solid fa-trash"></i></button>` : ""}</div></article>`).join("")}</div>` : `<p class="team-board__empty">No Quick Links yet${isAdmin() ? ". Select Add link to create the first one." : "."}</p>`}</section>`;
+    }
+
     function render() {
         const query = state.query.toLowerCase();
         const cards = state.cards.filter((card) => !query || [card.Title, card.Body, card.AssigneeName, card.CreatedByName].some((value) => String(value || "").toLowerCase().includes(query)));
@@ -125,10 +132,10 @@
             { type: "Task", label: "Team tasks", icon: "fa-list-check" }
         ];
         document.getElementById("viewContainer").innerHTML = `<section class="team-board">
-            <div class="team-board__toolbar"><div><p class="section-card__eyebrow">Shared workspace</p><h2>Team activity</h2><p>Share an update, hand over information or assign a task to a teammate.</p></div><button class="primary-btn" type="button" id="addBoardItem"><i class="fa-solid fa-plus"></i> Add item</button></div>
-            <div class="team-board__viewbar"><div class="team-board__view-toggle" role="group" aria-label="Board view"><button type="button" data-board-view-mode="board" class="${state.view === "board" ? "is-active" : ""}"><i class="fa-solid fa-grip"></i> Board</button><button type="button" data-board-view-mode="calendar" class="${state.view === "calendar" ? "is-active" : ""}"><i class="fa-regular fa-calendar-days"></i> Due-date calendar</button></div><button class="team-board__history-btn" type="button" data-team-board-history><i class="fa-solid fa-clock-rotate-left"></i> History</button></div>
+            <div class="team-board__toolbar"><div><p class="section-card__eyebrow">Shared workspace</p><h2>${state.view === "links" ? "IT Quick Links" : "Team activity"}</h2><p>${state.view === "links" ? "Approved shortcuts to systems and operational tools used by the IT team." : "Share an update, hand over information or assign a task to a teammate."}</p></div>${state.view === "links" ? (isAdmin() ? `<button class="primary-btn" type="button" id="addQuickLink"><i class="fa-solid fa-plus"></i> Add link</button>` : "") : `<button class="primary-btn" type="button" id="addBoardItem"><i class="fa-solid fa-plus"></i> Add item</button>`}</div>
+            <div class="team-board__viewbar"><div class="team-board__view-toggle" role="group" aria-label="Board view"><button type="button" data-board-view-mode="board" class="${state.view === "board" ? "is-active" : ""}"><i class="fa-solid fa-grip"></i> Board</button><button type="button" data-board-view-mode="calendar" class="${state.view === "calendar" ? "is-active" : ""}"><i class="fa-regular fa-calendar-days"></i> Due-date calendar</button><button type="button" data-board-view-mode="links" class="${state.view === "links" ? "is-active" : ""}"><i class="fa-solid fa-link"></i> Quick Links</button></div>${state.view !== "links" ? `<button class="team-board__history-btn" type="button" data-team-board-history><i class="fa-solid fa-clock-rotate-left"></i> History</button>` : ""}</div>
             ${state.totalActive > 250 ? `<p class="team-board__notice">Showing the latest 250 active items. Archive completed items to keep the board focused.</p>` : ""}
-            ${state.view === "calendar" ? renderCalendar() : `<div class="team-board__columns">${groups.map((group) => {
+            ${state.view === "calendar" ? renderCalendar() : state.view === "links" ? renderQuickLinks() : `<div class="team-board__columns">${groups.map((group) => {
                 const groupCards = cards.filter((card) => group.type === "Update" ? isUpdate(card) : card.Type === group.type);
                 return `<section class="team-board__column team-board__column--${group.type.toLowerCase()}"><header><span><i class="fa-solid ${group.icon}"></i>${group.label}</span><strong>${groupCards.length}</strong></header><div class="team-board__stack">${groupCards.map(cardMarkup).join("") || `<p class="team-board__empty">No items here yet.</p>`}</div></section>`;
             }).join("")}</div>`}
@@ -142,6 +149,59 @@
         state.totalActive = Number(response.data?.totalActive || state.cards.length);
         refreshAssignedTaskBadge();
         render();
+    }
+
+    async function loadQuickLinks() {
+        const response = await ApiClient.request("listTeamQuickLinks", { token: ApiClient.getSessionToken() });
+        state.quickLinks = Array.isArray(response.data?.links) ? response.data.links : [];
+    }
+
+    async function openQuickLinkForm(link = null) {
+        if (!isAdmin()) return;
+        const result = await Swal.fire({
+            title: link ? "Edit Quick Link" : "Add Quick Link", width: "min(680px, calc(100vw - 28px))",
+            customClass: { popup: "team-board__modal" }, showCancelButton: true, showCloseButton: true,
+            confirmButtonText: link ? "Save changes" : "Add link",
+            html: `<div class="team-board__form"><label>Title<input id="quickLinkTitle" maxlength="120" value="${escape(link?.Title || "")}" placeholder="e.g. FortiGate Admin Portal"></label><label>URL<input id="quickLinkUrl" type="url" maxlength="2000" value="${escape(link?.URL || "")}" placeholder="https://example.com"></label><div class="team-board__form-row"><label>Category<input id="quickLinkCategory" maxlength="80" value="${escape(link?.Category || "")}" placeholder="e.g. Security"></label><label>Credential reference<input id="quickLinkCredential" maxlength="500" value="${escape(link?.CredentialReference || "")}" placeholder="e.g. Bitwarden: FortiGate Admin"></label></div><label>Remark / detail<textarea id="quickLinkRemark" maxlength="1500" rows="4" placeholder="Purpose, access instructions or owner. Do not enter passwords.">${escape(link?.Remark || "")}</textarea></label><p class="team-quick-link__security-note"><i class="fa-solid fa-shield-halved"></i> Do not store passwords here. Use a password manager and add its reference instead.</p></div>`,
+            preConfirm: () => {
+                const Title = document.getElementById("quickLinkTitle").value.trim();
+                const URL = document.getElementById("quickLinkUrl").value.trim();
+                if (!Title || !URL) { Swal.showValidationMessage("Enter both a title and URL."); return false; }
+                if (!/^https?:\/\//i.test(URL)) { Swal.showValidationMessage("URL must start with http:// or https://"); return false; }
+                return { LinkID: link?.LinkID || "", Title, URL, Category: document.getElementById("quickLinkCategory").value.trim(), CredentialReference: document.getElementById("quickLinkCredential").value.trim(), Remark: document.getElementById("quickLinkRemark").value.trim() };
+            }
+        });
+        if (!result.isConfirmed) return;
+        UI.loading(link ? "Saving Quick Link" : "Adding Quick Link", "Updating the shared link directory");
+        try {
+            const response = await ApiClient.request("saveTeamQuickLink", { token: ApiClient.getSessionToken(), record: result.value });
+            const saved = response.data?.record;
+            const links = state.quickLinks || [];
+            const index = links.findIndex((item) => String(item.LinkID) === String(saved?.LinkID));
+            if (index === -1) links.unshift(saved); else links.splice(index, 1, saved);
+            state.quickLinks = links;
+            Swal.close();
+            render();
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to save Quick Link", text: error.message || "Please try again." });
+        }
+    }
+
+    async function deleteQuickLink(link) {
+        if (!link || !isAdmin()) return;
+        const answer = await UI.confirm({ title: "Delete this Quick Link?", text: link.Title, confirmButtonText: "Delete" });
+        if (!answer.isConfirmed) return;
+        UI.loading("Deleting Quick Link", "Removing it from the shared directory");
+        try {
+            await ApiClient.request("deleteTeamQuickLink", { token: ApiClient.getSessionToken(), linkId: link.LinkID });
+            state.quickLinks = (state.quickLinks || []).filter((item) => String(item.LinkID) !== String(link.LinkID));
+            Swal.close();
+            render();
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to delete Quick Link", text: error.message || "Please try again." });
+        }
     }
 
     async function loadBoardHistoryCards() {
@@ -325,10 +385,31 @@
         view.innerHTML = `<div class="team-board__loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading team board...</div>`;
         view.addEventListener("click", async (event) => {
             if (event.target.closest("#addBoardItem")) return openCardForm();
+            if (event.target.closest("#addQuickLink")) return openQuickLinkForm();
             if (event.target.closest("[data-team-board-history]")) return openBoardHistory();
+            const quickLinkOpen = event.target.closest("[data-quick-link-open]");
+            if (quickLinkOpen) {
+                const link = (state.quickLinks || []).find((item) => String(item.LinkID) === String(quickLinkOpen.dataset.quickLinkOpen));
+                if (link) { const opened = window.open(link.URL, "_blank", "noopener,noreferrer"); if (opened) opened.opener = null; }
+                return;
+            }
+            const quickLinkEdit = event.target.closest("[data-quick-link-edit]");
+            if (quickLinkEdit) return openQuickLinkForm((state.quickLinks || []).find((item) => String(item.LinkID) === String(quickLinkEdit.dataset.quickLinkEdit)));
+            const quickLinkDelete = event.target.closest("[data-quick-link-delete]");
+            if (quickLinkDelete) return deleteQuickLink((state.quickLinks || []).find((item) => String(item.LinkID) === String(quickLinkDelete.dataset.quickLinkDelete)));
             const viewMode = event.target.closest("[data-board-view-mode]");
             if (viewMode) {
                 const nextView = viewMode.dataset.boardViewMode;
+                if (nextView === "links" && !Array.isArray(state.quickLinks)) {
+                    UI.loading("Loading Quick Links", "Fetching the shared IT link directory");
+                    try { await loadQuickLinks(); }
+                    catch (error) {
+                        Swal.close();
+                        await UI.alert({ icon: "error", title: "Unable to load Quick Links", text: error.message || "Please try again." });
+                        return;
+                    }
+                    Swal.close();
+                }
                 if (nextView === "calendar" && !Array.isArray(state.historyCards)) {
                     UI.loading("Loading calendar", "Fetching archived team tasks");
                     try { await loadBoardHistoryCards(); }
