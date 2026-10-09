@@ -117,7 +117,6 @@
             listTeamBoardReplies: 30000,
             addTeamBoardReply: 30000,
             listMaintenanceRenewalHistory: 30000,
-            migrateKnownLegacyMaintenanceRenewals: 60000,
             listRecords: 30000,
             listAssetWorkspace: 30000,
             searchAssets: 30000,

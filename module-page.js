@@ -2715,13 +2715,6 @@
         const createButton = canCreate && !isAccessRequestModule()
             ? `<button class="primary-btn" id="createRecordButton" title="Add record"><i class="fa-solid fa-plus"></i><span>${isAccessRequestModule() ? "New Request" : "Add Record"}</span></button>`
             : "";
-        const legacyRenewalPairs = [["MA-001", "MA-013"], ["MA-002", "MA-014"], ["MA-003", "MA-015"]];
-        const canMigrateLegacyRenewals = isMaintenanceAgreementModule() && canCreate && legacyRenewalPairs.every(([original, successor]) =>
-            state.records.some((record) => String(record.AgreementID) === original) && state.records.some((record) => String(record.AgreementID) === successor));
-        const legacyRenewalMigrationButton = canMigrateLegacyRenewals
-            ? `<button class="secondary-btn" id="migrateLegacyRenewalsButton" title="Merge legacy renewal records"><i class="fa-solid fa-code-merge"></i><span>Merge legacy renewals</span></button>`
-            : "";
-
         const accessRequestCards = isAccessRequestModule() ? `
             <section class="access-request-forms" aria-labelledby="accessRequestFormsTitle">
                 <div class="access-request-forms__header">
@@ -2783,9 +2776,6 @@
             const maintenanceHistoryButton = isMaintenanceAgreementModule()
                 ? `<button class="table-action table-action--info" data-action="maintenance-history" data-id="${UI.escapeHtml(record.AgreementID)}" title="View renewal history"><i class="fa-solid fa-clock-rotate-left"></i></button>`
                 : "";
-            const maintenanceDocumentButton = isMaintenanceAgreementModule() && record.DocumentURL
-                ? `<button class="table-action" data-action="maintenance-document" data-id="${UI.escapeHtml(record.AgreementID)}" title="Open contract document"><i class="fa-solid fa-file-arrow-up"></i></button>`
-                : "";
             const maintenanceRenewButton = isMaintenanceAgreementModule() && AppShell.canDo(moduleConfig, "create", state.session) && !["Renewed", "Cancelled"].includes(String(record.Status || ""))
                 ? `<button class="table-action table-action--primary" data-action="renew-maintenance" data-id="${UI.escapeHtml(record.AgreementID)}" title="Renew contract"><i class="fa-solid fa-file-circle-plus"></i></button>`
                 : "";
@@ -2798,7 +2788,6 @@
                             ${historyButton}
                             ${borrowingButton}
                             ${maintenanceHistoryButton}
-                            ${maintenanceDocumentButton}
                             ${maintenanceRenewButton}
                             ${editButton}
                             ${deleteButton}
@@ -2818,7 +2807,6 @@
                         <p class="table-panel__subtext">${isAuditLogModule() ? "Review sign-ins and data changes across the system." : `Search, filter, sort and maintain ${UI.escapeHtml(moduleConfig.label.toLowerCase())} records.`}</p>
                     </div>
                     <div class="table-panel__header-actions">
-                        ${legacyRenewalMigrationButton}
                         ${createButton}
                     </div>
                 </div>
@@ -3185,48 +3173,21 @@
         }
     }
 
-    async function migrateKnownLegacyRenewals() {
-        const confirmation = await Swal.fire({
-            title: "Merge legacy renewals?",
-            icon: "warning",
-            text: "This will merge MA-013 into MA-001, MA-014 into MA-002, and MA-015 into MA-003. The newer duplicate rows will be removed after their data and documents are preserved in Renewal History.",
-            input: "text",
-            inputPlaceholder: "Type MIGRATE to continue",
-            showCancelButton: true,
-            confirmButtonText: "Merge records",
-            preConfirm: (value) => {
-                if (String(value || "").trim().toUpperCase() !== "MIGRATE") {
-                    Swal.showValidationMessage("Type MIGRATE to confirm.");
-                    return false;
-                }
-                return true;
-            }
-        });
-        if (!confirmation.isConfirmed) return;
-        UI.loading("Merging legacy renewals", "Preserving history and removing duplicate agreement rows");
-        try {
-            await ApiClient.request("migrateKnownLegacyMaintenanceRenewals", { token: ApiClient.getSessionToken() });
-            Swal.close();
-            await UI.alert({ icon: "success", title: "Legacy renewals merged", text: "MA-001 to MA-003 have been updated. Refreshing the agreement list now." });
-            window.location.reload();
-        } catch (error) {
-            Swal.close();
-            await UI.alert({ icon: "error", title: "Unable to merge legacy renewals", text: error.message || "Please try again." });
-        }
-    }
-
     async function openMaintenanceRenewalHistory(agreementId) {
         const selected = state.records.find((record) => String(record.AgreementID || "") === String(agreementId || ""));
         if (!selected) return;
         let storedHistory = [];
+        UI.loading("Loading renewal history", "Fetching previous contract periods and documents");
         try {
             const response = await ApiClient.request("listMaintenanceRenewalHistory", {
                 token: ApiClient.getSessionToken(), agreementId
             });
             storedHistory = Array.isArray(response.data?.records) ? response.data.records : [];
+            Swal.close();
         } catch (error) {
             // Preserve access to legacy, linked-record histories after an API deployment mismatch.
             storedHistory = [];
+            Swal.close();
         }
         if (storedHistory.length) {
             const history = storedHistory.map((item) => ({
@@ -4087,11 +4048,6 @@
 
             if (event.target.closest("#createRecordButton")) {
                 await openRecordModal("create");
-                return;
-            }
-
-            if (event.target.closest("#migrateLegacyRenewalsButton")) {
-                await migrateKnownLegacyRenewals();
                 return;
             }
 
