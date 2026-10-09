@@ -15,6 +15,10 @@
     const categoryInput = document.getElementById("category");
     const categoryField = categoryInput.closest("label");
     const requesterLabel = document.getElementById("requesterLabel");
+    const requesterInput = document.getElementById("requester");
+    const departmentInput = document.getElementById("department");
+    const contactInput = document.getElementById("contact");
+    const locationInput = document.getElementById("location");
     const subjectInput = document.getElementById("subject");
     const subjectField = subjectInput.closest("label");
     const equipmentItemField = document.getElementById("equipmentItemField");
@@ -43,6 +47,9 @@
     const requestFormCard = document.getElementById("requestFormCard");
     const requestFormChoices = document.getElementById("requestFormChoices");
     const requestComputerSearch = document.getElementById("requestComputerSearch");
+    const emailApplicationSection = document.getElementById("emailApplicationSection");
+    const emailApplicationWorkspace = document.getElementById("emailApplicationWorkspace");
+    const emailApplicationList = document.getElementById("emailApplicationList");
     const requestComputerSearchInput = document.getElementById("requestComputerSearchInput");
     const requestComputerSearchForm = document.getElementById("requestComputerSearchForm");
     const requestComputerSearchButton = requestComputerSearchForm.querySelector('[type="submit"]');
@@ -53,6 +60,7 @@
     let previewUrl = "";
     let currentTicketJobs = [];
     let hasEquipmentSignature = false;
+    let emailApplications = [];
     let equipmentItems = [];
     let ticketWorkspaceRequest = null;
     let isSubmitting = false;
@@ -81,6 +89,34 @@
         "Equipment Requisition": "Equipment requisition details",
         "Email": "Email request details"
     };
+
+    function setStandardTicketFieldRequirements(required) {
+        requesterInput.required = required;
+        departmentInput.required = required;
+        locationInput.required = required;
+        categoryInput.required = required;
+        subjectInput.required = required;
+    }
+
+    function getEmailApplication() {
+        return {
+            site: document.getElementById("emailSite").value,
+            requestType: document.getElementById("emailRequestType").value,
+            department: document.getElementById("emailDepartment").value.trim(),
+            employeeId: document.getElementById("emailEmployeeId").value.trim(),
+            title: document.getElementById("emailTitle").value,
+            firstName: document.getElementById("emailFirstName").value.trim(),
+            surname: document.getElementById("emailSurname").value.trim(),
+            birthDate: document.getElementById("emailBirthDate").value,
+            hiredDate: document.getElementById("emailHiredDate").value,
+            position: document.getElementById("emailPosition").value.trim(),
+            effectiveDate: "",
+            emailAddress: "",
+            services: ["Email"],
+            otherService: "",
+            requestedBy: getActiveSession()?.user?.FullName || getActiveSession()?.user?.Username || "Requester"
+        };
+    }
 
     function getLocalTimeValue(date = new Date()) {
         return [date.getHours(), date.getMinutes()]
@@ -158,12 +194,12 @@
         equipmentItemOptions.classList.remove("hidden");
     }
 
-    function setupEquipmentSignature() {
-        const rect = equipmentSignatureCanvas.getBoundingClientRect();
-        const context = equipmentSignatureCanvas.getContext("2d");
+    function setupSignatureCanvas(canvas, clearButtonId, onSigned, onCleared) {
+        const rect = canvas.getBoundingClientRect();
+        const context = canvas.getContext("2d");
         const signatureScale = Math.min(window.devicePixelRatio || 1, 1.5);
-        equipmentSignatureCanvas.width = Math.max(1, Math.floor(rect.width * signatureScale));
-        equipmentSignatureCanvas.height = Math.max(1, Math.floor(rect.height * signatureScale));
+        canvas.width = Math.max(1, Math.floor(rect.width * signatureScale));
+        canvas.height = Math.max(1, Math.floor(rect.height * signatureScale));
         context.scale(signatureScale, signatureScale);
         context.lineWidth = 2;
         context.lineCap = "round";
@@ -171,15 +207,19 @@
         let drawing = false;
         let previous;
         const point = (event) => ({ x: event.clientX - rect.left, y: event.clientY - rect.top });
-        equipmentSignatureCanvas.onpointerdown = (event) => { drawing = true; previous = point(event); equipmentSignatureCanvas.setPointerCapture(event.pointerId); };
-        equipmentSignatureCanvas.onpointermove = (event) => {
+        canvas.onpointerdown = (event) => { drawing = true; previous = point(event); canvas.setPointerCapture(event.pointerId); };
+        canvas.onpointermove = (event) => {
             if (!drawing) return;
             const next = point(event);
             context.beginPath(); context.moveTo(previous.x, previous.y); context.lineTo(next.x, next.y); context.stroke();
-            previous = next; hasEquipmentSignature = true;
+            previous = next; onSigned();
         };
-        equipmentSignatureCanvas.onpointerup = equipmentSignatureCanvas.onpointercancel = equipmentSignatureCanvas.onpointerleave = () => { drawing = false; };
-        document.getElementById("clearEquipmentSignature").onclick = () => { context.clearRect(0, 0, equipmentSignatureCanvas.width, equipmentSignatureCanvas.height); hasEquipmentSignature = false; };
+        canvas.onpointerup = canvas.onpointercancel = canvas.onpointerleave = () => { drawing = false; };
+        document.getElementById(clearButtonId).onclick = () => { context.clearRect(0, 0, canvas.width, canvas.height); onCleared(); };
+    }
+
+    function setupEquipmentSignature() {
+        setupSignatureCanvas(equipmentSignatureCanvas, "clearEquipmentSignature", () => { hasEquipmentSignature = true; }, () => { hasEquipmentSignature = false; });
     }
 
     async function selectService(service) {
@@ -187,9 +227,13 @@
         requestedServiceInput.value = service;
         formTitle.textContent = serviceLabels[service] || "Issue details";
         const isEquipment = service === "Equipment Requisition";
+        const isEmailApplication = service === "Email";
+        formGrid.classList.toggle("hidden", isEmailApplication);
+        emailApplicationSection.classList.toggle("hidden", !isEmailApplication);
+        setStandardTicketFieldRequirements(!isEmailApplication);
         requesterLabel.innerHTML = isEquipment ? 'ชื่อผู้เบิก <em>*</em>' : 'ชื่อผู้แจ้ง <em>*</em>';
-        categoryField.classList.toggle("hidden", isEquipment);
-        categoryInput.required = !isEquipment;
+        categoryField.classList.toggle("hidden", isEquipment || isEmailApplication);
+        categoryInput.required = !isEquipment && !isEmailApplication;
         if (isEquipment) categoryInput.value = "Equipment";
         equipmentItemField.classList.toggle("hidden", !isEquipment);
         equipmentQuantityField.classList.toggle("hidden", !isEquipment);
@@ -201,11 +245,11 @@
         if (isEquipment) {
             formGrid.append(equipmentItemField, equipmentQuantityField);
         }
-        subjectField.classList.toggle("hidden", isEquipment);
-        subjectInput.required = !isEquipment;
-        subjectInput.disabled = isEquipment;
-        if (isEquipment) subjectInput.value = "";
-        photoSection.classList.toggle("hidden", service === "Remote Support" || isEquipment);
+        subjectField.classList.toggle("hidden", isEquipment || isEmailApplication);
+        subjectInput.required = !isEquipment && !isEmailApplication;
+        subjectInput.disabled = isEquipment || isEmailApplication;
+        if (isEquipment || isEmailApplication) subjectInput.value = "";
+        photoSection.classList.toggle("hidden", service === "Remote Support" || isEquipment || isEmailApplication);
         remoteSessionInfo.classList.toggle("hidden", service !== "Remote Support");
         if (isEquipment) {
             clearSelectedPhoto();
@@ -574,6 +618,53 @@
 
     removePhotoButton.addEventListener("click", clearSelectedPhoto);
 
+    function emailStatusLabel(status) {
+        return ({ "Awaiting requester signature": "Request signature", "Awaiting manager approval": "Approve signature", Approved: "Approved", Closed: "Closed" })[status] || status;
+    }
+
+    function renderEmailApplications() {
+        if (!emailApplications.length) {
+            emailApplicationList.innerHTML = '<div class="public-ticket-job-empty"><i class="fa-regular fa-folder-open"></i><strong>No User ID Application yet</strong><span>Select Add application to prepare the first document.</span></div>';
+            return;
+        }
+        emailApplicationList.innerHTML = `<div class="email-application-list__table"><div class="email-application-list__head"><span>Document</span><span>Employee</span><span>Department</span><span>Status</span><span>Action</span></div>${emailApplications.map((record) => `<article class="email-application-list__row"><div><strong>${escapeHtml(record.TicketID)}</strong><small>${escapeHtml(formatDate(record.CreatedAt))}</small></div><div><strong>${escapeHtml(record.application?.firstName || "")} ${escapeHtml(record.application?.surname || "")}</strong><small>${escapeHtml(record.application?.employeeId || "-")}</small></div><div>${escapeHtml(record.Department || "-")}</div><div><span class="public-ticket-job__status ${getTicketStatusClass(record.Status)}">${escapeHtml(emailStatusLabel(record.Status))}</span></div><div class="email-application-list__actions"><button type="button" data-email-workflow="${escapeHtml(record.TicketID)}">${record.Status === "Awaiting requester signature" ? "Sign" : record.Status === "Awaiting manager approval" ? "Approve" : record.Status === "Approved" ? "Close" : "View"}</button><button type="button" data-email-pdf="${escapeHtml(record.TicketID)}"><i class="fa-regular fa-file-pdf"></i> PDF</button></div></article>`).join("")}</div>`;
+    }
+
+    async function loadEmailApplications(showLoading = false) {
+        const session = getActiveSession();
+        if (!session) return;
+        if (showLoading) UI.loading("Loading applications", "Fetching User ID Application documents");
+        try {
+            const result = await ApiClient.request("listUserIdApplications", { token: session.token });
+            emailApplications = Array.isArray(result.data?.records) ? result.data.records : [];
+            renderEmailApplications();
+            if (showLoading) Swal.close();
+        } catch (error) {
+            if (showLoading) Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to load applications", text: error.message || "Please try again." });
+        }
+    }
+
+    async function signEmailApplication(record, stage) {
+        let signature;
+        const manager = stage === "manager";
+        const result = await Swal.fire({ title: manager ? "Manager approval signature" : "Requester signature", showCancelButton: true, confirmButtonText: manager ? "Approve document" : "Sign document", html: `<div class="asset-borrowing-form"><label>${manager ? "Manager name" : "Requester name"}<input id="emailApplicationSigner" required value="${escapeHtml(manager ? "" : `${record.application?.firstName || ""} ${record.application?.surname || ""}`.trim())}"></label><div class="ticket-signature-field"><div><span>${manager ? "Confirmed and approved by signature" : "Requested by signature"}</span><button id="clearEmailApplicationSignature" type="button">Clear</button></div><canvas id="emailApplicationSignatureCanvas" style="width:100%;height:130px;border:1px solid #cbdde8"></canvas></div></div>`, didOpen: () => { signature = setupBorrowingCanvas(document.getElementById("emailApplicationSignatureCanvas")); document.getElementById("clearEmailApplicationSignature").onclick = signature.clear; }, preConfirm: () => { const signerName = document.getElementById("emailApplicationSigner").value.trim(); if (!signerName || !signature.signed()) { Swal.showValidationMessage("Enter the signer name and provide a signature."); return false; } return { signerName, signature: signature.payload(`${record.TicketID}-${stage}-signature.png`) }; } });
+        if (!result.isConfirmed) return;
+        UI.loading(manager ? "Saving manager approval" : "Saving requester signature", "Updating the User ID Application");
+        try {
+            await ApiClient.request("signUserIdApplication", { token: ApiClient.getSessionToken(), ticketId: record.TicketID, stage, ...result.value });
+            Swal.close(); await loadEmailApplications();
+        } catch (error) { Swal.close(); await UI.alert({ icon: "error", title: "Unable to save signature", text: error.message || "Please try again." }); }
+    }
+
+    async function closeEmailApplication(record) {
+        const confirmation = await UI.confirm({ title: "Close this application?", text: "Confirm that the User ID / Email setup is complete.", confirmButtonText: "Close job" });
+        if (!confirmation.isConfirmed) return;
+        UI.loading("Closing application", "Recording completion");
+        try { await ApiClient.request("closeUserIdApplication", { token: ApiClient.getSessionToken(), ticketId: record.TicketID }); Swal.close(); await loadEmailApplications(); }
+        catch (error) { Swal.close(); await UI.alert({ icon: "error", title: "Unable to close application", text: error.message || "Please try again." }); }
+    }
+
     document.querySelectorAll("[data-requested-service]").forEach((button) => {
         button.addEventListener("click", () => selectService(button.dataset.requestedService));
     });
@@ -598,7 +689,22 @@
         requestFormCard.classList.add("hidden");
         serviceChoice.classList.remove("hidden");
     });
-    document.getElementById("requestEmailButton").addEventListener("click", () => { requestFormCard.classList.add("hidden"); selectService("Email"); });
+    document.getElementById("requestEmailButton").addEventListener("click", async () => { requestFormCard.classList.add("hidden"); emailApplicationWorkspace.classList.remove("hidden"); await loadEmailApplications(true); });
+    document.getElementById("addEmailApplicationButton").addEventListener("click", () => { emailApplicationWorkspace.classList.add("hidden"); selectService("Email"); });
+    document.getElementById("backToRequestFormButton").addEventListener("click", () => { emailApplicationWorkspace.classList.add("hidden"); requestFormCard.classList.remove("hidden"); });
+    document.getElementById("refreshEmailApplicationsButton").addEventListener("click", () => loadEmailApplications(true));
+    emailApplicationList.addEventListener("click", async (event) => {
+        const pdfButton = event.target.closest("[data-email-pdf]");
+        if (pdfButton) { window.open(`tickets.html?action=print-ticket&ticketId=${encodeURIComponent(pdfButton.dataset.emailPdf)}`, "_blank", "noopener"); return; }
+        const actionButton = event.target.closest("[data-email-workflow]");
+        if (!actionButton) return;
+        const record = emailApplications.find((item) => String(item.TicketID) === String(actionButton.dataset.emailWorkflow));
+        if (!record) return;
+        if (record.Status === "Awaiting requester signature") await signEmailApplication(record, "requester");
+        else if (record.Status === "Awaiting manager approval") await signEmailApplication(record, "manager");
+        else if (record.Status === "Approved") await closeEmailApplication(record);
+        else if (record.Status === "Closed") window.open(`tickets.html?action=print-ticket&ticketId=${encodeURIComponent(record.TicketID)}`, "_blank", "noopener");
+    });
     document.getElementById("requestComputerButton").addEventListener("click", () => { requestFormChoices.classList.add("hidden"); requestComputerSearch.classList.remove("hidden"); requestComputerSearchInput.focus(); });
     requestComputerSearchForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -799,6 +905,9 @@
 
     backToServiceButton.addEventListener("click", () => {
         requestedServiceInput.value = "";
+        formGrid.classList.remove("hidden");
+        emailApplicationSection.classList.add("hidden");
+        setStandardTicketFieldRequirements(true);
         categoryField.classList.remove("hidden");
         requesterLabel.innerHTML = 'ชื่อผู้แจ้ง <em>*</em>';
         categoryInput.required = true;
@@ -873,6 +982,7 @@
 
         const isEquipment = requestedServiceInput.value === "Equipment Requisition";
         const isRemoteSupport = requestedServiceInput.value === "Remote Support";
+        const isEmailApplication = requestedServiceInput.value === "Email";
         if (isEquipment && (!equipmentItemInput.value || Number(equipmentQuantityInput.value) < 1)) {
             await UI.alert({ icon: "warning", title: "Inventory item required", text: "Select an inventory item and enter the requested quantity." });
             return;
@@ -889,6 +999,8 @@
             await UI.alert({ icon: "warning", title: "Invalid end time", text: "End time must be the same as or after start time." });
             return;
         }
+
+        const emailApplication = isEmailApplication ? getEmailApplication() : null;
 
         const session = getActiveSession();
         if (!session) {
@@ -911,19 +1023,22 @@
         const values = new FormData(form);
         const payload = {
             token: session.token,
-            requester: values.get("requester"),
-            department: values.get("department"),
-            contact: values.get("contact"),
-            location: values.get("location"),
-            category: values.get("category"),
+            requester: isEmailApplication ? emailApplication.requestedBy : values.get("requester"),
+            department: isEmailApplication ? emailApplication.department : values.get("department"),
+            contact: isEmailApplication ? emailApplication.emailAddress : values.get("contact"),
+            location: isEmailApplication ? emailApplication.site : values.get("location"),
+            category: isEmailApplication ? "User ID Application" : values.get("category"),
             subject: isEquipment
                 ? `Equipment requisition: ${equipmentItemSearch.value}`
-                : values.get("subject"),
+                : isEmailApplication
+                    ? `User ID Application: ${emailApplication.firstName} ${emailApplication.surname}`.trim()
+                    : values.get("subject"),
             requestedService: values.get("requestedService"),
             remoteStartedAt: values.get("remoteStartedAt"),
             remoteEndedAt: values.get("remoteEndedAt"),
             inventoryItemId: values.get("equipmentItemId"),
             requestedQuantity: values.get("equipmentQuantity"),
+            emailApplication,
             website: values.get("website"),
             clientId: getClientId(),
             clientRequestId: clientRequestId || (clientRequestId = createClientRequestId())
@@ -942,12 +1057,16 @@
                 payload.requestSignature = { name: "equipment-request-signature.png", type: "image/png", size: Math.ceil(signatureData.length * 0.75), base64: signatureData.split(",")[1] };
             }
             UI.loading("Submitting ticket", "Saving your ticket in the system");
-            const result = await ApiClient.request("createPublicTicket", payload);
+            const result = await ApiClient.request(isEmailApplication ? "createUserIdApplication" : "createPublicTicket", isEmailApplication
+                ? { token: session.token, application: emailApplication }
+                : payload);
             Swal.close();
             await UI.alert({
                 icon: "success",
                 title: "Ticket submitted",
-                text: `Your Ticket ID is ${result.data.TicketID}. Please keep this ID for follow-up.`
+                text: isEmailApplication
+                    ? `Document ${result.data.TicketID} is ready for requester signature.`
+                    : `Your Ticket ID is ${result.data.TicketID}. Please keep this ID for follow-up.`
             });
             setSubmitting(false);
             clientRequestId = "";
@@ -955,7 +1074,10 @@
             clearSelectedPhoto();
             formCard.classList.add("hidden");
             ticketJobsCard.classList.add("hidden");
-            serviceChoice.classList.remove("hidden");
+            if (isEmailApplication) {
+                emailApplicationWorkspace.classList.remove("hidden");
+                await loadEmailApplications();
+            } else serviceChoice.classList.remove("hidden");
             loadMyJobCount();
             window.scrollTo({ top: 0, behavior: "smooth" });
         } catch (error) {

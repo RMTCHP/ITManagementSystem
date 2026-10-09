@@ -262,6 +262,29 @@
         background: #fff;
     }
 
+    .email-application { padding: 18px; border-top: 1px solid #e5edf5; background: #f8fbfe; }
+    .email-application__heading { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 18px; }
+    .email-application__heading > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; background: #e7f3ff; color: #0877c8; }
+    .email-application__heading p { margin: 0 0 3px; color: #0877c8; font-size: .66rem; font-weight: 800; letter-spacing: .1em; }
+    .email-application__heading h3 { margin: 0; color: #18324e; font-size: 1rem; }
+    .email-application__heading small { display: block; margin-top: 4px; color: #68809a; line-height: 1.45; }
+    .email-application__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .email-application label { display: grid; gap: 7px; color: #58718d; font-size: .78rem; font-weight: 800; }
+    .email-application label span { display: block; }
+    .email-application em { color: #d63b3b; font-style: normal; }
+    .email-application input, .email-application select { min-height: 50px; padding: 0 14px; border: 1px solid #cbdbe9; border-radius: 13px; background: #fff; color: #18324e; font: inherit; }
+    .email-application__wide { grid-column: 1 / -1; }
+    .email-application__services { margin: 16px 0; padding: 13px 14px 15px; border: 1px solid #cbdbe9; border-radius: 14px; background: #fff; }
+    .email-application__services legend { padding: 0 5px; color: #58718d; font-size: .78rem; font-weight: 800; }
+    .email-application__services > div { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+    .email-application__services > div label { display: flex; align-items: center; gap: 6px; color: #304c68; font-weight: 700; }
+    .email-application__services input[type="checkbox"] { min-height: 16px; width: 16px; margin: 0; padding: 0; accent-color: #0877c8; }
+    .email-application__other { margin-top: 13px; }
+    .email-application__other input { width: 100%; }
+    .email-application__requester { display: grid; gap: 11px; padding: 14px; border: 1px dashed #a9c9e3; border-radius: 14px; background: #fff; }
+    .email-application__requester small { color: #68809a; line-height: 1.45; }
+    @media (max-width: 600px) { .email-application { padding: 16px; } .email-application__grid { grid-template-columns: 1fr; } .email-application__wide { grid-column: auto; } .email-application__services > div { gap: 10px; } }
+
     .public-ticket-submit {
         width: 100%;
         min-height: 56px;
@@ -286,7 +309,20 @@
     }
 }
 
+/* Email / User ID Application: available on desktop as well as tablet. */
+.email-application { padding: 22px; border-top: 1px solid #e5edf5; background: #f8fbfe; }
+.email-application__heading { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 18px; }
+.email-application__heading > span { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 13px; background: #e7f3ff; color: #0877c8; }
+.email-application__heading p { margin: 0 0 3px; color: #0877c8; font-size: .68rem; font-weight: 800; letter-spacing: .1em; }
+.email-application__heading h3 { margin: 0; color: #18324e; font-size: 1.08rem; }.email-application__heading small { display:block; margin-top:4px; color:#68809a; line-height:1.45; }
+.email-application__grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }.email-application label { display:grid; gap:7px; color:#58718d; font-size:.78rem; font-weight:800; }.email-application label span { display:block; }.email-application em { color:#d63b3b; font-style:normal; }
+.email-application input, .email-application select { min-height:50px; padding:0 14px; border:1px solid #cbdbe9; border-radius:13px; background:#fff; color:#18324e; font:inherit; }.email-application__wide { grid-column:1 / -1; }
+.email-application__services { margin:16px 0; padding:13px 14px 15px; border:1px solid #cbdbe9; border-radius:14px; background:#fff; }.email-application__services legend { padding:0 5px; color:#58718d; font-size:.78rem; font-weight:800; }.email-application__services > div { display:flex; flex-wrap:wrap; gap:10px 16px; }.email-application__services > div label { display:flex; align-items:center; gap:6px; color:#304c68; font-weight:700; }.email-application__services input[type="checkbox"] { min-height:16px; width:16px; margin:0; padding:0; accent-color:#0877c8; }.email-application__other { margin-top:13px; }.email-application__other input { width:100%; }.email-application__requester { display:grid; gap:11px; padding:14px; border:1px dashed #a9c9e3; border-radius:14px; background:#fff; }.email-application__requester small { color:#68809a; line-height:1.45; }
+.email-application__requester > div { display:flex; align-items:center; justify-content:space-between; color:#58718d; font-size:.78rem; font-weight:800; }.email-application__requester button { border:0; background:transparent; color:#0877c8; font:inherit; font-weight:800; cursor:pointer; }.email-application__requester canvas { width:100%; height:130px; touch-action:none; border:1px solid #cbdbe9; border-radius:11px; background:#fff; }
+.public-ticket-email-add { width:auto; min-height:42px; margin-left:auto; padding:0 14px; border-radius:12px; font-size:.8rem; }.email-application-workspace { padding:20px; }.email-application-workspace__intro { display:flex; justify-content:space-between; gap:16px; align-items:center; margin-bottom:16px; }.email-application-workspace__intro strong { display:block; color:#17324d; }.email-application-workspace__intro small { display:block; margin-top:4px; color:#68809a; }.email-application-workspace__intro .public-ticket-work-card { min-height:40px; padding:0 12px; white-space:nowrap; }.email-application-list__table { overflow:hidden; border:1px solid #dbe7f0; border-radius:15px; background:#fff; }.email-application-list__head,.email-application-list__row { display:grid; grid-template-columns:1.1fr 1.4fr 1fr 1.2fr 1.4fr; gap:12px; align-items:center; padding:12px 14px; }.email-application-list__head { background:#eef6fc; color:#66809a; font-size:.68rem; font-weight:800; text-transform:uppercase; }.email-application-list__row { border-top:1px solid #e5edf5; color:#29435e; font-size:.82rem; }.email-application-list__row strong,.email-application-list__row small { display:block; }.email-application-list__row small { margin-top:3px; color:#7890a8; font-size:.72rem; }.email-application-list__actions { display:flex; gap:7px; }.email-application-list__actions button { min-height:34px; padding:0 10px; border:1px solid #cbdde9; border-radius:9px; background:#fff; color:#0877c8; font:700 .74rem inherit; cursor:pointer; }
+
 @media (max-width: 640px) {
+    .public-ticket-email-add { margin-left:auto; padding:0 10px; }.public-ticket-email-add span { display:none; }.email-application-workspace { padding:16px; }.email-application-workspace__intro { align-items:flex-start; }.email-application-workspace__intro .public-ticket-work-card { min-height:36px; font-size:0; }.email-application-workspace__intro .public-ticket-work-card i { font-size:.9rem; }.email-application-list__head { display:none; }.email-application-list__row { grid-template-columns:1fr auto; gap:8px; }.email-application-list__row > div:nth-child(3),.email-application-list__row > div:nth-child(4) { grid-column:1 / -1; }.email-application-list__actions { grid-column:1 / -1; }.email-application-list__actions button { flex:1; }
     .public-ticket-choice__card--equipment,
     .public-ticket-choice__card--user-qr {
         min-height: 158px;

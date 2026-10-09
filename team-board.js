@@ -375,7 +375,8 @@
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
-        const context = await AppShell.init({ currentView: "teamBoard", title: "IT Team Board", eyebrow: "TEAM WORKSPACE",
+        const context = await AppShell.init({ currentView: "teamBoard", title: "IT Team Workspace", eyebrow: "TEAM WORKSPACE",
+            deferSidebarAlerts: true,
             searchPlaceholder: "Search team updates and tasks",
             onSearch: (value) => { state.query = value.trim(); render(); },
             onRefresh: () => loadBoard() });

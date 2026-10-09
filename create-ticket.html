@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="app.css?v=20260924-9">
-    <link rel="stylesheet" href="ticket-workspace.css?v=20260922-1">
+    <link rel="stylesheet" href="ticket-workspace.css?v=20261009-user-id-workflow-1">
     <script>
         if (window.matchMedia("(max-width: 767px)").matches) {
             document.documentElement.classList.add("mobile-ticket-auth-pending");
@@ -96,6 +96,11 @@
             </div>
         </section>
 
+        <section class="public-ticket-card hidden" id="emailApplicationWorkspace" aria-labelledby="emailApplicationWorkspaceTitle">
+            <div class="public-ticket-card__header"><div class="public-ticket-card__icon"><i class="fa-solid fa-id-card"></i></div><div><p>REQUEST FORM</p><h2 id="emailApplicationWorkspaceTitle">RMT User ID Application</h2></div><button class="public-ticket-submit public-ticket-email-add" id="addEmailApplicationButton" type="button"><i class="fa-solid fa-plus"></i><span>Add application</span></button><button class="public-ticket-back" id="backToRequestFormButton" type="button"><i class="fa-solid fa-arrow-left"></i><span>Back</span></button></div>
+            <div class="email-application-workspace"><div class="email-application-workspace__intro"><div><strong>User ID Application documents</strong><small>Prepare a document, collect requester and manager signatures, then close the completed job.</small></div><button type="button" id="refreshEmailApplicationsButton" class="public-ticket-work-card"><i class="fa-solid fa-rotate"></i> Refresh</button></div><div id="emailApplicationList" class="email-application-list"></div></div>
+        </section>
+
         <section class="public-ticket-card hidden" id="ticketFormCard" aria-labelledby="ticketFormTitle">
             <div class="public-ticket-card__header">
                 <div class="public-ticket-card__icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
@@ -171,6 +176,22 @@
                     </label>
                 </div>
 
+                <section class="email-application hidden" id="emailApplicationSection" aria-labelledby="emailApplicationTitle">
+                    <div class="email-application__heading"><span><i class="fa-solid fa-id-card"></i></span><div><p>RMT USER ID APPLICATION</p><h3 id="emailApplicationTitle">Requester Fill-in</h3><small>Complete the user information and required IT services. IT will complete the approval section.</small></div></div>
+                    <div class="email-application__grid">
+                        <label><span>Site <em>*</em></span><select id="emailSite" name="emailSite" required><option value="">Select site</option><option>CHP</option><option>AYB</option><option>BKK</option><option>G1P</option><option>G1B</option></select></label>
+                        <label><span>Type <em>*</em></span><select id="emailRequestType" name="emailRequestType" required><option value="">Select type</option><option>New user</option><option>Change user information</option><option>Delete user</option><option>Other</option></select></label>
+                        <label><span>Section / Department <em>*</em></span><select id="emailDepartment" name="emailDepartment" required><option value="">เลือกแผนก</option><option>PD</option><option>PC/Warehouse</option><option>PE/Tooling</option><option>QA/QC</option><option>Design</option><option>ซ่อมบำรุง</option><option>จัดซื้อ</option><option>บุคคล</option><option>บัญชี</option><option>Safety</option><option>IT</option></select></label>
+                        <label><span>Position <em>*</em></span><input id="emailPosition" name="emailPosition" maxlength="120" required placeholder="Position"></label>
+                        <label><span>Employee ID <em>*</em></span><input id="emailEmployeeId" name="emailEmployeeId" maxlength="40" required inputmode="numeric" placeholder="Employee ID"></label>
+                        <label><span>Title</span><select id="emailTitle" name="emailTitle"><option value="">Select title</option><option>Mr.</option><option>Ms.</option><option>Mrs.</option><option>Other</option></select></label>
+                        <label><span>First name <em>*</em></span><input id="emailFirstName" name="emailFirstName" maxlength="80" required autocomplete="given-name" placeholder="First name"></label>
+                        <label><span>Surname <em>*</em></span><input id="emailSurname" name="emailSurname" maxlength="80" required autocomplete="family-name" placeholder="Surname"></label>
+                        <label><span>Birth date</span><input id="emailBirthDate" name="emailBirthDate" type="date"></label>
+                        <label><span>Hired date</span><input id="emailHiredDate" name="emailHiredDate" type="date"></label>
+                    </div>
+                </section>
+
                 <div class="public-ticket-remote-session hidden" id="remoteSessionInfo">
                     <label for="remoteStartedAt"><span>Start time</span><input id="remoteStartedAt" name="remoteStartedAt" type="time"></label>
                     <label for="remoteEndedAt"><span>End time</span><input id="remoteEndedAt" name="remoteEndedAt" type="time"></label>
@@ -221,9 +242,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="config-loader.js"></script>
-    <script src="api.js?v=20261008-1"></script>
+    <script src="api.js?v=20261009-user-id-workflow-1"></script>
     <script src="ui.js"></script>
     <script src="mobile-ticket-auth.js"></script>
-    <script src="create-ticket.js?v=20261008-3"></script>
+    <script src="create-ticket.js?v=20261009-user-id-workflow-1"></script>
 </body>
 </html>

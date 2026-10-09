@@ -558,7 +558,14 @@
         elements.toggleSidebarBtn = ensureSidebarToggleButton(elements);
         renderSidebar(options.currentView, session, elements.sidebarNav);
         updateSidebarAlerts(getSidebarAlertsState());
-        refreshSidebarAlertsInBackground();
+        // Some workspaces need their own data immediately. Defer the broad
+        // sidebar scan for those pages so it cannot compete with their first
+        // Apps Script request during a cold start.
+        if (options.deferSidebarAlerts) {
+            window.setTimeout(refreshSidebarAlertsInBackground, 1800);
+        } else {
+            refreshSidebarAlertsInBackground();
+        }
         bindSidebarGroupToggles(elements.sidebarNav);
         applyTooltips(elements.sidebarNav);
         bindSidebarToggle(elements.sidebar, elements.toggleSidebarBtn);

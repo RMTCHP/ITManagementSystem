@@ -2331,6 +2331,50 @@
             ? `<a class="attachment" href="${value(ticket.AttachmentUrl)}" target="_blank" rel="noopener noreferrer">Open attached request photo</a>`
             : "";
 
+        // Email/User ID requests have a controlled form layout that differs
+        // from the general Computer Work Order. The requester fields are kept
+        // in Description as a compact, versioned payload so legacy Tickets
+        // columns remain unchanged.
+        let emailApplication = null;
+        const emailApplicationPrefix = "USER_ID_APPLICATION:";
+        if (String(ticket.RequestedService || "") === "Email" && String(ticket.Description || "").startsWith(emailApplicationPrefix)) {
+            try { emailApplication = JSON.parse(String(ticket.Description).slice(emailApplicationPrefix.length)); } catch (_) { emailApplication = null; }
+        }
+        if (emailApplication) {
+            const applicationValue = (key) => value(emailApplication[key] || "");
+            const selectedServices = Array.isArray(emailApplication.services) ? emailApplication.services.map((item) => String(item)) : [];
+            const applicationChecked = (service) => selectedServices.includes(service) ? "☒" : "☐";
+            const applicationDate = (key) => emailApplication[key] ? dateOnly(emailApplication[key]) : "";
+            reportWindow.document.write(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RMT User ID Application - ${value(ticket.TicketID)}</title><style>
+@page { size: A4 portrait; margin: 8mm; } * { box-sizing: border-box; } body { margin:0; background:#eef2f6; color:#000; font-family:Arial, Tahoma, sans-serif; font-size:10px; } .toolbar { display:flex; justify-content:center; gap:9px; padding:12px; } .toolbar button { border:0; border-radius:5px; padding:8px 14px; background:#0877c8; color:#fff; font-weight:700; cursor:pointer; } .toolbar button:last-child { background:#64748b; } .paper { width:194mm; min-height:281mm; margin:0 auto 16px; padding:6mm; background:#fff; } .head { display:grid; grid-template-columns:1fr auto; align-items:start; margin-bottom:4px; font-weight:700; } .head h1 { grid-column:1 / -1; margin:2px 0 4px; text-align:center; font-size:15px; } .version { display:grid; grid-template-columns:auto 85px; border:1px solid #000; } .version span { padding:3px 5px; border-right:1px solid #000; } .version span:last-child { border-right:0; } table { width:100%; border-collapse:collapse; table-layout:fixed; } th, td { height:19px; padding:2px 4px; border:1px solid #000; vertical-align:middle; overflow-wrap:anywhere; } th { background:#f8f8f8; text-align:center; font-size:9px; } .section-title { margin-top:10px; font-weight:700; } .section-title:first-of-type { margin-top:0; } .label { width:19%; text-align:center; background:#fbfbfb; } .data { min-width:0; } .service-row td { height:28px; } .signatures { display:grid; grid-template-columns:repeat(3,1fr); gap:0; border:1px solid #000; border-top:0; } .signature { min-height:61px; padding:5px 8px; border-right:1px solid #000; text-align:center; } .signature:last-child { border-right:0; } .signature .line { height:23px; margin-top:7px; border-bottom:1px solid #000; } .signature .date { margin-top:4px; text-align:left; } .supervisor td { height:22px; } .supervisor .tall td { height:39px; } .muted { color:#555; } @media print { body { background:#fff; } .toolbar { display:none; } .paper { width:auto; min-height:0; margin:0; padding:0; } }
+</style></head><body><div class="toolbar"><button onclick="window.print()">Print / Save as PDF</button><button onclick="window.close()">Close</button></div><main class="paper">
+<div class="head"><div>Resonac Materials (Thailand) Co., Ltd</div><div class="version"><span>Ver 1.00</span><span>No. ${value(ticket.TicketID)}</span></div><h1>RMT User ID Application</h1></div>
+<div class="section-title">(Requester Fill-in)</div><table>
+<tr><td class="label">Site</td><td class="data" colspan="3">${["CHP", "AYB", "BKK", "G1P", "G1B"].map((site) => `${emailApplication.site === site ? "☒" : "☐"} ${site}`).join(" &nbsp; ")}</td></tr>
+<tr><td class="label">Type</td><td class="data">${applicationValue("requestType")}</td><td class="label">Section/Dept</td><td class="data">${applicationValue("department")}</td></tr>
+<tr><td class="label">Employee ID</td><td class="data">${applicationValue("employeeId")}</td><td class="label">Title</td><td class="data">${applicationValue("title")}</td></tr>
+<tr><td class="label">First Name</td><td class="data" colspan="3">${applicationValue("firstName")}</td></tr><tr><td class="label">Surname</td><td class="data" colspan="3">${applicationValue("surname")}</td></tr>
+<tr><td class="label">Birth Date<br><small>YYYY/MM/DD</small></td><td class="data">${value(applicationDate("birthDate"))}</td><td class="label">Hired Date<br><small>YYYY/MM/DD</small></td><td class="data">${value(applicationDate("hiredDate"))}</td></tr>
+<tr><td class="label">Position</td><td class="data">${applicationValue("position")}</td><td class="label">Effective Date</td><td class="data">${value(applicationDate("effectiveDate"))}</td></tr>
+<tr><td class="label">E-mail address</td><td class="data" colspan="3">${applicationValue("emailAddress")}</td></tr>
+<tr class="service-row"><td class="label">IT Service</td><td class="data" colspan="3">${["Hi-front", "A", "Email", "RAS", "Mobile Phone", "File Share", "Internet"].map((service) => `${applicationChecked(service)} ${service}`).join(" &nbsp; ")}<br>${emailApplication.otherService ? `☒ Other: ${applicationValue("otherService")}` : "☐ Other"}</td></tr>
+</table><div class="signatures"><div class="signature">Requested by<div class="line"><img id="emailApplicationSignature" alt="Requester signature" style="max-width:145px;max-height:30px;vertical-align:bottom"> ${applicationValue("requestedBy")}</div><div class="date">Date: ${value(dateOnly(ticket.CreatedAt || ticket.RequestDate))}</div></div><div class="signature">Confirmed by (if need)<div class="line"><img id="emailManagerSignatureConfirmed" alt="Manager signature" style="max-width:145px;max-height:30px;vertical-align:bottom"> ${applicationValue("managerApprovedBy")}</div><div class="date">Date: ${value(ticket.Status === "Approved" || ticket.Status === "Closed" ? dateOnly(ticket.UpdatedAt) : "")}</div></div><div class="signature">Approved by (Sect. Mgr)<div class="line"><img id="emailManagerSignatureApproved" alt="Manager signature" style="max-width:145px;max-height:30px;vertical-align:bottom"> ${applicationValue("managerApprovedBy")}</div><div class="date">Date: ${value(ticket.Status === "Approved" || ticket.Status === "Closed" ? dateOnly(ticket.UpdatedAt) : "")}</div></div></div>
+<div class="section-title">(Information Management Supervisor use)</div><table class="supervisor"><tr><th>Issue Date</th><th>AX</th><th>LDAP-ID</th><th>AD (Local)</th><th>Other ( &nbsp;&nbsp;&nbsp;&nbsp; )</th></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><th>User ID</th><td></td><td></td><td></td><td></td></tr><tr class="tall"><th>Authorize</th><td></td><td></td><td></td><td></td></tr><tr><th>Delete by/Date</th><td></td><td></td><td></td><td></td></tr><tr><th>Resources Use</th><th>PC/Notebook#</th><th>HP#</th><th>Token/Air card#</th><th>Other</th></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><th>Return to/Date</th><td></td><td></td><td></td><td></td></tr></table><div class="signatures"><div class="signature">Approved by<div class="line"></div><div class="date">Date: ____ / ____ / ____</div></div><div class="signature">Operated by<div class="line"></div><div class="date">Date: ____ / ____ / ____</div></div><div class="signature">Remark<div class="line"></div></div></div>
+</main></body></html>`);
+            reportWindow.document.close();
+            try {
+                const signatures = await ApiClient.request("getTicketSignatures", { token: ApiClient.getSessionToken(), ticketId: ticket.TicketID });
+                const signature = signatures.data?.requestSignature || "";
+                const managerSignature = signatures.data?.resolutionSignature || "";
+                const signatureImage = !reportWindow.closed && reportWindow.document.getElementById("emailApplicationSignature");
+                if (signature && signatureImage) signatureImage.src = signature;
+                ["emailManagerSignatureConfirmed", "emailManagerSignatureApproved"].forEach((id) => { const image = !reportWindow.closed && reportWindow.document.getElementById(id); if (managerSignature && image) image.src = managerSignature; });
+            } catch (_) { /* The printable form remains available without a signature preview. */ }
+            return;
+        }
+
         reportWindow.document.write(`<!DOCTYPE html>
 <html lang="th">
 <head>
