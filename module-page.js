@@ -2715,6 +2715,12 @@
         const createButton = canCreate && !isAccessRequestModule()
             ? `<button class="primary-btn" id="createRecordButton" title="Add record"><i class="fa-solid fa-plus"></i><span>${isAccessRequestModule() ? "New Request" : "Add Record"}</span></button>`
             : "";
+        const legacyRenewalPairs = [["MA-001", "MA-013"], ["MA-002", "MA-014"], ["MA-003", "MA-015"]];
+        const canMigrateLegacyRenewals = isMaintenanceAgreementModule() && canCreate && legacyRenewalPairs.every(([original, successor]) =>
+            state.records.some((record) => String(record.AgreementID) === original) && state.records.some((record) => String(record.AgreementID) === successor));
+        const legacyRenewalMigrationButton = canMigrateLegacyRenewals
+            ? `<button class="secondary-btn" id="migrateLegacyRenewalsButton" title="Merge legacy renewal records"><i class="fa-solid fa-code-merge"></i><span>Merge legacy renewals</span></button>`
+            : "";
 
         const accessRequestCards = isAccessRequestModule() ? `
             <section class="access-request-forms" aria-labelledby="accessRequestFormsTitle">
@@ -2812,6 +2818,7 @@
                         <p class="table-panel__subtext">${isAuditLogModule() ? "Review sign-ins and data changes across the system." : `Search, filter, sort and maintain ${UI.escapeHtml(moduleConfig.label.toLowerCase())} records.`}</p>
                     </div>
                     <div class="table-panel__header-actions">
+                        ${legacyRenewalMigrationButton}
                         ${createButton}
                     </div>
                 </div>
@@ -3149,7 +3156,7 @@
         if (!beginAction(actionKey)) {
             return;
         }
-        UI.loading("Renewing contract", "Creating the new agreement and retaining the previous record");
+        UI.loading("Renewing contract", "Updating the current agreement and saving its renewal history");
         try {
             const response = await ApiClient.request("renewMaintenanceAgreement", {
                 token: ApiClient.getSessionToken(),
@@ -3163,14 +3170,13 @@
                 }
             });
             const data = response.data || {};
-            upsertStateRecord(data.previous, "edit");
-            upsertStateRecord(data.record, "create");
+            upsertStateRecord(data.record, "edit");
             state.filters.summary = "all";
             syncSidebarAlerts();
             renderHero();
             renderTable();
             Swal.close();
-            await UI.alert({ icon: "success", title: "Contract renewed", text: `${data.record && data.record.AgreementID || "New agreement"} has been created.` });
+            await UI.alert({ icon: "success", title: "Contract renewed", text: `${data.record && data.record.AgreementID || "Agreement"} has been updated.` });
         } catch (error) {
             Swal.close();
             await UI.alert({ icon: "error", title: "Unable to renew contract", text: error.message || "Please try again." });
@@ -3179,9 +3185,73 @@
         }
     }
 
+    async function migrateKnownLegacyRenewals() {
+        const confirmation = await Swal.fire({
+            title: "Merge legacy renewals?",
+            icon: "warning",
+            text: "This will merge MA-013 into MA-001, MA-014 into MA-002, and MA-015 into MA-003. The newer duplicate rows will be removed after their data and documents are preserved in Renewal History.",
+            input: "text",
+            inputPlaceholder: "Type MIGRATE to continue",
+            showCancelButton: true,
+            confirmButtonText: "Merge records",
+            preConfirm: (value) => {
+                if (String(value || "").trim().toUpperCase() !== "MIGRATE") {
+                    Swal.showValidationMessage("Type MIGRATE to confirm.");
+                    return false;
+                }
+                return true;
+            }
+        });
+        if (!confirmation.isConfirmed) return;
+        UI.loading("Merging legacy renewals", "Preserving history and removing duplicate agreement rows");
+        try {
+            await ApiClient.request("migrateKnownLegacyMaintenanceRenewals", { token: ApiClient.getSessionToken() });
+            Swal.close();
+            await UI.alert({ icon: "success", title: "Legacy renewals merged", text: "MA-001 to MA-003 have been updated. Refreshing the agreement list now." });
+            window.location.reload();
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to merge legacy renewals", text: error.message || "Please try again." });
+        }
+    }
+
     async function openMaintenanceRenewalHistory(agreementId) {
         const selected = state.records.find((record) => String(record.AgreementID || "") === String(agreementId || ""));
         if (!selected) return;
+        let storedHistory = [];
+        try {
+            const response = await ApiClient.request("listMaintenanceRenewalHistory", {
+                token: ApiClient.getSessionToken(), agreementId
+            });
+            storedHistory = Array.isArray(response.data?.records) ? response.data.records : [];
+        } catch (error) {
+            // Preserve access to legacy, linked-record histories after an API deployment mismatch.
+            storedHistory = [];
+        }
+        if (storedHistory.length) {
+            const history = storedHistory.map((item) => ({
+                AgreementID: selected.AgreementID,
+                ContractNo: item.PreviousContractNo || "",
+                StartDate: item.PreviousStartDate || "",
+                EndDate: item.PreviousEndDate || "",
+                Vendor: item.PreviousVendor || "",
+                DocumentURL: item.PreviousDocumentURL || "",
+                Status: "Renewed"
+            })).concat([selected]).sort((left, right) => String(right.StartDate || "").localeCompare(String(left.StartDate || "")));
+            await Swal.fire({
+                title: "Renewal History",
+                width: "min(960px, calc(100vw - 32px))",
+                showCloseButton: true,
+                confirmButtonText: "Close",
+                html: `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Agreement ID</th><th>Contract No.</th><th>Start</th><th>End</th><th>Vendor</th><th>Document</th><th>Status</th></tr></thead><tbody>${history.map((record) => {
+                    const documentLink = record.DocumentURL
+                        ? `<a class="table-action table-action--info" href="${UI.escapeHtml(record.DocumentURL)}" target="_blank" rel="noopener noreferrer" title="Open contract document"><i class="fa-solid fa-file-lines"></i></a>`
+                        : "-";
+                    return `<tr><td>${UI.escapeHtml(record.AgreementID || "-")}</td><td>${UI.escapeHtml(record.ContractNo || "-")}</td><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td><td>${UI.escapeHtml(record.Vendor || "-")}</td><td>${documentLink}</td><td>${UI.badge(record.Status || "-")}</td></tr>`;
+                }).join("")}</tbody></table></div>`
+            });
+            return;
+        }
         let rootId = String(selected.AgreementID || "");
         let parentId = String(selected.RenewalOfAgreementID || "");
         const seen = new Set([rootId]);
@@ -4017,6 +4087,11 @@
 
             if (event.target.closest("#createRecordButton")) {
                 await openRecordModal("create");
+                return;
+            }
+
+            if (event.target.closest("#migrateLegacyRenewalsButton")) {
+                await migrateKnownLegacyRenewals();
                 return;
             }
 
