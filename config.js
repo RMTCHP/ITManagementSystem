@@ -58,7 +58,7 @@ window.APP_CONFIG = {
     menu: [
         { group: "Overview", items: [
             { key: "dashboard", label: "Dashboard", icon: "fa-chart-pie", description: "Summary and quick actions" },
-            { key: "teamBoard", label: "IT Team Board", icon: "fa-note-sticky", description: "Team updates, handovers and tasks" }
+            { key: "teamBoard", label: "IT Team Workspace", icon: "fa-note-sticky", description: "Team updates, handovers and tasks" }
         ] },
         { group: "Asset & Inventory", items: [
             { key: "assets", label: "Asset Management", icon: "fa-laptop-file", description: "Asset register and lifecycle" },
@@ -92,7 +92,7 @@ window.APP_CONFIG = {
     modules: {
         teamBoard: {
             key: "teamBoard",
-            label: "IT Team Board",
+            label: "IT Team Workspace",
             icon: "fa-note-sticky",
             roles: ["Admin", "User"],
             permissions: { create: ["Admin", "User"], edit: ["Admin", "User"] }
