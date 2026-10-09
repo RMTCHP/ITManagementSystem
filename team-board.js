@@ -47,17 +47,8 @@
         const id = escape(card.BoardID);
         const type = card.Type === "Task" ? "Task" : "Update";
         const priority = type === "Task" ? taskPriority(card) : "";
-        const managed = canManage(card);
-        const assignLabel = card.AssigneeName ? `<span><i class="fa-regular fa-user"></i>${escape(card.AssigneeName)}</span>` : "";
-        const dueLabel = card.DueDate ? `<span><i class="fa-regular fa-calendar"></i>${escape(dateLabel(card.DueDate))}</span>` : "";
-        const statusOptions = statuses.map((status) => `<option value="${status}" ${card.Status === status ? "selected" : ""}>${status}</option>`).join("");
-        return `<article class="team-card team-card--${type.toLowerCase()}${priority ? ` team-card--${priority.toLowerCase()}` : ""}" aria-label="${type === "Task" ? "Team task" : "Team update"}: ${escape(card.Title)}">
-            <div class="team-card__top"><span class="team-card__kind">${type === "Update" ? "Team update / Handover" : "Internal task"}</span>${type === "Task" ? `<span class="team-card__priority team-card__priority--${priority.toLowerCase()}"><i class="fa-solid fa-circle" aria-hidden="true"></i>${priorityLabel[priority]}</span>` : ""}${String(card.IsPinned).toUpperCase() === "TRUE" ? `<span class="team-card__pin"><i class="fa-solid fa-thumbtack"></i> Pinned</span>` : ""}</div>
+        return `<article class="team-card team-card--compact team-card--${type.toLowerCase()}${priority ? ` team-card--${priority.toLowerCase()}` : ""}" data-board-open="${id}" role="button" tabindex="0" aria-label="Open ${type === "Task" ? "team task" : "team update"}: ${escape(card.Title)}">
             <h3>${escape(card.Title)}</h3>
-            <p class="team-card__body">${escape(card.Body || "No details added.")}</p>
-            ${type === "Task" ? `<div class="team-card__status">${canChangeStatus(card) ? `<label>Status <select data-board-status="${id}">${statusOptions}</select></label>` : `<span class="team-status">${escape(card.Status)}</span>`}</div>` : ""}
-            <div class="team-card__meta">${assignLabel}${dueLabel}<span><i class="fa-regular fa-user"></i>${escape(card.CreatedByName || "Unknown")}</span><span><i class="fa-regular fa-clock"></i>${escape(dateLabel(card.CreatedAt))}</span></div>
-            <div class="team-card__actions"><button type="button" data-board-view="${id}"><i class="fa-regular fa-eye"></i> View</button>${type === "Task" && canReply(card) ? `<button type="button" data-board-reply="${id}"><i class="fa-regular fa-comment-dots"></i> Reply</button>` : ""}${managed ? `<button type="button" data-board-edit="${id}"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" data-board-archive="${id}"><i class="fa-solid fa-box-archive"></i> Archive</button>` : ""}</div>
         </article>`;
     }
 
@@ -132,7 +123,7 @@
         UI.loading(editing ? "Saving changes" : "Posting to board", "Updating the team board");
         try {
             const saved = await ApiClient.request("saveTeamBoardCard", { token: ApiClient.getSessionToken(), record: result.value });
-            applySavedCard(saved.data);
+            applySavedCard(saved.data && saved.data.record);
             Swal.close();
         } catch (error) {
             Swal.close();
@@ -146,7 +137,7 @@
         UI.loading(status === "Archived" ? "Archiving item" : "Updating task", "Saving the latest status");
         try {
             const saved = await ApiClient.request("setTeamBoardStatus", { token: ApiClient.getSessionToken(), boardId: card.BoardID, status });
-            applySavedCard(saved.data);
+            applySavedCard(saved.data && saved.data.record);
             Swal.close();
         } catch (error) {
             Swal.close();
@@ -173,21 +164,34 @@
             Swal.close();
         }
         const allowReply = canReply(card);
+        const managed = canManage(card);
         const replyMarkup = (replies || []).map((reply) => `<li class="team-board__reply"><div><strong>${escape(reply.CreatedByName || "Team member")}</strong><time>${escape(reply.CreatedAt || "")}</time></div><p>${escape(reply.Body || "")}</p></li>`).join("");
+        let nextAction = "";
         const result = await Swal.fire({
             title: escape(card.Title), width: "min(760px, calc(100vw - 24px))", showCloseButton: true,
             customClass: { popup: "team-board__modal" },
             confirmButtonText: allowReply ? "Post reply" : "Close",
             showCancelButton: allowReply,
             cancelButtonText: "Close",
-            html: `<div class="team-board__detail"><p>${escape(card.Body || "No details added.").replace(/\n/g, "<br>")}</p><dl><dt>Type</dt><dd>${card.Type === "Task" ? "Team task" : "Team update / Handover"}</dd>${card.Type === "Task" ? `<dt>Priority</dt><dd>${priorityLabel[taskPriority(card)]}</dd><dt>Status</dt><dd>${escape(card.Status)}</dd><dt>Assigned to</dt><dd>${escape(card.AssigneeName || "Unassigned")}</dd><dt>Due date</dt><dd>${escape(dateLabel(card.DueDate) || "Not set")}</dd>` : ""}<dt>Posted by</dt><dd>${escape(card.CreatedByName)}</dd><dt>Posted at</dt><dd>${escape(card.CreatedAt)}</dd></dl>${card.Type === "Task" ? `<section class="team-board__thread"><h4>Task conversation</h4><ol>${replyMarkup || `<li class="team-board__thread-empty">No replies yet.</li>`}</ol>${allowReply ? `<label for="boardReplyBody">Your reply</label><textarea id="boardReplyBody" rows="3" maxlength="2000" placeholder="Share progress, a question or a handover note"></textarea>` : ""}</section>` : ""}</div>`,
-            didOpen: () => { if (focusReply) document.getElementById("boardReplyBody")?.focus(); },
+            html: `<div class="team-board__detail"><p>${escape(card.Body || "No details added.").replace(/\n/g, "<br>")}</p><dl><dt>Type</dt><dd>${card.Type === "Task" ? "Team task" : "Team update / Handover"}</dd>${card.Type === "Task" ? `<dt>Priority</dt><dd>${priorityLabel[taskPriority(card)]}</dd><dt>Status</dt><dd>${escape(card.Status)}</dd><dt>Assigned to</dt><dd>${escape(card.AssigneeName || "Unassigned")}</dd><dt>Due date</dt><dd>${escape(dateLabel(card.DueDate) || "Not set")}</dd>` : ""}<dt>Posted by</dt><dd>${escape(card.CreatedByName)}</dd><dt>Posted at</dt><dd>${escape(card.CreatedAt)}</dd></dl>${card.Type === "Task" ? `<section class="team-board__thread"><h4>Task conversation</h4><ol>${replyMarkup || `<li class="team-board__thread-empty">No replies yet.</li>`}</ol>${allowReply ? `<label for="boardReplyBody">Your reply</label><textarea id="boardReplyBody" rows="3" maxlength="2000" placeholder="Share progress, a question or a handover note"></textarea>` : ""}</section>` : ""}${managed ? `<div class="team-board__detail-actions"><button type="button" data-detail-edit>Edit</button><button type="button" data-detail-archive>Archive</button></div>` : ""}</div>`,
+            didOpen: () => {
+                if (focusReply) document.getElementById("boardReplyBody")?.focus();
+                const popup = Swal.getPopup();
+                popup?.querySelector("[data-detail-edit]")?.addEventListener("click", () => { nextAction = "edit"; Swal.close(); });
+                popup?.querySelector("[data-detail-archive]")?.addEventListener("click", () => { nextAction = "archive"; Swal.close(); });
+            },
             preConfirm: allowReply ? () => {
                 const body = document.getElementById("boardReplyBody").value.trim();
                 if (!body) { Swal.showValidationMessage("Enter a reply before posting."); return false; }
                 return body;
             } : undefined
         });
+        if (nextAction === "edit") return openCardForm(card);
+        if (nextAction === "archive") {
+            const answer = await UI.confirm({ title: "Archive this item?", text: card.Title, confirmButtonText: "Archive" });
+            if (answer.isConfirmed) await setStatus(card, "Archived");
+            return;
+        }
         if (!allowReply || !result.isConfirmed || !result.value) return;
         UI.loading("Posting reply", "Saving your response to this task");
         try {
@@ -235,12 +239,25 @@
                 const card = state.cards.find((item) => item.BoardID === replyButton.dataset.boardReply);
                 if (card) await showCard(card, true);
             }
+            const note = event.target.closest("[data-board-open]");
+            if (note) {
+                const card = state.cards.find((item) => item.BoardID === note.dataset.boardOpen);
+                if (card) await showCard(card);
+            }
         });
         view.addEventListener("change", async (event) => {
             const select = event.target.closest("[data-board-status]");
             if (!select) return;
             const card = state.cards.find((item) => item.BoardID === select.dataset.boardStatus);
             if (card && statuses.includes(select.value) && select.value !== card.Status) await setStatus(card, select.value);
+        });
+        view.addEventListener("keydown", async (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            const note = event.target.closest("[data-board-open]");
+            if (!note) return;
+            event.preventDefault();
+            const card = state.cards.find((item) => item.BoardID === note.dataset.boardOpen);
+            if (card) await showCard(card);
         });
         try { await loadBoard(); }
         catch (error) {

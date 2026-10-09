@@ -38,6 +38,12 @@
 .team-card__actions { margin-top: 13px; }
 .team-card__actions button { border: 1px solid rgba(48, 75, 91, .12); background: rgba(255, 255, 255, .65); color: #24618d; border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
 .team-card__actions button:hover, .team-card__actions button:focus-visible { background: #fff; }
+.team-card--compact { min-height: 82px; display: flex; align-items: center; padding: 21px 18px; cursor: pointer; }
+.team-card--compact h3 { width: 100%; margin: 0; font-size: 15px; line-height: 1.35; }
+.team-card--compact:focus-visible { outline: 3px solid rgba(34, 132, 208, .48); outline-offset: 3px; }
+.team-board__detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #e2eaf1; }
+.team-board__detail-actions button { border: 1px solid #cbddeb; border-radius: 9px; background: #f5f9fc; color: #1a679f; padding: 8px 11px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.team-board__detail-actions [data-detail-archive] { border-color: #f3c8c8; background: #fff2f2; color: #c94040; }
 .team-board__loading { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 220px; color: #597188; }
 .team-board__form { display: grid; gap: 15px; text-align: left; }
 .team-board__form label { display: grid; gap: 6px; color: #587088; font-size: 12px; font-weight: 800; }

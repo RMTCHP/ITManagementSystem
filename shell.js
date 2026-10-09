@@ -193,7 +193,7 @@
                                         </span>
                                      ` : item.key === "teamBoard" ? `
                                          <span class="nav-link__badges">
-                                             <span class="nav-link__badge nav-link__badge--info hidden" data-nav-badge="teamBoard-assigned"></span>
+                                             <span class="nav-link__badge nav-link__badge--danger hidden" data-nav-badge="teamBoard-assigned"></span>
                                          </span>
                                     ` : `<span class="nav-link__badges"></span>`}
                                 </span>
