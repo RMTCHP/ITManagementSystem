@@ -115,14 +115,18 @@
         if (!state.summary) return "";
         const data = state.summary;
         const n = (value) => Math.max(0, Number(value) || 0).toLocaleString("en-US");
+        const service = data.serviceThisMonth || {};
+        const userIdApplications = data.pendingUserIdApplications || {};
         const cards = [
             ...(AppShell.normalizeRole(state.session.user.Role) === "admin" ? [{ title: "Open tickets", value: n(data.openTickets), icon: "fa-ticket", tone: "blue" }] : []),
+            { title: `Service performance · ${service.period || "This month"}`, value: `${n(service.onsite)} On-site · ${n(service.remote)} Remote`, detail: `${n(service.completed)} completed`, icon: "fa-headset", tone: "blue" },
+            { title: "User ID applications", value: `${n(userIdApplications.total)} awaiting action`, detail: `${n(userIdApplications.requester)} requester · ${n(userIdApplications.manager)} manager`, icon: "fa-id-card-clip", tone: "violet" },
             { title: "Asset lifecycle", value: `${n(data.expiredAssets)} expired · ${n(data.expiringSoonAssets)} expiring`, icon: "fa-laptop-file", tone: "orange" },
             { title: "Inventory alerts", value: `${n(data.lowStock)} low · ${n(data.outOfStock)} out`, icon: "fa-boxes-stacked", tone: "violet" },
             { title: "MA & contracts", value: `${n(data.maintenanceExpiring)} expiring · ${n(data.maintenanceExpired)} expired`, icon: "fa-file-signature", tone: "green" },
             { title: "Access requests", value: n(data.pendingAccessRequests), icon: "fa-user-shield", tone: "rose" }
         ];
-        return `<section class="reports-summary"><div class="reports-summary__heading"><div><p class="reports-heading__eyebrow">CURRENT SNAPSHOT</p><h4>Executive summary</h4><p>Current counts only. Select Detailed reports for historical records and exports.</p></div><span>Updated ${escape(formatCell("Timestamp", data.updatedAt || ""))}</span></div><div class="reports-summary__grid">${cards.map((card) => `<article class="reports-summary__card reports-tone--${card.tone}"><span class="reports-catalog-card__icon"><i class="fa-solid ${card.icon}" aria-hidden="true"></i></span><strong>${escape(card.title)}</strong><span>${escape(card.value)}</span></article>`).join("")}</div></section>`;
+        return `<section class="reports-summary"><div class="reports-summary__heading"><div><p class="reports-heading__eyebrow">CURRENT SNAPSHOT</p><h4>Executive summary</h4><p>Current counts only. Select Detailed reports for historical records and exports.</p></div><span>Updated ${escape(formatCell("Timestamp", data.updatedAt || ""))}</span></div><div class="reports-summary__grid">${cards.map((card) => `<article class="reports-summary__card reports-tone--${card.tone}"><span class="reports-catalog-card__icon"><i class="fa-solid ${card.icon}" aria-hidden="true"></i></span><strong>${escape(card.title)}</strong><span>${escape(card.value)}</span>${card.detail ? `<small>${escape(card.detail)}</small>` : ""}</article>`).join("")}</div></section>`;
     }
 
     function renderPage() {
