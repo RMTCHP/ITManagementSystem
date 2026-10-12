@@ -98,6 +98,16 @@
         subjectInput.required = required;
     }
 
+    function setEmailApplicationFieldsEnabled(enabled) {
+        emailApplicationSection.querySelectorAll("input, select, textarea").forEach((field) => {
+            field.disabled = !enabled;
+        });
+    }
+
+    // Email-only fields start hidden. Disable them as well so their required
+    // attributes never block On-site, Remote Support, or Equipment requests.
+    setEmailApplicationFieldsEnabled(false);
+
     function getEmailApplication() {
         return {
             site: document.getElementById("emailSite").value,
@@ -230,6 +240,7 @@
         const isEmailApplication = service === "Email";
         formGrid.classList.toggle("hidden", isEmailApplication);
         emailApplicationSection.classList.toggle("hidden", !isEmailApplication);
+        setEmailApplicationFieldsEnabled(isEmailApplication);
         setStandardTicketFieldRequirements(!isEmailApplication);
         requesterLabel.innerHTML = isEquipment ? 'ชื่อผู้เบิก <em>*</em>' : 'ชื่อผู้แจ้ง <em>*</em>';
         categoryField.classList.toggle("hidden", isEquipment || isEmailApplication);
@@ -907,6 +918,7 @@
         requestedServiceInput.value = "";
         formGrid.classList.remove("hidden");
         emailApplicationSection.classList.add("hidden");
+        setEmailApplicationFieldsEnabled(false);
         setStandardTicketFieldRequirements(true);
         categoryField.classList.remove("hidden");
         requesterLabel.innerHTML = 'ชื่อผู้แจ้ง <em>*</em>';
