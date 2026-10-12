@@ -63,6 +63,8 @@
     let emailApplications = [];
     let equipmentItems = [];
     let ticketWorkspaceRequest = null;
+    let lastTicketWorkspace = null;
+    let lastTicketWorkspaceAt = 0;
     let isSubmitting = false;
     let requestComputerAssets = [];
     let isOpeningComputerBorrowing = false;
@@ -378,9 +380,17 @@
         }).join("");
     }
 
-    async function getMyJobWorkspace() {
+    async function getMyJobWorkspace(forceRefresh = false) {
+        if (!forceRefresh && lastTicketWorkspace && Date.now() - lastTicketWorkspaceAt < 60000) {
+            return lastTicketWorkspace;
+        }
         if (!ticketWorkspaceRequest) {
             ticketWorkspaceRequest = ApiClient.request("getPublicTicketWorkspace")
+                .then((result) => {
+                    lastTicketWorkspace = result;
+                    lastTicketWorkspaceAt = Date.now();
+                    return result;
+                })
                 .finally(() => {
                     ticketWorkspaceRequest = null;
                 });
@@ -388,10 +398,10 @@
         return ticketWorkspaceRequest;
     }
 
-    async function loadMyJobs() {
+    async function loadMyJobs(forceRefresh = false) {
         try {
             UI.loading("Loading My Job", "Retrieving the latest ticket list");
-            const result = await getMyJobWorkspace();
+            const result = await getMyJobWorkspace(forceRefresh);
             Swal.close();
             renderTicketJobs((result.data && result.data.records) || []);
         } catch (error) {
@@ -950,7 +960,7 @@
     });
 
     showMyJobsButton.addEventListener("click", showMyJobs);
-    refreshMyJobsButton.addEventListener("click", loadMyJobs);
+    refreshMyJobsButton.addEventListener("click", () => loadMyJobs(true));
     ticketJobList.addEventListener("click", (event) => {
         const resolveButton = event.target.closest('[data-action="resolve-ticket"]');
         if (!resolveButton) return;
