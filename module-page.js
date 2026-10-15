@@ -2120,7 +2120,7 @@
                 <div class="knowledge-library__header">
                     <div>
                         ${showFiles ? `<button class="knowledge-breadcrumb" type="button" data-knowledge-category="all"><i class="fa-solid fa-arrow-left"></i> All folders</button>` : `<p class="section-card__eyebrow">Knowledge Library</p>`}
-                        <h3>${UI.escapeHtml(isSearching ? "Search results" : isFolderOpen ? currentFolder : "IT Knowledge Center")}</h3>
+                        <h3>${UI.escapeHtml(isSearching ? "Search results" : isFolderOpen ? currentFolder : "Document Library")}</h3>
                         <p>${isSearching ? `${filtered.length} file${filtered.length === 1 ? "" : "s"} found for "${UI.escapeHtml(searchTerm)}"` : isFolderOpen ? `${state.records.filter((record) => String(record.Category || "") === currentFolder).length} files in this folder` : `${categories.length} folders | ${state.records.length} files`}</p>
                     </div>
                     ${canCreate && !showFiles ? `<button class="primary-btn" id="addKnowledgeCategoryButton" type="button"><i class="fa-solid fa-folder-plus"></i><span>Add folder</span></button>` : ""}

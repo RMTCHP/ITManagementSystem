@@ -15,6 +15,7 @@ window.APP_CONFIG = {
         licenses: "licenses.html",
         maintenanceAgreements: "ma-renewal.html",
         documents: "document-center.html",
+        learningHub: "learning-hub.html",
         reports: "reports.html",
         users: "administration.html",
         auditLogs: "audit-log.html"
@@ -72,7 +73,8 @@ window.APP_CONFIG = {
             { key: "accessRequests", label: "Access Requests", icon: "fa-user-shield", description: "Account and permission requests" }
         ]},
         { group: "Knowledge Center", items: [
-            { key: "documents", label: "IT Knowledge Center", icon: "fa-book-open", description: "IT guides, standards and operational knowledge" }
+            { key: "documents", label: "Document Library", icon: "fa-folder-open", description: "SOP, WI, manuals and IT documents" },
+            { key: "learningHub", label: "IT Learning Hub", icon: "fa-graduation-cap", description: "Guides, troubleshooting, training and labs" }
         ]},
         { group: "Governance", items: [
             { key: "reports", label: "Reports", icon: "fa-chart-column", description: "Exports and audit views" },
@@ -264,8 +266,8 @@ window.APP_CONFIG = {
         },
         documents: {
             key: "documents",
-            label: "IT Knowledge Center",
-            icon: "fa-book-open",
+            label: "Document Library",
+            icon: "fa-folder-open",
             idField: "DocumentID",
             statusField: "Status",
             roles: ["Admin", "User"],
@@ -283,6 +285,13 @@ window.APP_CONFIG = {
                 { key: "Remark", label: "Description", type: "textarea", full: true },
                 { key: "Keywords", label: "Keywords", type: "text", full: true }
             ]
+        },
+        learningHub: {
+            key: "learningHub",
+            label: "IT Learning Hub",
+            icon: "fa-graduation-cap",
+            roles: ["Admin", "User"],
+            permissions: { create: [], edit: [], delete: [] }
         },
         users: {
             key: "users",

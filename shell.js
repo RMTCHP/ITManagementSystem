@@ -423,10 +423,12 @@
             importButton.onclick = null;
         }
 
-        if (typeof options.onExport === "function") {
-            elements.exportButton.classList.remove("hidden");
-        } else {
-            elements.exportButton.classList.add("hidden");
+        if (elements.exportButton) {
+            if (typeof options.onExport === "function") {
+                elements.exportButton.classList.remove("hidden");
+            } else {
+                elements.exportButton.classList.add("hidden");
+            }
         }
 
         applyTooltips(elements.topbarActions);
@@ -617,7 +619,7 @@
             });
         }
 
-        if (typeof options.onExport === "function") {
+        if (typeof options.onExport === "function" && elements.exportButton) {
             elements.exportButton.addEventListener("click", async () => {
                 try {
                     await options.onExport(context);
