@@ -9,7 +9,7 @@
     const labs = [
         { title: "LAN Cable Lab", route: "lan-cable-lab.html", newTab: true, icon: "fa-ethernet", description: "Practice RJ45 cable termination and T568A/T568B wiring.", difficulty: "Beginner", category: "Cabling", group: "network" },
         { title: "Network Simulator", route: "netsim/app.html", newTab: true, icon: "fa-network-wired", description: "Build network topologies, configure devices, and test connectivity.", difficulty: "Intermediate", category: "Network", group: "network" },
-        { title: "Network Troubleshooting Lab", icon: "fa-wifi", description: "Investigate simulated network failures and restore connectivity.", difficulty: "Intermediate", category: "Troubleshooting", group: "network" },
+        { title: "Network Troubleshooting Lab", route: "labs/network-troubleshooting/", newTab: true, icon: "fa-wifi", description: "Investigate simulated network failures and restore connectivity.", difficulty: "Intermediate", category: "Troubleshooting", group: "network" },
         { title: "Service Desk Scenario", icon: "fa-headset", description: "Practice ticket handling, prioritization, escalation, and resolution.", difficulty: "Beginner", category: "Service Desk", group: "operations" },
         { title: "Backup & Restore Lab", icon: "fa-database", description: "Practice backup verification, restoration, and recovery procedures.", difficulty: "Intermediate", category: "Backup", group: "operations" },
         { title: "Security Awareness Lab", icon: "fa-shield-halved", description: "Practice recognising and responding to common security scenarios.", difficulty: "Beginner", category: "Security", group: "other" }
