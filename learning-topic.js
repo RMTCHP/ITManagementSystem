@@ -52,7 +52,7 @@
     }
 
     function render() {
-        const standardPage = `<div class="learning-topic-page__body"><article class="learning-topic-page__card"><h4>Learning workspace</h4><p>${UI.escapeHtml(page.primary)}</p><div class="learning-topic-page__empty"><span><i class="fa-regular fa-folder-open"></i><br>Content will appear here as it is added.</span></div></article><aside class="learning-topic-page__card"><h4>Suggested first topics</h4><ul>${page.examples.map((item) => `<li>${UI.escapeHtml(item)}</li>`).join("")}</ul></aside></div>`;
+        const standardPage = key === "lab" ? "" : `<div class="learning-topic-page__body"><article class="learning-topic-page__card"><h4>Learning workspace</h4><p>${UI.escapeHtml(page.primary)}</p><div class="learning-topic-page__empty"><span><i class="fa-regular fa-folder-open"></i><br>Content will appear here as it is added.</span></div></article><aside class="learning-topic-page__card"><h4>Suggested first topics</h4><ul>${page.examples.map((item) => `<li>${UI.escapeHtml(item)}</li>`).join("")}</ul></aside></div>`;
         const hero = key === "lab" ? "" : `<header class="learning-topic-page__hero"><a class="learning-topic-page__back" href="learning-hub.html"><i class="fa-solid fa-arrow-left"></i> IT Learning Hub</a><span class="learning-topic-page__icon"><i class="fa-solid ${page.icon}"></i></span><h3>${UI.escapeHtml(page.title)}</h3><p>${UI.escapeHtml(page.summary)}</p></header>`;
         document.getElementById("viewContainer").innerHTML = `<section class="learning-topic-page learning-topic-page--${page.tone}">${hero}${key === "lab" ? renderLabs() : standardPage}</section>`;
         if (key === "lab") {
