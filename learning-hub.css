@@ -25,3 +25,30 @@
 @media (max-width: 1320px) { .learning-hub__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1180px) { .interactive-lab__grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .learning-hub, .learning-topic-page { padding: 18px 14px 30px; }.learning-hub__hero, .learning-topic-page__hero { display: block; padding: 25px 22px; }.learning-hub__library-link { margin-top: 22px; }.learning-hub__grid, .learning-topic-page__body, .interactive-lab__grid { grid-template-columns: 1fr; }.learning-hub__heading h4 { font-size: 23px; }.learning-topic-page__hero h3 { font-size: 27px; } }
+
+/* Learning hub catalog refinement */
+.learning-topic { display:flex; min-height:218px; flex-direction:column; }
+.learning-topic__copy p { display:-webkit-box; min-height:0; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.learning-topic__footer { margin-top:auto; padding-top:18px; }
+.interactive-lab__filters { display:flex; align-items:center; justify-content:space-between; gap:14px; margin:0 0 22px; padding:12px; border:1px solid #d8e8e9; border-radius:13px; background:#fff; box-shadow:0 5px 13px rgba(28,92,96,.04); }
+.interactive-lab__filter-group { display:flex; flex-wrap:wrap; gap:7px; }
+.interactive-lab__filter-group button { border:1px solid #cfe1e2; border-radius:999px; color:#527184; background:#fff; font:700 11px Manrope,Arial,sans-serif; cursor:pointer; padding:7px 11px; }
+.interactive-lab__filter-group button:hover, .interactive-lab__filter-group button.is-active { border-color:#008b79; color:#fff; background:#008b79; }
+.interactive-lab__level-filter { display:flex; align-items:center; gap:8px; color:#557388; font-size:11px; font-weight:800; white-space:nowrap; }
+.interactive-lab__level-filter select { min-width:126px; padding:7px 9px; border:1px solid #cfe1e2; border-radius:8px; color:#284a62; background:#fff; font:600 11px Manrope,Arial,sans-serif; }
+.interactive-lab__catalog { display:grid; gap:24px; }
+.interactive-lab__group > h5 { display:flex; align-items:center; gap:9px; margin:0 0 11px; color:#1f465f; font-size:15px; }
+.interactive-lab__group > h5::before { width:4px; height:18px; border-radius:4px; background:#00a38c; content:""; }
+.interactive-lab__group > h5 span { color:#7490a3; font-size:11px; font-weight:700; }
+.interactive-lab__card { display:flex; min-height:228px; flex-direction:column; padding:18px; }
+.interactive-lab__card-copy h5 { margin:12px 0 7px; }
+.interactive-lab__card-copy p { display:-webkit-box; min-height:34px; margin:0; overflow:hidden; color:#557188; font-size:12px; line-height:1.45; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.interactive-lab__badges { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+.interactive-lab__badge { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; color:#40746b; background:#e9f7f3; font-size:10px; font-weight:800; }
+.interactive-lab__badge--level { color:#4c6694; background:#edf3fc; }
+.interactive-lab__availability { display:flex; align-items:center; gap:6px; margin-top:13px; color:#899cab; font-size:10px; font-weight:800; }
+.interactive-lab__availability.is-available { color:#16866f; }
+.interactive-lab__open, .interactive-lab__coming { display:flex; align-items:center; gap:7px; margin-top:auto; padding-top:15px; border-top:1px solid #edf2f4; font-size:11px; font-weight:800; }
+.interactive-lab__open { color:#087e70; }.interactive-lab__coming { color:#7e94a5; }
+.interactive-lab__card--link:hover .interactive-lab__open { gap:10px; }
+@media (max-width: 860px) { .interactive-lab__filters { align-items:stretch; flex-direction:column; }.interactive-lab__level-filter { justify-content:space-between; }.interactive-lab__level-filter select { width:160px; } }
