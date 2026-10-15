@@ -8,7 +8,7 @@
     };
     const page = pages[key] || pages.guides;
     const labs = [
-        { title: "LAN Cable Lab", route: "lan-cable-lab.html", icon: "fa-ethernet", action: "เรียงสีสาย T568A/T568B และเข้าหัว RJ45", outcome: "ตรวจลำดับสี พร้อมชี้เส้นที่ผิด" },
+        { title: "LAN Cable Lab", route: "lan-cable-lab.html", newTab: true, icon: "fa-ethernet", action: "เรียงสีสาย T568A/T568B และเข้าหัว RJ45", outcome: "ตรวจลำดับสี พร้อมชี้เส้นที่ผิด" },
         { title: "Network Simulator", route: "netsim/app.html", newTab: true, icon: "fa-network-wired", action: "Build network topologies and configure hosts, routers and firewalls with Linux commands", outcome: "Simulate packets, routing, services and guided networking labs in the browser" },
         { title: "Network Troubleshooting Lab", icon: "fa-network-wired", action: "เลือกขั้นตอนตรวจเมื่อ PC เข้าเน็ตหรือ Share Drive ไม่ได้", outcome: "แสดงผลตรวจแต่ละขั้น และเฉลยสาเหตุ" },
         { title: "IP & Subnet Lab", icon: "fa-diagram-project", action: "กำหนด IP, Subnet Mask และ Gateway ให้เครื่องตัวอย่าง", outcome: "ตรวจว่าอยู่เครือข่ายเดียวกันและสื่อสารได้หรือไม่" },
