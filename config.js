@@ -1,7 +1,7 @@
 window.APP_CONFIG = {
     appName: "IT Asset Management & Request Job System",
     projectProfile: "Enterprise Clean",
-  webAppUrl: "https://script.google.com/macros/s/AKfycbxAwgJi3ZB3rM2nO2YmsjJs5cK2pw7uv2NY0_xNjD9XcPYZXRjde50FIRgm8ILPtDA/exec",
+  webAppUrl: "https://script.google.com/macros/s/AKfycbxVaBVMnK2snGKT1zm8qJHbljR2kruFHaPS8kJWfPgJ7r7y8G5dIK_JmrFmXrZdKkk/exec",
     sessionStorageKey: "itms_session",
     sessionHours: 12,
     pageRoutes: {

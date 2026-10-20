@@ -697,7 +697,8 @@
             Swal.close();
             const matches = Array.isArray(data.recoverable) ? data.recoverable : [];
             if (!matches.length) {
-                await UI.alert({ icon: "info", title: "No safe signature matches found", text: "No legacy files could be matched automatically. No records were changed." });
+                const diagnostics = data.diagnostics || {};
+                await UI.alert({ icon: "info", title: "No safe signature matches found", text: `No records were changed. Found ${diagnostics.managerApprovalAudits || 0} manager-approval log(s) and ${diagnostics.managerSignatureFiles || 0} legacy manager signature file(s).` });
                 return;
             }
             const answer = await UI.confirm({ title: `Recover ${matches.length} manager signature${matches.length === 1 ? "" : "s"}?`, text: `Only time-matched files will be restored: ${matches.map((item) => item.ticketId).join(", ")}`, confirmButtonText: "Recover signatures" });
