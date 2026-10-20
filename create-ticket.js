@@ -50,6 +50,7 @@
     const emailApplicationSection = document.getElementById("emailApplicationSection");
     const emailApplicationWorkspace = document.getElementById("emailApplicationWorkspace");
     const emailApplicationList = document.getElementById("emailApplicationList");
+    const recoverEmailManagerSignaturesButton = document.getElementById("recoverEmailManagerSignaturesButton");
     const requestComputerSearchInput = document.getElementById("requestComputerSearchInput");
     const requestComputerSearchForm = document.getElementById("requestComputerSearchForm");
     const requestComputerSearchButton = requestComputerSearchForm.querySelector('[type="submit"]');
@@ -686,6 +687,33 @@
         catch (error) { Swal.close(); await UI.alert({ icon: "error", title: "Unable to close application", text: error.message || "Please try again." }); }
     }
 
+    async function recoverLegacyEmailManagerSignatures() {
+        const session = getActiveSession();
+        if (!session || String(session.user?.Role || "").toLowerCase() !== "admin") return;
+        UI.loading("Checking legacy signatures", "Matching manager approval history with original uploaded signatures");
+        try {
+            const preview = await ApiClient.request("recoverLegacyUserIdApplicationManagerSignatures", { token: session.token, applyChanges: "false" });
+            const data = preview.data || {};
+            Swal.close();
+            const matches = Array.isArray(data.recoverable) ? data.recoverable : [];
+            if (!matches.length) {
+                await UI.alert({ icon: "info", title: "No safe signature matches found", text: "No legacy files could be matched automatically. No records were changed." });
+                return;
+            }
+            const answer = await UI.confirm({ title: `Recover ${matches.length} manager signature${matches.length === 1 ? "" : "s"}?`, text: `Only time-matched files will be restored: ${matches.map((item) => item.ticketId).join(", ")}`, confirmButtonText: "Recover signatures" });
+            if (!answer.isConfirmed) return;
+            UI.loading("Recovering signatures", "Restoring the original manager signature references");
+            const result = await ApiClient.request("recoverLegacyUserIdApplicationManagerSignatures", { token: session.token, applyChanges: "true" });
+            Swal.close();
+            const recovered = Array.isArray(result.data?.recoverable) ? result.data.recoverable.length : 0;
+            await UI.alert({ icon: "success", title: "Recovery completed", text: `Restored ${recovered} manager signature${recovered === 1 ? "" : "s"}.` });
+            await loadEmailApplications();
+        } catch (error) {
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Unable to recover signatures", text: error.message || "No records were changed." });
+        }
+    }
+
     document.querySelectorAll("[data-requested-service]").forEach((button) => {
         button.addEventListener("click", () => selectService(button.dataset.requestedService));
     });
@@ -714,6 +742,7 @@
     document.getElementById("addEmailApplicationButton").addEventListener("click", () => { emailApplicationWorkspace.classList.add("hidden"); selectService("Email"); });
     document.getElementById("backToRequestFormButton").addEventListener("click", () => { emailApplicationWorkspace.classList.add("hidden"); requestFormCard.classList.remove("hidden"); });
     document.getElementById("refreshEmailApplicationsButton").addEventListener("click", () => loadEmailApplications(true));
+    recoverEmailManagerSignaturesButton.addEventListener("click", recoverLegacyEmailManagerSignatures);
     emailApplicationList.addEventListener("click", async (event) => {
         const pdfButton = event.target.closest("[data-email-pdf]");
         if (pdfButton) { window.open(`tickets.html?action=print-ticket&ticketId=${encodeURIComponent(pdfButton.dataset.emailPdf)}`, "_blank", "noopener"); return; }
@@ -1111,6 +1140,7 @@
 
     (window.ITMS_TICKET_AUTH_READY || Promise.resolve()).then(() => {
         renderTicketProfile();
+        if (String(getActiveSession()?.user?.Role || "").toLowerCase() === "admin") recoverEmailManagerSignaturesButton.classList.remove("hidden");
         return loadMyJobCount();
     });
 })();
