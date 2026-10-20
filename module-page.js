@@ -2367,7 +2367,9 @@
             try {
                 const signatures = await ApiClient.request("getTicketSignatures", { token: ApiClient.getSessionToken(), ticketId: ticket.TicketID });
                 const signature = signatures.data?.requestSignature || "";
-                const managerSignature = signatures.data?.resolutionSignature || "";
+                // User ID Application signatures are stored separately from
+                // generic IT ticket-resolution signatures.
+                const managerSignature = signatures.data?.managerSignature || "";
                 const signatureImage = !reportWindow.closed && reportWindow.document.getElementById("emailApplicationSignature");
                 if (signature && signatureImage) signatureImage.src = signature;
                 ["emailManagerSignatureConfirmed", "emailManagerSignatureApproved"].forEach((id) => { const image = !reportWindow.closed && reportWindow.document.getElementById(id); if (managerSignature && image) image.src = managerSignature; });
