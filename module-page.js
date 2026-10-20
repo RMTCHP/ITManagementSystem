@@ -3248,12 +3248,13 @@
                 width: "min(960px, calc(100vw - 32px))",
                 showCloseButton: true,
                 confirmButtonText: "Close",
-                html: `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Agreement ID</th><th>Contract No.</th><th>Start</th><th>End</th><th>Vendor</th><th>Document</th><th>Status</th></tr></thead><tbody>${history.map((record) => {
+                html: `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Agreement ID</th><th>Contract No.</th><th>Start</th><th>End</th><th>Vendor</th><th>Document</th><th>Status</th></tr></thead><tbody>${history.map((record, index) => {
                     const documentLink = record.DocumentURL
-                        ? `<a class="table-action table-action--info" href="${UI.escapeHtml(record.DocumentURL)}" target="_blank" rel="noopener noreferrer" title="Open contract document"><i class="fa-solid fa-file-lines"></i></a>`
+                        ? `<button type="button" class="table-action table-action--info" data-renewal-history-pdf="${index}" title="View PDF"><i class="fa-solid fa-file-pdf"></i></button>`
                         : "-";
                     return `<tr><td>${UI.escapeHtml(record.AgreementID || "-")}</td><td>${UI.escapeHtml(record.ContractNo || "-")}</td><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td><td>${UI.escapeHtml(record.Vendor || "-")}</td><td>${documentLink}</td><td>${UI.badge(record.Status || "-")}</td></tr>`;
-                }).join("")}</tbody></table></div>`
+                }).join("")}</tbody></table></div>`,
+                didOpen: () => document.querySelectorAll("[data-renewal-history-pdf]").forEach((button) => button.addEventListener("click", () => openMaintenanceRenewalPdf(history[Number(button.dataset.renewalHistoryPdf)])))
             });
             return;
         }
@@ -3282,13 +3283,26 @@
             width: "min(960px, calc(100vw - 32px))",
             showCloseButton: true,
             confirmButtonText: "Close",
-            html: `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Agreement ID</th><th>Contract No.</th><th>Start</th><th>End</th><th>Vendor</th><th>Document</th><th>Status</th></tr></thead><tbody>${history.map((record) => {
+            html: `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Agreement ID</th><th>Contract No.</th><th>Start</th><th>End</th><th>Vendor</th><th>Document</th><th>Status</th></tr></thead><tbody>${history.map((record, index) => {
                 const documentLink = record.DocumentURL
-                    ? `<a class="table-action table-action--info" href="${UI.escapeHtml(record.DocumentURL)}" target="_blank" rel="noopener noreferrer" title="Open contract document"><i class="fa-solid fa-file-lines"></i></a>`
+                    ? `<button type="button" class="table-action table-action--info" data-renewal-history-pdf="${index}" title="View PDF"><i class="fa-solid fa-file-pdf"></i></button>`
                     : "-";
                 return `<tr><td>${UI.escapeHtml(record.AgreementID || "-")}</td><td>${UI.escapeHtml(record.ContractNo || "-")}</td><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td><td>${UI.escapeHtml(record.Vendor || "-")}</td><td>${documentLink}</td><td>${UI.badge(record.Status || "-")}</td></tr>`;
-            }).join("")}</tbody></table></div>`
+            }).join("")}</tbody></table></div>`,
+            didOpen: () => document.querySelectorAll("[data-renewal-history-pdf]").forEach((button) => button.addEventListener("click", () => openMaintenanceRenewalPdf(history[Number(button.dataset.renewalHistoryPdf)])))
         });
+    }
+
+    function openMaintenanceRenewalPdf(record) {
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+            UI.alert({ icon: "warning", title: "Popup blocked", text: "Allow popups to view the renewal PDF." });
+            return;
+        }
+        const value = (key) => UI.escapeHtml(record[key] || "-");
+        printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Renewal Contract - ${value("ContractNo")}</title><style>@page{size:A4;margin:14mm}body{margin:0;color:#172b4d;font-family:Arial,sans-serif}.toolbar{padding:0 0 12px;text-align:right}.toolbar button{padding:8px 12px;border:0;border-radius:5px;background:#0878be;color:#fff;font-weight:bold;cursor:pointer}.paper{border:1px solid #cad8e1;padding:18mm}h1{margin:0 0 6px;text-align:center;font-size:20px}h2{margin:0 0 28px;text-align:center;color:#58708d;font-size:13px;font-weight:normal}table{width:100%;border-collapse:collapse}th,td{padding:10px;border:1px solid #aebfcb;text-align:left;font-size:12px}th{width:34%;background:#f2f7fa}.footer{margin-top:34px;color:#657d91;font-size:10px}@media print{.toolbar{display:none}.paper{border:0;padding:0}}</style></head><body><div class="toolbar"><button onclick="window.print()">Print / Save as PDF</button></div><main class="paper"><h1>Maintenance Agreement Renewal</h1><h2>Resonac Materials (Thailand) Co., Ltd.</h2><table><tr><th>Agreement ID</th><td>${value("AgreementID")}</td></tr><tr><th>Contract No.</th><td>${value("ContractNo")}</td></tr><tr><th>Agreement / Service</th><td>${value("AgreementName")}</td></tr><tr><th>Vendor</th><td>${value("Vendor")}</td></tr><tr><th>Start Date</th><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td></tr><tr><th>End Date</th><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td></tr><tr><th>Status</th><td>${value("Status")}</td></tr></table><p class="footer">This printable renewal summary is generated securely from IT Management System data.</p></main></body></html>`);
+        printWindow.document.close();
+        printWindow.focus();
     }
 
     async function openMaintenanceDocument(agreementId) {
