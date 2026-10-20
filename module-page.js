@@ -3241,8 +3241,9 @@
                 EndDate: item.PreviousEndDate || "",
                 Vendor: item.PreviousVendor || "",
                 DocumentURL: item.PreviousDocumentURL || "",
+                RenewalID: item.RenewalID || "",
                 Status: "Renewed"
-            })).concat([selected]).sort((left, right) => String(right.StartDate || "").localeCompare(String(left.StartDate || "")));
+            })).concat([{ ...selected, RenewalID: "" }]).sort((left, right) => String(right.StartDate || "").localeCompare(String(left.StartDate || "")));
             await Swal.fire({
                 title: "Renewal History",
                 width: "min(960px, calc(100vw - 32px))",
@@ -3254,7 +3255,7 @@
                         : "-";
                     return `<tr><td>${UI.escapeHtml(record.AgreementID || "-")}</td><td>${UI.escapeHtml(record.ContractNo || "-")}</td><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td><td>${UI.escapeHtml(record.Vendor || "-")}</td><td>${documentLink}</td><td>${UI.badge(record.Status || "-")}</td></tr>`;
                 }).join("")}</tbody></table></div>`,
-                didOpen: () => document.querySelectorAll("[data-renewal-history-pdf]").forEach((button) => button.addEventListener("click", () => openMaintenanceRenewalPdf(history[Number(button.dataset.renewalHistoryPdf)])))
+                didOpen: () => document.querySelectorAll("[data-renewal-history-pdf]").forEach((button) => button.addEventListener("click", () => openMaintenanceRenewalPreview(history[Number(button.dataset.renewalHistoryPdf)])))
             });
             return;
         }
@@ -3289,20 +3290,60 @@
                     : "-";
                 return `<tr><td>${UI.escapeHtml(record.AgreementID || "-")}</td><td>${UI.escapeHtml(record.ContractNo || "-")}</td><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td><td>${UI.escapeHtml(record.Vendor || "-")}</td><td>${documentLink}</td><td>${UI.badge(record.Status || "-")}</td></tr>`;
             }).join("")}</tbody></table></div>`,
-            didOpen: () => document.querySelectorAll("[data-renewal-history-pdf]").forEach((button) => button.addEventListener("click", () => openMaintenanceRenewalPdf(history[Number(button.dataset.renewalHistoryPdf)])))
+            didOpen: () => document.querySelectorAll("[data-renewal-history-pdf]").forEach((button) => button.addEventListener("click", () => openMaintenanceRenewalPreview(history[Number(button.dataset.renewalHistoryPdf)])))
         });
     }
 
-    function openMaintenanceRenewalPdf(record) {
-        const printWindow = window.open("", "_blank");
-        if (!printWindow) {
-            UI.alert({ icon: "warning", title: "Popup blocked", text: "Allow popups to view the renewal PDF." });
+    async function openMaintenanceRenewalPreview(record) {
+        if (!record || !record.DocumentURL) {
+            await UI.alert({ icon: "info", title: "Preview unavailable", text: "No uploaded contract file is attached to this renewal." });
             return;
         }
-        const value = (key) => UI.escapeHtml(record[key] || "-");
-        printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Renewal Contract - ${value("ContractNo")}</title><style>@page{size:A4;margin:14mm}body{margin:0;color:#172b4d;font-family:Arial,sans-serif}.toolbar{padding:0 0 12px;text-align:right}.toolbar button{padding:8px 12px;border:0;border-radius:5px;background:#0878be;color:#fff;font-weight:bold;cursor:pointer}.paper{border:1px solid #cad8e1;padding:18mm}h1{margin:0 0 6px;text-align:center;font-size:20px}h2{margin:0 0 28px;text-align:center;color:#58708d;font-size:13px;font-weight:normal}table{width:100%;border-collapse:collapse}th,td{padding:10px;border:1px solid #aebfcb;text-align:left;font-size:12px}th{width:34%;background:#f2f7fa}.footer{margin-top:34px;color:#657d91;font-size:10px}@media print{.toolbar{display:none}.paper{border:0;padding:0}}</style></head><body><div class="toolbar"><button onclick="window.print()">Print / Save as PDF</button></div><main class="paper"><h1>Maintenance Agreement Renewal</h1><h2>Resonac Materials (Thailand) Co., Ltd.</h2><table><tr><th>Agreement ID</th><td>${value("AgreementID")}</td></tr><tr><th>Contract No.</th><td>${value("ContractNo")}</td></tr><tr><th>Agreement / Service</th><td>${value("AgreementName")}</td></tr><tr><th>Vendor</th><td>${value("Vendor")}</td></tr><tr><th>Start Date</th><td>${UI.escapeHtml(formatDateDisplay(record.StartDate))}</td></tr><tr><th>End Date</th><td>${UI.escapeHtml(formatDateDisplay(record.EndDate))}</td></tr><tr><th>Status</th><td>${value("Status")}</td></tr></table><p class="footer">This printable renewal summary is generated securely from IT Management System data.</p></main></body></html>`);
-        printWindow.document.close();
-        printWindow.focus();
+        Swal.fire({ title: "Preparing preview", text: "Loading the original uploaded file securely...", allowOutsideClick: false, allowEscapeKey: false, didOpen: () => Swal.showLoading() });
+        let objectUrl = "";
+        try {
+            const response = await ApiClient.request("getMaintenanceRenewalPreviewData", {
+                token: ApiClient.getSessionToken(),
+                agreementId: record.AgreementID,
+                renewalId: record.RenewalID || ""
+            });
+            const preview = response && response.data;
+            if (!preview || !preview.base64 || !preview.mimeType) throw new Error("The preview file could not be prepared.");
+            const binary = window.atob(preview.base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+            const blob = new Blob([bytes], { type: preview.mimeType });
+            objectUrl = URL.createObjectURL(blob);
+            const isPdf = preview.mimeType === "application/pdf";
+            const isImage = /^image\//i.test(preview.mimeType);
+            const officeType = await prepareKnowledgeOfficeViewer(preview.mimeType);
+            if (!isPdf && !isImage && !officeType) throw new Error("This file type cannot be displayed in the preview window.");
+            Swal.close();
+            const displayName = preview.fileName || record.ContractNo || "contract";
+            await Swal.fire({
+                title: `Contract Preview${record.ContractNo ? ` — ${record.ContractNo}` : ""}`,
+                width: "min(1100px, calc(100vw - 32px))", showCloseButton: true, showCancelButton: true, cancelButtonText: "Close", confirmButtonText: "Download original",
+                html: isPdf ? `<div class="knowledge-preview"><iframe src="${objectUrl}" title="${UI.escapeHtml(displayName)}"></iframe></div>` : isImage ? `<div class="knowledge-preview"><img src="${objectUrl}" alt="${UI.escapeHtml(displayName)}"></div>` : `<div class="knowledge-preview knowledge-preview--office"><div id="knowledgeOfficePreview">Loading document...</div></div>`,
+                didOpen: async () => {
+                    if (!officeType) return;
+                    const container = document.getElementById("knowledgeOfficePreview");
+                    try {
+                        container.textContent = "";
+                        if (officeType === "docx") await window.docx.renderAsync(blob, container, container, { inWrapper: true });
+                        else if (officeType === "xlsx") renderKnowledgeSpreadsheet(bytes, container);
+                        else { const viewer = window.pptxPreview.init(container, { width: 960, height: 540 }); await viewer.preview(bytes.buffer); }
+                    } catch (error) { container.textContent = `Could not display this Office file: ${error.message || "Unknown error"}. Download the original file instead.`; }
+                },
+                preConfirm: () => {
+                    const link = document.createElement("a"); link.href = objectUrl; link.download = displayName; document.body.appendChild(link); link.click(); link.remove(); return false;
+                },
+                didDestroy: () => { if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = ""; } }
+            });
+        } catch (error) {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            Swal.close();
+            await UI.alert({ icon: "error", title: "Preview unavailable", text: error.message || "Unable to load this uploaded contract preview." });
+        }
     }
 
     async function openMaintenanceDocument(agreementId) {
